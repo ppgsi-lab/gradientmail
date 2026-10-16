@@ -8,7 +8,7 @@ The cluster is heterogeneous and elastic: nodes with different GPUs and framewor
 
 Each learner keeps a local copy of the model and runs its own optimizer. Parameters are split into fragments, synchronized on a staggered schedule. For each fragment, a learner publishes its update: the difference between the parameters it installed and the ones it trained.
 
-![Learners publish updates to a shared mailbox and poll it for commits; the elected learner also merges the round's updates and commits the result.](assets/training-flow.svg)
+![Learners publish updates to a shared mailbox and poll it for commits; the elected learner also merges the round's updates and commits the result.](docs/assets/training-flow.svg)
 
 An elected learner reads the updates for a round, merges them and applies the outer optimizer. It commits the updated fragment through the mailbox; learners poll for new commits and load them into their local models. All training and merge arithmetic runs on the learners.
 
