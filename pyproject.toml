@@ -1,0 +1,53 @@
+[project]
+name = "gradientmail"
+version = "0.1.0"
+description = "Distributed training through asynchronous message exchange"
+readme = "README.md"
+authors = [
+    { name = "Gabriel Francisco", email = "gabfssilva@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "safetensors>=0.8,<1",
+]
+
+[project.optional-dependencies]
+s3 = ["boto3>=1.36"]
+torch = ["torch"]
+mlx = ["mlx"]
+jax = ["jax"]
+keras = ["keras"]
+tensorflow = ["tensorflow"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9",
+    "pytest-describe>=3",
+    "hypothesis",
+    "ruff",
+    "pyrefly>=1.3",
+    "moto[s3]>=5.1.5",
+    "boto3>=1.36",
+    "boto3-stubs-lite[s3]>=1.36",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.0,<0.14.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+describe_prefixes = ["describe", "when"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = ["*.md"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.pyrefly]
+project-includes = ["src"]
+python-version = "3.12"
+search-path = ["src"]

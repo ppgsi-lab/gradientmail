@@ -1,0 +1,460 @@
+"""LearnerState transitions in isolation; the Learner runtime over MemoryMailbox and MemoryAdapter.
+
+The runtime boundary is what the syncer and the user's model observe: the bytes the adapter
+holds, the snapshot records the learner publishes and ``rounds_seen``. Round records are
+written through the real Exchange, as the syncer writes them. Tests that need two polls to
+see a precise sequence of records drive ``join`` and ``poll`` on their own loop; the rest run
+the communication thread.
+"""
+
+import asyncio
+import time
+from array import array
+from collections.abc import Callable, Mapping
+from dataclasses import replace
+
+import pytest
+from fakes import FakeClock
+
+from gradientmail.adapters import MemoryAdapter
+from gradientmail.algorithms import Algorithm, Estimates, RoundSchedule
+from gradientmail.algorithms.diloco import DecoupledDiLoCo
+from gradientmail.learner import (
+    Learner,
+    LearnerState,
+    Publishers,
+    advanced,
+    applied,
+    due_round,
+)
+from gradientmail.mailbox.memory import MemoryMailbox
+from gradientmail.protocol import (
+    Exchange,
+    RoundRecordDraft,
+    RunConfigMismatch,
+    Snapshot,
+    SnapshotDraft,
+)
+from gradientmail.serialization import SchemaMismatch, TensorBytes
+
+
+def f32(*values: float) -> TensorBytes:
+    return TensorBytes("F32", (len(values),), array("f", values).tobytes())
+
+
+# Two equal-sized tensors give the plan (("a",), ("b",)); a round every two steps, "a" first.
+ALGORITHM = DecoupledDiLoCo(sync_every=4, fragments=2, in_flight=2)
+SCHEDULE = RoundSchedule(sync_every=4, fragments=2, in_flight=2)
+TENSORS = {"a": f32(1.0, 2.0), "b": f32(3.0, 4.0)}
+A1 = {"a": f32(10.0, 20.0)}
+B1 = {"b": f32(30.0, 40.0)}
+A2 = {"a": f32(100.0, 200.0)}
+
+FRESH = LearnerState(
+    local_step=0,
+    steps=(0, 0),
+    tokens=(0, 0),
+    applied_version=(0, 0),
+    rounds_seen=-1,
+    last_published=-1,
+    step_at_last_publish=0,
+    step_seconds=0.0,
+)
+NOBODY = Publishers(-1, frozenset())
+
+
+def due(state: LearnerState, *, quorum: int = 1, publishers: Publishers = NOBODY) -> int | None:
+    return due_round(state, SCHEDULE, quorum=quorum, publishers=publishers)
+
+
+def other_snapshot(round: int, learner: str) -> SnapshotDraft:
+    """Another learner's snapshot of ``round``, as it lands in the store."""
+    return SnapshotDraft(
+        learner=learner,
+        round=round,
+        local_step=4,
+        steps=4,
+        tokens=12,
+        base_version=0,
+        rounds_seen=-1,
+        step_seconds=0.1,
+        schema_digest=MemoryAdapter(TENSORS).schema().digest(),
+    )
+
+
+def learner(
+    mailbox: MemoryMailbox,
+    clock: FakeClock,
+    tensors: Mapping[str, TensorBytes] = TENSORS,
+    *,
+    algorithm: Algorithm = ALGORITHM,
+    learner_id: str = "learner-a",
+) -> tuple[Learner, MemoryAdapter]:
+    adapter = MemoryAdapter(tensors)
+    return (
+        Learner(
+            adapter=adapter,
+            algorithm=algorithm,
+            mailbox=mailbox,
+            learner_id=learner_id,
+            clock=clock,
+            poll_interval=0.01,
+            lease_every=0.05,
+            lease_timeout=0.1,
+        ),
+        adapter,
+    )
+
+
+async def spin(until: Callable[[], bool]) -> None:
+    """Yield to the loop until ``until`` holds; the clock moves only when the learner sleeps."""
+    for _ in range(10_000):
+        if until():
+            return
+        await asyncio.sleep(0)
+    raise AssertionError("the learner never reached the expected point")
+
+
+def joined(
+    mailbox: MemoryMailbox, clock: FakeClock, tensors: Mapping[str, TensorBytes] = TENSORS
+) -> tuple[Learner, MemoryAdapter]:
+    created, adapter = learner(mailbox, clock, tensors)
+    asyncio.run(created.join())
+    return created, adapter
+
+
+def started(
+    mailbox: MemoryMailbox,
+    clock: FakeClock,
+    tensors: Mapping[str, TensorBytes] = TENSORS,
+    *,
+    algorithm: Algorithm = ALGORITHM,
+) -> tuple[Learner, MemoryAdapter]:
+    created, adapter = learner(mailbox, clock, tensors, algorithm=algorithm)
+    created.start()
+    return created, adapter
+
+
+def commit(exchange: Exchange, round: int, theta: Mapping[str, TensorBytes]) -> None:
+    """The syncer's side of round ``round``: a committed record pointing at ``theta``."""
+    draft = RoundRecordDraft(
+        round=round,
+        step=SCHEDULE.step_of(round),
+        fragment=SCHEDULE.fragment_of(round),
+        version=SCHEDULE.version_after(round),
+        participants=(),
+        rejected=(),
+        quorum_seconds=0.0,
+        grace_seconds=0.0,
+        estimates=Estimates(),
+    )
+    asyncio.run(exchange.commit(draft, theta, {}))
+
+
+def snapshot(exchange: Exchange, round: int) -> Snapshot:
+    (only,) = asyncio.run(exchange.snapshots(round))
+    return only
+
+
+def step_until(trained: Learner, samples: int, condition: Callable[[], bool]) -> int:
+    """Train until ``condition`` holds; returns the number of steps that took."""
+    deadline = time.monotonic() + 10.0
+    taken = 0
+    while not condition():
+        assert time.monotonic() < deadline, "the learner never reached the expected state"
+        trained.step(samples)
+        taken += 1
+        time.sleep(0.001)
+    return taken
+
+
+def describe_due_round():
+    def when_fewer_steps_than_the_gap():
+        def it_is_none():
+            assert due(replace(FRESH, local_step=1, steps=(1, 1))) is None
+            assert due(replace(FRESH, local_step=2, steps=(2, 2))) == 0
+
+    def when_in_flight_rounds_are_outstanding():
+        def it_stops_at_rounds_seen_plus_tau():
+            ahead = replace(
+                FRESH,
+                local_step=20,
+                steps=(20, 20),
+                rounds_seen=0,
+                last_published=1,
+                step_at_last_publish=4,
+            )
+
+            assert due(ahead) == 2
+            assert due(replace(ahead, last_published=2, step_at_last_publish=6)) is None
+
+    def when_the_fragment_was_just_overwritten():
+        def it_waits_for_a_step_on_it():
+            overwritten = replace(
+                FRESH,
+                local_step=20,
+                steps=(0, 20),
+                applied_version=(1, 1),
+                rounds_seen=1,
+                last_published=1,
+                step_at_last_publish=4,
+            )
+
+            assert due(overwritten) is None
+            assert due(advanced(overwritten, 8, 0.1)) == 2
+
+    def when_the_round_is_one_snapshot_short_of_quorum():
+        def it_is_due_with_the_steps_trained_so_far():
+            early = replace(FRESH, local_step=1, steps=(1, 1))
+            two_others = frozenset({"learner-b", "learner-c"})
+
+            assert due(early, quorum=3, publishers=Publishers(0, two_others)) == 0
+            assert due(early, quorum=3, publishers=Publishers(0, frozenset({"learner-b"}))) is None
+            assert due(early, quorum=3, publishers=Publishers(1, two_others)) is None
+
+
+def describe_applied():
+    def it_resets_only_that_fragments_counters():
+        before = replace(FRESH, local_step=7, steps=(7, 7), tokens=(21, 21))
+
+        after = applied(before, round=1, fragment=1, version=1)
+
+        assert after == replace(
+            before, steps=(7, 0), tokens=(21, 0), applied_version=(0, 1), rounds_seen=1
+        )
+
+
+def describe_learner():
+    def when_a_round_record_appears():
+        def it_overwrites_the_fragment_and_resets_its_counters(clock: FakeClock):
+            mailbox = MemoryMailbox()
+            exchange = Exchange(mailbox, clock=clock)
+            trained, adapter = started(mailbox, clock)
+            try:
+                for _ in range(2):
+                    trained.step(samples=3)
+                commit(exchange, 0, A1)
+                applied_at = 2 + step_until(trained, 3, lambda: trained.rounds_seen == 0)
+                # Round 1 ("b") goes out at step 4 regardless; round 2 ("a") needs two steps after
+                # round 1 and at least one step on "a" since the reset.
+                published_at = max(6, applied_at + 1)
+                for _ in range(published_at - applied_at):
+                    trained.step(samples=3)
+            finally:
+                trained.close()
+
+            assert dict(adapter.tensors) == {**TENSORS, **A1}
+            assert trained.rounds_seen == 0
+            untouched = snapshot(exchange, 1)
+            assert (untouched.steps, untouched.tokens, untouched.base_version) == (4, 12, 0)
+            reset = snapshot(exchange, 2)
+            since_reset = published_at - applied_at
+            assert (reset.steps, reset.tokens, reset.base_version, reset.local_step) == (
+                since_reset,
+                3 * since_reset,
+                1,
+                published_at,
+            )
+            assert reset.rounds_seen == 0
+
+    def when_the_round_is_closing_without_it():
+        def it_publishes_the_steps_it_has(clock: FakeClock):
+            mailbox = MemoryMailbox()
+            exchange = Exchange(mailbox, clock=clock)
+            # A gap of four steps, so nothing is due on schedule before step 4.
+            algorithm = DecoupledDiLoCo(sync_every=8, fragments=2, in_flight=2, quorum_size=2)
+            trained, _ = started(mailbox, clock, algorithm=algorithm)
+            try:
+                asyncio.run(exchange.publish_snapshot(other_snapshot(0, "learner-b"), A1))
+                taken = step_until(trained, 3, lambda: len(asyncio.run(exchange.snapshots(0))) == 2)
+            finally:
+                trained.close()
+
+            [early] = [s for s in asyncio.run(exchange.snapshots(0)) if s.learner == "learner-a"]
+            assert 1 <= early.steps <= taken < 4
+            assert (early.local_step, early.tokens) == (early.steps, 3 * early.steps)
+
+    def when_fewer_learners_are_live_than_quorum():
+        def it_publishes_once_the_other_live_ones_have(clock: FakeClock):
+            mailbox = MemoryMailbox()
+            exchange = Exchange(mailbox, clock=clock)
+            # Quorum three, but only learner-b holds a lease besides this one: its snapshot
+            # alone means the round is about to close.
+            algorithm = DecoupledDiLoCo(sync_every=8, fragments=2, in_flight=2, quorum_size=3)
+            asyncio.run(exchange.beat("learner-b"))
+            asyncio.run(exchange.publish_snapshot(other_snapshot(0, "learner-b"), A1))
+            trained, _ = started(mailbox, clock, algorithm=algorithm)
+            try:
+                taken = step_until(trained, 3, lambda: len(asyncio.run(exchange.snapshots(0))) == 2)
+            finally:
+                trained.close()
+
+            assert taken < 4
+
+    def it_holds_a_lease_while_running_and_releases_it_on_close(clock: FakeClock):
+        mailbox = MemoryMailbox()
+        exchange = Exchange(mailbox, clock=clock)
+        trained, _ = started(mailbox, clock)
+        try:
+            step_until(trained, 1, lambda: "learner-a" in asyncio.run(exchange.leases()))
+        finally:
+            trained.close()
+
+        assert dict(asyncio.run(exchange.leases())) == {}
+
+    def when_closed_with_steps_no_round_has_taken():
+        def it_publishes_every_fragment_and_gives_up_once_nothing_lands(clock: FakeClock):
+            mailbox = MemoryMailbox()
+            exchange = Exchange(mailbox, clock=clock)
+            trained, _ = started(mailbox, clock)
+            trained.step(samples=3)
+
+            trained.close()
+
+            # One step of a two-step gap: neither round was due. Both fragments go out, and
+            # with nobody closing rounds the wait ends after the lease timeout plus the floor
+            # of thirty polls.
+            assert (snapshot(exchange, 0).steps, snapshot(exchange, 1).steps) == (1, 1)
+            assert clock.now() >= 0.1 + 30 * 0.01
+
+    def when_two_versions_of_a_fragment_arrive_together():
+        def it_applies_only_the_newest(clock: FakeClock):
+            mailbox = MemoryMailbox()
+            exchange = Exchange(mailbox, clock=clock)
+            trained, adapter = joined(mailbox, clock)
+            commit(exchange, 0, A1)
+            commit(exchange, 1, B1)
+            commit(exchange, 2, A2)
+
+            asyncio.run(trained.poll())
+            trained.step(samples=1)
+
+            assert dict(adapter.tensors) == {**A2, **B1}
+            assert trained.rounds_seen == 2
+
+    def when_a_payload_was_garbage_collected():
+        def it_applies_the_next_version_instead(clock: FakeClock):
+            mailbox = MemoryMailbox()
+            exchange = Exchange(mailbox, clock=clock)
+            trained, adapter = joined(mailbox, clock)
+            commit(exchange, 0, A1)
+            asyncio.run(exchange.sweep_blobs(0))
+
+            asyncio.run(trained.poll())
+            trained.step(samples=1)
+
+            assert dict(adapter.tensors) == TENSORS
+            assert trained.rounds_seen == -1
+
+            commit(exchange, 1, B1)
+            commit(exchange, 2, A2)
+            asyncio.run(trained.poll())
+            trained.step(samples=1)
+
+            assert dict(adapter.tensors) == {**A2, **B1}
+            assert trained.rounds_seen == 2
+
+    def when_restarted():
+        def it_reloads_the_newest_fragments_and_resumes_publishing(clock: FakeClock):
+            mailbox = MemoryMailbox()
+            exchange = Exchange(mailbox, clock=clock)
+            joined(mailbox, clock)
+            commit(exchange, 0, A1)
+            commit(exchange, 1, B1)
+            commit(exchange, 2, A2)
+
+            restarted, adapter = started(mailbox, clock, {"a": f32(0.0, 0.0), "b": f32(0.0, 0.0)})
+            try:
+                assert dict(adapter.tensors) == {**A2, **B1}
+                assert restarted.rounds_seen == 2
+                for _ in range(2):
+                    restarted.step(samples=5)
+            finally:
+                restarted.close()
+
+            resumed = snapshot(exchange, 3)
+            assert (resumed.base_version, resumed.rounds_seen, resumed.local_step) == (1, 2, 2)
+            assert (resumed.steps, resumed.tokens) == (2, 10)
+
+    def when_another_learner_is_creating_the_run():
+        def it_waits_for_the_manifest_instead_of_uploading_its_own(clock: FakeClock):
+            mailbox = MemoryMailbox()
+            exchange = Exchange(mailbox, clock=clock)
+            zeros = {"a": f32(0.0, 0.0), "b": f32(0.0, 0.0)}
+            waiter, adapter = learner(mailbox, clock, zeros)
+            creator, _ = learner(mailbox, clock, learner_id="creator")
+
+            async def scenario():
+                assert await exchange.claim_creation(1, "creator")
+                joining = asyncio.create_task(waiter.join())
+                for _ in range(5):
+                    await asyncio.sleep(0)
+                uploaded, still_waiting = await mailbox.list("blobs/init/"), not joining.done()
+                await creator.join()
+                await spin(joining.done)
+                return uploaded, still_waiting, await exchange.manifest()
+
+            uploaded, still_waiting, manifest = asyncio.run(scenario())
+
+            assert not uploaded and still_waiting
+            assert manifest is not None and manifest.created_by == "creator"
+            assert dict(adapter.tensors) == TENSORS
+
+    def when_the_creator_dies():
+        def it_takes_over_once_no_init_payload_lands_for_the_stall_time(clock: FakeClock):
+            mailbox = MemoryMailbox()
+            exchange = Exchange(mailbox, clock=clock)
+            survivor, _ = learner(mailbox, clock)
+
+            async def scenario():
+                assert await exchange.claim_creation(1, "dead")
+                joining = asyncio.create_task(survivor.join())
+                await spin(joining.done)
+                return await exchange.creation_claims(), await exchange.manifest(), clock.now()
+
+            claimants, manifest, now = asyncio.run(scenario())
+
+            assert claimants == ("dead", "learner-a")
+            assert manifest is not None and manifest.created_by == "learner-a"
+            assert now >= 30 * 0.01
+
+    def when_restarted_while_creating():
+        def it_resumes_as_the_creator(clock: FakeClock):
+            mailbox = MemoryMailbox()
+            exchange = Exchange(mailbox, clock=clock)
+            restarted, _ = learner(mailbox, clock)
+
+            async def scenario():
+                assert await exchange.claim_creation(1, "learner-a")
+                await restarted.join()
+                return await exchange.creation_claims(), await exchange.manifest(), clock.now()
+
+            claimants, manifest, now = asyncio.run(scenario())
+
+            assert claimants == ("learner-a",)
+            assert manifest is not None and manifest.created_by == "learner-a"
+            assert now == 0.0
+
+    def when_manifest_schema_differs():
+        def it_fails_before_the_first_step_and_names_the_parameters(clock: FakeClock):
+            mailbox = MemoryMailbox()
+            joined(mailbox, clock)
+            other, _ = learner(
+                mailbox, clock, {"a": f32(1.0, 2.0), "b": f32(3.0, 4.0, 5.0), "c": f32(6.0)}
+            )
+
+            with pytest.raises(SchemaMismatch) as failure:
+                other.start()
+
+            assert failure.value.names == ("b", "c")
+
+    def when_manifest_algorithm_differs():
+        def it_raises_run_config_mismatch(clock: FakeClock):
+            mailbox = MemoryMailbox()
+            joined(mailbox, clock)
+            other, _ = learner(
+                mailbox, clock, algorithm=DecoupledDiLoCo(sync_every=8, fragments=2, in_flight=2)
+            )
+
+            with pytest.raises(RunConfigMismatch):
+                other.start()
