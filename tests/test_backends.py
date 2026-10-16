@@ -215,8 +215,8 @@ def describe_merge():
             outer={f"momentum.{name}": f32(0, 0) for name in names},
         )
         contributions = [
-            contribution("a", {name: f32(0, 1) for name in names}, tokens=2),
-            contribution("b", {name: f32(1, 0) for name in names}, tokens=1),
+            contribution("a", {name: f32(1, 0) for name in names}, tokens=2),
+            contribution("b", {name: f32(0, 1) for name in names}, tokens=1),
         ]
         close = aggregator(backend, "F32", names, merge=Rda(), lr=1.0, momentum=0.0)
 
@@ -232,13 +232,13 @@ def describe_merge():
 
 def describe_nesterov():
     def when_lr_is_one_and_momentum_zero():
-        def it_averages(backend: Backend):
+        def it_subtracts_the_weighted_mean_delta(backend: Backend):
             state = FragmentState(
                 version=3, theta={"w": f32(1, 1)}, outer={"momentum.w": f32(0, 0)}
             )
             contributions = [
-                contribution("a", {"w": f32(0, 1)}, tokens=2),
-                contribution("b", {"w": f32(1, 0)}, tokens=1),
+                contribution("a", {"w": f32(1, 0)}, tokens=2),
+                contribution("b", {"w": f32(0, 1)}, tokens=1),
             ]
             close = aggregator(backend, "F32", ["w"], merge=WeightedMean(), lr=1.0, momentum=0.0)
 
@@ -330,7 +330,8 @@ def describe_close_round():
     def it_keeps_an_fp32_master_for_bf16_schemas(backend: Backend):
         anchor = bf16(0x3F80, 0x3F80)  # 1.0
         one_ulp_below = bf16(0x3F7F, 0x3F7F)  # 1 - 2**-8
-        contributions = [contribution("a", {"w": one_ulp_below}, tokens=1)]
+        one_ulp = bf16(0x3B80, 0x3B80)  # 2**-8: the delta of a learner at one_ulp_below
+        contributions = [contribution("a", {"w": one_ulp}, tokens=1)]
         close = aggregator(backend, "BF16", ["w"], merge=WeightedMean(), lr=0.25, momentum=0.0)
         state = FragmentState(0, {"w": anchor}, {"momentum.w": f32(0, 0)})
 
@@ -357,7 +358,7 @@ def describe_close_round():
             close = aggregator(backend, "BF16", ["w"], merge=Rda(), lr=0.7, momentum=0.9)
 
             new_state, _ = close.close_round(
-                state, [contribution("idle", {"w": published}, tokens=1)]
+                state, [contribution("idle", {"w": bf16(0x0000, 0x0000)}, tokens=1)]
             )
 
             assert new_state.theta["w"] == published

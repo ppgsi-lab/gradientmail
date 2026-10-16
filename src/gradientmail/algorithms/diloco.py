@@ -58,6 +58,10 @@ class DecoupledDiLoCo(Algorithm):
 
     Standard DiLoCo is ``fragments=1`` with ``quorum_size`` equal to the number of learners;
     Local SGD is ``outer_lr=1, outer_momentum=0, merge=WeightedMean()``.
+
+    ``delta_dtype`` is the dtype learners publish their deltas (``anchor - θ``) in. ``None``
+    keeps each parameter's own dtype, the same bytes as publishing θ; ``"BF16"`` halves an fp32
+    model's uploads, rounding each delta element to 8 significant bits.
     """
 
     sync_every: int
@@ -67,6 +71,7 @@ class DecoupledDiLoCo(Algorithm):
     outer_lr: float = 0.7
     outer_momentum: float = 0.9
     merge: Merge = Rda()
+    delta_dtype: DType | None = None
 
     def __post_init__(self) -> None:
         if not 1 <= self.in_flight <= self.fragments <= self.sync_every:
@@ -87,6 +92,9 @@ class DecoupledDiLoCo(Algorithm):
 
     def plan(self, schema: Schema) -> tuple[tuple[str, ...], ...]:
         return plan(schema, self.fragments)
+
+    def delta_schema(self, schema: Schema) -> Schema:
+        return schema.with_dtype(self.delta_dtype)
 
     def aggregator(self, schema: Schema, names: Sequence[str], backend: Backend) -> Aggregator:
         return DiLoCoAggregator(config=self, schema=schema, names=names, backend=backend)
@@ -112,6 +120,7 @@ class DecoupledDiLoCo(Algorithm):
             "outer_lr": self.outer_lr,
             "outer_momentum": self.outer_momentum,
             "merge": merge(),
+            "delta_dtype": self.delta_dtype,
         }
 
     @classmethod
@@ -131,6 +140,15 @@ class DecoupledDiLoCo(Algorithm):
                     return float(value)
                 case other:
                     raise ValueError(f"{key!r} must be a number, got {other!r}")
+
+        def optional_dtype(key: str) -> DType | None:
+            match data.get(key):
+                case None:
+                    return None
+                case "F32" | "F16" | "BF16" as value:
+                    return value
+                case other:
+                    raise ValueError(f"{key!r} must be F32, F16, BF16 or null, got {other!r}")
 
         def merge() -> Merge:
             found = data.get("merge")
@@ -152,6 +170,7 @@ class DecoupledDiLoCo(Algorithm):
             outer_lr=number("outer_lr"),
             outer_momentum=number("outer_momentum"),
             merge=merge(),
+            delta_dtype=optional_dtype("delta_dtype"),
         )
 
 
@@ -159,11 +178,11 @@ class DecoupledDiLoCo(Algorithm):
 class DiLoCoAggregator(Aggregator):
     """Closes one round of the fragment holding ``names`` with Decoupled DiLoCo's outer step.
 
-    The anchor is the published ``theta`` as is, so a learner whose bytes did not change
-    contributes an exactly zero delta. The fp32 master lives in ``outer["master.<name>"]``
-    when the schema dtype is not F32 (otherwise the published tensor is the master) and the
-    fp32 momentum in ``outer["momentum.<name>"]``. Pure for one backend: equal inputs give
-    equal bytes.
+    The contributions are the deltas the learners computed against the published ``theta``,
+    which is the anchor as is, so a learner whose bytes did not change contributes an exactly
+    zero delta. The fp32 master lives in ``outer["master.<name>"]`` when the schema dtype is
+    not F32 (otherwise the published tensor is the master) and the fp32 momentum in
+    ``outer["momentum.<name>"]``. Pure for one backend: equal inputs give equal bytes.
     """
 
     config: DecoupledDiLoCo
@@ -187,7 +206,7 @@ class DiLoCoAggregator(Aggregator):
 
         def stepped(name: str) -> tuple[Value, Value]:
             anchor = load(state.theta[name])
-            delta = merged(name, [anchor - load(c.tensors[name]) for c in contributions])
+            delta = merged(name, [load(c.tensors[name]) for c in contributions])
             master = state.outer.get(f"master.{name}")
             return nesterov(
                 anchor if master is None else load(master),

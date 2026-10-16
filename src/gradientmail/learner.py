@@ -1,11 +1,13 @@
 """The learner: counters and publishing decisions as pure state, plus the two-thread runtime.
 
 The training thread owns the model and every counter: ``step()`` advances the state, applies
-the fragment versions the receive loop has queued, and hands one fragment snapshot to the
-publish loop when a round is due. A daemon thread runs the receive and publish loops on its
-own event loop; the two sides meet only through two ``queue.SimpleQueue``s, so ``step()``
-never awaits and never does I/O. It blocks only when asked to: a synchronous learner waits in
-``step()`` for its published rounds to be installed, and ``close()`` waits for the last ones.
+the fragment versions the receive loop has queued, and hands one fragment snapshot, with the
+anchor it was trained from, to the publish loop when a round is due; the publish loop
+computes their difference in the backend and publishes that delta. A daemon thread runs the
+receive and publish loops on its own event loop; the two sides meet only through two
+``queue.SimpleQueue``s, so ``step()`` never awaits and never does I/O. It blocks only when
+asked to: a synchronous learner waits in ``step()`` for its published rounds to be installed,
+and ``close()`` waits for the last ones.
 
 A fetched batch is queued only once every payload in it is in hand, so ``rounds_seen`` never
 runs ahead of a fragment that is not yet applied: that is what keeps a live learner's
@@ -22,7 +24,7 @@ import threading
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, replace
 
-from gradientmail.adapters import Adapter
+from gradientmail.adapters import Adapter, Backend, default_backend
 from gradientmail.algorithms import Algorithm, Estimates, RoundSchedule
 from gradientmail.clock import Clock, MonotonicClock
 from gradientmail.lease import Liveness
@@ -37,9 +39,10 @@ from gradientmail.protocol import (
     RunConfigMismatch,
     SnapshotDraft,
 )
-from gradientmail.serialization import Schema, SchemaMismatch, TensorBytes, validate
+from gradientmail.serialization import DType, Schema, SchemaMismatch, TensorBytes, validate
 
 __all__ = [
+    "Installed",
     "Learner",
     "LearnerState",
     "Publishers",
@@ -152,6 +155,10 @@ class Learner:
     otherwise training goes on and the commit overwrites the steps taken meanwhile. The lease
     is renewed every ``lease_every`` seconds and the other learners' leases are presumed lost
     after ``lease_timeout`` seconds without a change.
+
+    What goes out is ``anchor - θ``, computed in ``backend`` (the installed one by default)
+    against the version of the fragment this learner installed last, of which it keeps one host
+    copy.
     """
 
     def __init__(
@@ -161,6 +168,7 @@ class Learner:
         algorithm: Algorithm,
         mailbox: Mailbox,
         learner_id: str,
+        backend: Backend | None = None,
         clock: Clock | None = None,
         poll_interval: float = 1.0,
         synchronous: bool = False,
@@ -174,6 +182,7 @@ class Learner:
         self._adapter = adapter
         self._algorithm = algorithm
         self._learner_id = learner_id
+        self._backend = backend if backend is not None else default_backend()
         self._clock = clock if clock is not None else MonotonicClock()
         self._poll_interval = poll_interval
         self._synchronous = synchronous
@@ -183,6 +192,7 @@ class Learner:
         self._inbox: queue.SimpleQueue[tuple[_Update, ...]] = queue.SimpleQueue()
         self._outbox: queue.SimpleQueue[_Outgoing | None] = queue.SimpleQueue()
         self._run: _Run | None = None
+        self._anchors: list[Mapping[str, TensorBytes]] = []
         self._state = LearnerState(0, (), (), (), -1, -1, 0, 0.0)
         self._cursor = -1
         self._publishers = Publishers(-1, frozenset())
@@ -228,9 +238,9 @@ class Learner:
 
         Queued fragment versions are validated against the schema and applied here, while the
         model is quiescent, and so is the snapshot of a fragment whose round is due. Only bytes
-        are copied; packing, hashing and I/O happen on the communication thread. A synchronous
-        learner then waits until fewer than ``in_flight`` of its rounds are outstanding; the
-        wait does not count as step time.
+        are copied; the delta, packing, hashing and I/O happen on the communication thread. A
+        synchronous learner then waits until fewer than ``in_flight`` of its rounds are
+        outstanding; the wait does not count as step time.
         """
         if self._failure is not None:
             raise self._failure
@@ -299,14 +309,19 @@ class Learner:
             raise RunConfigMismatch(expected=algorithm, found=manifest.algorithm)
 
         fragments = range(len(manifest.plan))
-        records = await install(self._adapter, self._exchange, manifest)
+        installed = await install(self._adapter, self._exchange, manifest)
+        records = installed.records
         newest = _newest_per_fragment(records)
+        self._anchors = list(installed.fragments)
         self._run = _Run(
             schema=schema,
             plan=manifest.plan,
             schedule=self._algorithm.schedule(len(manifest.plan)),
             quorum=self._algorithm.quorum(),
             digest=schema.digest(),
+            delta_dtype={
+                spec.name: spec.dtype for spec in self._algorithm.delta_schema(schema).parameters
+            },
         )
         self._state = LearnerState(
             local_step=0,
@@ -386,8 +401,12 @@ class Learner:
 
         async def publish() -> None:
             while (outgoing := await asyncio.to_thread(self._outbox.get)) is not None:
-                await self._exchange.publish_snapshot(outgoing.draft, outgoing.tensors)
+                delta = await asyncio.to_thread(self._delta, run, outgoing)
+                await self._exchange.publish_snapshot(outgoing.draft, delta)
 
+        if self._run is None:
+            raise RuntimeError("Learner.communicate() before join()")
+        run = self._run
         self._main = asyncio.current_task()
         try:
             async with asyncio.TaskGroup() as group:
@@ -429,7 +448,8 @@ class Learner:
         self._publishers = Publishers(round, others - {self._learner_id})
 
     def _publish(self, run: "_Run", state: LearnerState, round: int) -> LearnerState:
-        """Snapshot ``round``'s fragment for the publish loop; the bytes are copied here."""
+        """Snapshot ``round``'s fragment and its anchor for the publish loop; the bytes are
+        copied here."""
         fragment = run.schedule.fragment_of(round)
         draft = SnapshotDraft(
             learner=self._learner_id,
@@ -442,12 +462,23 @@ class Learner:
             step_seconds=state.step_seconds,
             schema_digest=run.digest,
         )
-        self._outbox.put(_Outgoing(draft, self._adapter.snapshot(run.plan[fragment])))
+        self._outbox.put(
+            _Outgoing(draft, self._anchors[fragment], self._adapter.snapshot(run.plan[fragment]))
+        )
         return replace(state, last_published=round, step_at_last_publish=state.local_step)
+
+    def _delta(self, run: "_Run", outgoing: "_Outgoing") -> Mapping[str, TensorBytes]:
+        """``anchor - θ`` of every tensor in the snapshot, in the algorithm's delta dtype."""
+        load = self._backend.load
+        return {
+            name: (load(outgoing.anchor[name]) - load(tensor)).to_bytes(run.delta_dtype[name])
+            for name, tensor in outgoing.snapshot.items()
+        }
 
     def _install(self, run: "_Run", state: LearnerState, update: "_Update") -> LearnerState:
         validate(run.schema, update.tensors, run.plan[update.fragment])
         self._adapter.apply(update.tensors)
+        self._anchors[update.fragment] = update.tensors
         return applied(state, update.round, update.fragment, update.version)
 
     def _drained(self, run: "_Run", state: LearnerState) -> LearnerState:
@@ -523,14 +554,20 @@ class Learner:
                 return state
 
 
-async def install(
-    adapter: Adapter, exchange: Exchange, manifest: Manifest
-) -> Sequence[RoundRecord]:
+@dataclass(frozen=True)
+class Installed:
+    """What ``install`` loaded: the round records read, in round order, and the tensors the
+    adapter now holds, one mapping per fragment."""
+
+    records: Sequence[RoundRecord]
+    fragments: tuple[Mapping[str, TensorBytes], ...]
+
+
+async def install(adapter: Adapter, exchange: Exchange, manifest: Manifest) -> Installed:
     """Load the newest committed version of every fragment of ``manifest``'s run into ``adapter``.
 
     A fragment no round has committed yet is loaded from the manifest's initial parameters.
-    Returns the round records read, in round order. ``SchemaMismatch`` names the parameters on
-    which the model and the run differ.
+    ``SchemaMismatch`` names the parameters on which the model and the run differ.
     """
     schema = adapter.schema()
     if manifest.schema != schema:
@@ -542,12 +579,14 @@ async def install(
     records = await exchange.rounds_after(-1)
     newest = _newest_per_fragment(records)
     refs = [newest[p].theta if p in newest else manifest.init[p] for p in fragments]
+    loaded: list[Mapping[str, TensorBytes]] = []
     for fragment, (ref, tensors) in enumerate(zip(refs, await _fetch(exchange, refs), strict=True)):
         if tensors is None:
             raise ProtocolError(f"{ref.key} was swept while loading; start again")
         validate(schema, tensors, manifest.plan[fragment])
         adapter.apply(tensors)
-    return records
+        loaded.append(tensors)
+    return Installed(records, tuple(loaded))
 
 
 @dataclass(frozen=True)
@@ -559,6 +598,7 @@ class _Run:
     schedule: RoundSchedule
     quorum: int
     digest: str
+    delta_dtype: Mapping[str, DType]
 
 
 @dataclass(frozen=True)
@@ -573,10 +613,12 @@ class _Update:
 
 @dataclass(frozen=True)
 class _Outgoing:
-    """A snapshot taken by ``step()``, waiting for the publish loop."""
+    """A snapshot taken by ``step()`` with the anchor it was trained from, waiting for the
+    publish loop to subtract them."""
 
     draft: SnapshotDraft
-    tensors: Mapping[str, TensorBytes]
+    anchor: Mapping[str, TensorBytes]
+    snapshot: Mapping[str, TensorBytes]
 
 
 def _newest_per_fragment(records: Sequence[RoundRecord]) -> Mapping[int, RoundRecord]:

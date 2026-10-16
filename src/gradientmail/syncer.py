@@ -29,7 +29,8 @@ A round closes once ``quorum_size`` snapshots for it are accepted, or once every
 has reported and at least one snapshot is accepted. A snapshot is accepted iff its ``steps``
 are positive, its schema digest is the run's, its ``base_version`` is the fragment's current
 version, its payload is present and hashes to the record and its tensors match the fragment's
-schema; otherwise it stays in the round record as rejected (``zero_steps``, ``schema``,
+delta schema (the parameters' shapes in the algorithm's delta dtype); otherwise it stays in
+the round record as rejected (``zero_steps``, ``schema``,
 ``stale``, ``missing``, ``corrupt``) with weight 0, the paper's treatment of learners outside
 the round. A live learner is never ``stale``: it advances ``rounds_seen`` only after installing
 every fragment it fetched, and ``in_flight ≤ P``; a ``stale`` snapshot comes from a learner
@@ -119,7 +120,7 @@ from gradientmail.protocol import (
     Snapshot,
     Superseded,
 )
-from gradientmail.serialization import SchemaMismatch, TensorBytes, validate
+from gradientmail.serialization import Schema, SchemaMismatch, TensorBytes, validate
 
 __all__ = ["Following", "Progress", "Syncer", "SyncerState"]
 
@@ -317,7 +318,7 @@ class Syncer:
             if tensors is None:
                 return "missing"
             try:
-                validate(run.manifest.schema, tensors, names)
+                validate(run.deltas, tensors, names)
             except SchemaMismatch:
                 return "schema"
             return Contribution(
@@ -417,6 +418,7 @@ class Syncer:
             self._run = _Run(
                 manifest=manifest,
                 digest=schema.digest(),
+                deltas=self._algorithm.delta_schema(schema),
                 schedule=self._algorithm.schedule(len(plan)),
                 aggregators=tuple(
                     self._algorithm.aggregator(schema, names, self._backend) for names in plan
@@ -431,9 +433,10 @@ class Syncer:
 
 @dataclass(frozen=True)
 class _Run:
-    """What the manifest fixes for the life of the run."""
+    """What the manifest fixes for the life of the run; ``deltas`` is what snapshots must match."""
 
     manifest: Manifest
     digest: str
+    deltas: Schema
     schedule: RoundSchedule
     aggregators: tuple[Aggregator, ...]

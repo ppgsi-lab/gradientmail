@@ -40,7 +40,7 @@ def install(model: object, *, mailbox: Mailbox) -> int:
         manifest = await exchange.manifest()
         if manifest is None:
             raise ProtocolError("the mailbox holds no run")
-        records = await install_newest(adapter_for(model), exchange, manifest)
+        records = (await install_newest(adapter_for(model), exchange, manifest)).records
         return records[-1].round if records else -1
 
     return asyncio.run(read())
@@ -70,8 +70,9 @@ class Session:
     poll_interval
         Seconds between polls for new round records and snapshots.
     backend
-        Where this node's outer steps run when it closes rounds. Defaults to the model's
-        framework, or to the installed one (torch, then MLX) when ``model`` is an ``Adapter``.
+        Where this node's deltas and, when it closes rounds, outer steps are computed. Defaults
+        to the model's framework, or to the installed one (torch, then MLX) when ``model`` is an
+        ``Adapter``.
     synchronous
         Make ``step`` wait for a published round to be committed and installed before training
         on, standard DiLoCo's barrier, once ``in_flight`` rounds are outstanding. By default
@@ -119,6 +120,7 @@ class Session:
             algorithm=algorithm,
             mailbox=mailbox,
             learner_id=learner_id,
+            backend=backend,
             poll_interval=poll_interval,
             synchronous=synchronous,
             lease_every=lease_every,

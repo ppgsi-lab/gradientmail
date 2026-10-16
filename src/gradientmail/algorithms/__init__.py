@@ -60,7 +60,8 @@ class FragmentState:
 
 @dataclass(frozen=True)
 class Contribution:
-    """One learner's accepted snapshot of a fragment for one round."""
+    """One learner's accepted delta of a fragment for one round: ``anchor - θ`` as the learner
+    computed it against the version it had installed, in the algorithm's delta schema."""
 
     learner: str
     local_step: int
@@ -142,6 +143,11 @@ class Algorithm(Protocol):
         ...
 
     def plan(self, schema: Schema) -> tuple[tuple[str, ...], ...]: ...
+
+    def delta_schema(self, schema: Schema) -> Schema:
+        """The schema of the deltas learners publish: ``schema``'s parameters in the dtype the
+        deltas travel in."""
+        ...
 
     def aggregator(self, schema: Schema, names: Sequence[str], backend: Backend) -> Aggregator:
         """An aggregator for the fragment holding ``names``, computing in ``backend``."""

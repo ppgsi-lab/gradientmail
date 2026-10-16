@@ -8,6 +8,7 @@ the communication thread.
 """
 
 import asyncio
+import struct
 import time
 from array import array
 from collections.abc import Callable, Mapping
@@ -290,6 +291,22 @@ def describe_learner():
                 trained.close()
 
             assert taken < 4
+
+    def it_publishes_the_delta_against_the_installed_anchor(clock: FakeClock):
+        mailbox = MemoryMailbox()
+        exchange = Exchange(mailbox, clock=clock)
+        algorithm = DecoupledDiLoCo(sync_every=4, fragments=2, in_flight=2, delta_dtype="BF16")
+        trained, adapter = started(mailbox, clock, algorithm=algorithm)
+        try:
+            # Local training moved "a" away from the (1, 2) that join() installed as its anchor.
+            adapter.apply({"a": f32(3.0, 5.0)})
+            step_until(trained, 1, lambda: len(asyncio.run(exchange.snapshots(0))) == 1)
+        finally:
+            trained.close()
+
+        [published] = asyncio.run(exchange.snapshots(0))
+        minus_two_minus_three = TensorBytes("BF16", (2,), struct.pack("<2H", 0xC000, 0xC040))
+        assert asyncio.run(exchange.fetch(published.payload)) == {"a": minus_two_minus_three}
 
     def it_holds_a_lease_while_running_and_releases_it_on_close(clock: FakeClock):
         mailbox = MemoryMailbox()

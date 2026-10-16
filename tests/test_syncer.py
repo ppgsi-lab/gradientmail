@@ -8,9 +8,11 @@ and the recorded timings are exact and no test waits on wall time.
 
 import asyncio
 import contextlib
+import struct
 from array import array
 from collections.abc import Callable, Coroutine, Mapping, Sequence
 from dataclasses import dataclass, replace
+from typing import Literal
 
 import pytest
 from fakes import FakeClock
@@ -33,6 +35,12 @@ def f32(*values: float) -> TensorBytes:
     return TensorBytes("F32", (len(values),), array("f", values).tobytes())
 
 
+def bf16(*values: float) -> TensorBytes:
+    """``values`` as bf16 by truncation, so pass values bf16 represents exactly."""
+    patterns = [struct.unpack("<I", struct.pack("<f", value))[0] >> 16 for value in values]
+    return TensorBytes("BF16", (len(values),), struct.pack(f"<{len(values)}H", *patterns))
+
+
 def values(tensor: TensorBytes) -> list[float]:
     return array("f", tensor.data).tolist()
 
@@ -48,7 +56,8 @@ WINDOW = grace_window(TIMINGS, 2, 5)
 
 
 def algorithm(*, quorum: int = 1, lr: float = 1.0, momentum: float = 0.0) -> DecoupledDiLoCo:
-    """lr 1 and momentum 0 with the weighted mean make Θ the token-weighted average of the θs."""
+    """lr 1 and momentum 0 with the weighted mean make Θ the anchor minus the token-weighted
+    mean of the published deltas."""
     return DecoupledDiLoCo(
         sync_every=10,
         fragments=2,
@@ -100,12 +109,13 @@ class Rig:
         self,
         learner: str,
         round: int,
-        theta: Sequence[float],
+        delta: Sequence[float],
         *,
         base_version: int = 0,
         tokens: int = 1,
         steps: int = 1,
         digest: str = SCHEMA.digest(),
+        dtype: Literal["F32", "BF16"] = "F32",
     ) -> None:
         draft = SnapshotDraft(
             learner=learner,
@@ -118,7 +128,8 @@ class Rig:
             step_seconds=0.5,
             schema_digest=digest,
         )
-        await self.exchange.publish_snapshot(draft, {PLAN[round % 2][0]: f32(*theta)})
+        tensor = f32(*delta) if dtype == "F32" else bf16(*delta)
+        await self.exchange.publish_snapshot(draft, {PLAN[round % 2][0]: tensor})
 
     async def committed(self) -> Sequence[RoundRecord]:
         return await self.exchange.rounds_after(-1)
@@ -203,7 +214,7 @@ def describe_run_round():
             record, theta = asyncio.run(scenario())
 
             assert [p.learner for p in record.participants] == ["a", "b"]
-            assert values(theta["bias"]) == pytest.approx([0.2, 0.8])
+            assert values(theta["bias"]) == pytest.approx([0.8, 0.2])
             assert 0.0 < record.grace_seconds < WINDOW
 
     def when_a_live_learner_never_reports():
@@ -246,7 +257,7 @@ def describe_run_round():
             record, theta = asyncio.run(scenario())
 
             assert [p.learner for p in record.participants] == ["a", "b"]
-            assert values(theta["bias"]) == pytest.approx([0.2, 0.8])
+            assert values(theta["bias"]) == pytest.approx([0.8, 0.2])
             assert clock.now() < WINDOW
 
     def when_a_learners_lease_expires():
@@ -292,8 +303,28 @@ def describe_run_round():
 
         assert record.rejected == (("a", "stale"),)
         assert [p.learner for p in record.participants] == ["b"]
-        assert values(theta["bias"]) == pytest.approx([0.25, 0.75])
+        assert values(theta["bias"]) == pytest.approx([0.75, 0.25])
         assert state.fragments[0].version == 2
+
+    def when_the_algorithm_sends_deltas_in_bf16():
+        def it_accepts_bf16_deltas_and_rejects_the_schemas_dtype(clock: FakeClock):
+            rig = Rig(MemoryMailbox(), clock, replace(algorithm(quorum=1), delta_dtype="BF16"))
+
+            async def scenario():
+                await rig.create_run()
+                syncer = rig.syncer()
+                state = await syncer.recover()
+                await rig.publish("f32", 0, (0.5, 0.25))
+                await rig.publish("bf16", 0, (0.5, 0.25), dtype="BF16")
+                await completed(syncer.run_round(state))
+                [record] = await rig.committed()
+                return record, await rig.theta_of(record)
+
+            record, theta = asyncio.run(scenario())
+
+            assert record.rejected == (("f32", "schema"),)
+            assert [p.learner for p in record.participants] == ["bf16"]
+            assert values(theta["bias"]) == [0.5, 0.75]
 
     def it_rejects_payloads_whose_sha256_mismatches(clock: FakeClock):
         rig = Rig(MemoryMailbox(), clock, algorithm(quorum=1))
@@ -372,7 +403,7 @@ def describe_run_round():
         assert after_round_0 == ([], [])
         assert after_round_1 == ([], [])
         assert [record.round for record in records] == [0, 1]
-        assert values(theta["bias"]) == [0.0, 0.0]
+        assert values(theta["bias"]) == [1.0, 1.0]
 
     def it_keeps_two_cycles_of_round_payloads(clock: FakeClock):
         rig = Rig(MemoryMailbox(), clock, algorithm(quorum=1))
@@ -569,7 +600,7 @@ def describe_election():
             assert isinstance(outcome, Following)
             assert outcome.round == 1
             assert [p.learner for p in record.participants] == ["a"]
-            assert values(theta["bias"]) == pytest.approx([0.0, 1.0])
+            assert values(theta["bias"]) == pytest.approx([1.0, 0.0])
 
 
 def describe_run():

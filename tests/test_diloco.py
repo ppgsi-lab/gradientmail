@@ -16,7 +16,7 @@ from gradientmail.algorithms.diloco import (
     plan,
     weight,
 )
-from gradientmail.serialization import ParameterSpec, Schema
+from gradientmail.serialization import DType, ParameterSpec, Schema
 
 
 def schema_of(numel: Mapping[str, int]) -> Schema:
@@ -149,7 +149,8 @@ def describe_decoupled_diloco():
     @pytest.mark.parametrize(
         "merge", [WeightedMean(), Rda("tok_embeddings")], ids=["weighted_mean", "rda"]
     )
-    def it_round_trips_through_json(merge: Merge):
+    @pytest.mark.parametrize("delta_dtype", [None, "BF16"], ids=["own_dtype", "bf16_deltas"])
+    def it_round_trips_through_json(merge: Merge, delta_dtype: DType | None):
         algorithm = DecoupledDiLoCo(
             sync_every=100,
             fragments=8,
@@ -158,8 +159,25 @@ def describe_decoupled_diloco():
             outer_lr=1.0,
             outer_momentum=0.0,
             merge=merge,
+            delta_dtype=delta_dtype,
         )
 
         encoded = json.loads(json.dumps(algorithm.to_json(), sort_keys=True))
 
         assert DecoupledDiLoCo.from_json(encoded) == algorithm
+
+    def it_rejects_an_unknown_delta_dtype_in_json():
+        encoded = {**DecoupledDiLoCo(sync_every=100, fragments=2).to_json(), "delta_dtype": "INT8"}
+
+        with pytest.raises(ValueError):
+            DecoupledDiLoCo.from_json(encoded)
+
+    def it_describes_deltas_in_its_dtype_or_each_parameters_own():
+        schema = schema_of({"a": 2, "b": 3})
+        in_bf16 = Schema(tuple(ParameterSpec(p.name, "BF16", p.shape) for p in schema.parameters))
+
+        assert DecoupledDiLoCo(sync_every=100, fragments=2).delta_schema(schema) == schema
+        assert (
+            DecoupledDiLoCo(sync_every=100, fragments=2, delta_dtype="BF16").delta_schema(schema)
+            == in_bf16
+        )

@@ -13,7 +13,7 @@ import json
 import math
 import sys
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import cached_property
 from typing import Literal, TypedDict
 
@@ -69,6 +69,12 @@ class Schema:
     def nbytes(self, name: str) -> int:
         spec = self._by_name[name]
         return ITEM_SIZE[spec.dtype] * math.prod(spec.shape)
+
+    def with_dtype(self, dtype: DType | None) -> "Schema":
+        """The same parameters in ``dtype``; the schema itself when ``dtype`` is None."""
+        if dtype is None:
+            return self
+        return Schema(tuple(replace(p, dtype=dtype) for p in self.parameters))
 
     @cached_property
     def _by_name(self) -> Mapping[str, ParameterSpec]:
