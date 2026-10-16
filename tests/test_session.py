@@ -117,6 +117,33 @@ def describe_session():
             # publishes it returns only once it is committed and installed.
             assert seen == [-1, 0, 0, 1, 1, 2]
 
+    def when_compression_is_zstd():
+        def it_stores_every_payload_compressed_and_installs_the_commits():
+            mailbox = gm.MemoryMailbox()
+            algorithm = gm.DecoupledDiLoCo(sync_every=4, fragments=2)
+            model = gm.MemoryAdapter({"a": f32(1.0, 2.0), "b": f32(3.0, 4.0)})
+            session = gm.Session(
+                model, algorithm=algorithm, mailbox=mailbox, poll_interval=0.01, compression="zstd"
+            )
+            try:
+                deadline = time.monotonic() + 20.0
+                while session.rounds_seen < 1:
+                    assert time.monotonic() < deadline, "the model never received round 1"
+                    train_step(model, (1,))
+                    session.step(samples=1)
+                    time.sleep(0.001)
+            finally:
+                session.close()
+            rounds_seen = session.rounds_seen
+
+            payloads = asyncio.run(mailbox.list("blobs/"))
+            assert payloads and all(key.endswith(".safetensors.zst") for key in payloads)
+            exchange = Exchange(mailbox, clock=MonotonicClock())
+            records = asyncio.run(exchange.rounds_after(-1))
+            theta = asyncio.run(exchange.fetch(records[rounds_seen].theta))
+            assert theta is not None
+            assert {name: model.tensors[name] for name in theta} == dict(theta)
+
     def when_the_algorithm_sets_a_global_batch():
         def it_gives_each_node_its_share_among_the_live_nodes():
             mailbox = gm.MemoryMailbox()

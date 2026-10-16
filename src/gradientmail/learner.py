@@ -28,6 +28,7 @@ from dataclasses import dataclass, replace
 from gradientmail.adapters import Adapter, Backend, default_backend
 from gradientmail.algorithms import Algorithm, Estimates, RoundSchedule
 from gradientmail.clock import Clock, MonotonicClock
+from gradientmail.compression import Compression
 from gradientmail.lease import Liveness
 from gradientmail.mailbox import Mailbox
 from gradientmail.protocol import (
@@ -159,7 +160,7 @@ class Learner:
 
     What goes out is ``anchor - θ``, computed in ``backend`` (the installed one by default)
     against the version of the fragment this learner installed last, of which it keeps one host
-    copy.
+    copy. ``compression`` is the codec its payloads are stored with.
     """
 
     def __init__(
@@ -175,6 +176,7 @@ class Learner:
         synchronous: bool = False,
         lease_every: float = 60.0,
         lease_timeout: float = 120.0,
+        compression: Compression = "off",
     ) -> None:
         if lease_timeout <= lease_every:
             raise ValueError(
@@ -189,7 +191,7 @@ class Learner:
         self._synchronous = synchronous
         self._lease_every = lease_every
         self._lease_timeout = lease_timeout
-        self._exchange = Exchange(mailbox, clock=self._clock)
+        self._exchange = Exchange(mailbox, clock=self._clock, compression=compression)
         self._inbox: queue.SimpleQueue[tuple[_Update, ...]] = queue.SimpleQueue()
         self._outbox: queue.SimpleQueue[_Outgoing | None] = queue.SimpleQueue()
         self._run: _Run | None = None

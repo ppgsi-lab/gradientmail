@@ -12,7 +12,7 @@ def describe_core_package():
                 "-I",
                 "-c",
                 "import gradientmail, sys; "
-                "leaked = {'numpy', 'torch', 'mlx', 'boto3'} & sys.modules.keys(); "
+                "leaked = {'numpy', 'torch', 'mlx', 'boto3', 'zstandard'} & sys.modules.keys(); "
                 "assert not leaked, leaked",
             ],
             capture_output=True,

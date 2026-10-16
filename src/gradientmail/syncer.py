@@ -105,6 +105,7 @@ from gradientmail.algorithms import (
 )
 from gradientmail.algorithms.diloco import grace_window
 from gradientmail.clock import Clock, MonotonicClock
+from gradientmail.compression import Compression
 from gradientmail.lease import Liveness
 from gradientmail.mailbox import Mailbox
 from gradientmail.protocol import (
@@ -157,7 +158,8 @@ class Syncer:
     once on first use; the manifest is a create-once object. The outer step runs in ``backend``,
     by default the installed one (torch, then MLX); constructing a syncer with neither installed
     raises ``MissingExtra``. Round records are byte-identical across restarts on one backend;
-    another backend may differ in the last bit.
+    another backend may differ in the last bit. ``compression`` is the codec this node's
+    commits are stored with.
     """
 
     def __init__(
@@ -170,12 +172,13 @@ class Syncer:
         clock: Clock | None = None,
         poll_interval: float = 0.5,
         lease_timeout: float = 120.0,
+        compression: Compression = "off",
     ) -> None:
         self._algorithm = algorithm
         self._learner_id = learner_id
         self._backend = backend if backend is not None else default_backend()
         self._clock = clock if clock is not None else MonotonicClock()
-        self._exchange = Exchange(mailbox, clock=self._clock)
+        self._exchange = Exchange(mailbox, clock=self._clock, compression=compression)
         self._poll_interval = poll_interval
         self._liveness = Liveness(lease_timeout)
         self._run: _Run | None = None

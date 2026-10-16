@@ -18,6 +18,7 @@ from typing import Self
 from gradientmail.adapters import Adapter, Backend, adapter_for, backend_for, default_backend
 from gradientmail.algorithms import Algorithm
 from gradientmail.clock import MonotonicClock
+from gradientmail.compression import Compression
 from gradientmail.learner import Learner
 from gradientmail.learner import install as install_newest
 from gradientmail.mailbox import Mailbox
@@ -73,6 +74,10 @@ class Session:
         Where this node's deltas and, when it closes rounds, outer steps are computed. Defaults
         to the model's framework, or to the installed one (torch, then MLX) when ``model`` is an
         ``Adapter``.
+    compression
+        The codec this node's payloads are stored with: ``"off"`` for safetensors as is, or
+        ``"zstd"`` for byte-shuffled zstandard (the ``zstd`` extra), 16% smaller for fp32 and
+        31% for bf16. Every node reads every codec; nodes of one run may differ.
     synchronous
         Make ``step`` wait for a published round to be committed and installed before training
         on, standard DiLoCo's barrier, once ``in_flight`` rounds are outstanding. By default
@@ -93,6 +98,7 @@ class Session:
         learner_id: str | None = None,
         poll_interval: float = 1.0,
         backend: Backend | None = None,
+        compression: Compression = "off",
         synchronous: bool = False,
         lease_every: float = 60.0,
         lease_timeout: float = 120.0,
@@ -125,6 +131,7 @@ class Session:
             synchronous=synchronous,
             lease_every=lease_every,
             lease_timeout=lease_timeout,
+            compression=compression,
         )
         self._syncer = Syncer(
             algorithm=algorithm,
@@ -133,6 +140,7 @@ class Session:
             backend=backend,
             poll_interval=poll_interval,
             lease_timeout=lease_timeout,
+            compression=compression,
         )
         self._failure: BaseException | None = None
         self._learner.start()

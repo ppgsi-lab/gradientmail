@@ -8,12 +8,14 @@ Keys live under the mailbox's prefix; fixed widths make byte order equal numeric
     claims/{r:010d}/{n:03d}.json                               nth claim to close round r
     claims/manifest/{n:03d}.json                               nth claim to create the run
     leases/{learner}/{n:010d}.json                             nth beat of learner's lease
-    blobs/init/{p:03d}/{sha256}.safetensors                    Θ⁰ candidates (Manifest.init)
-    blobs/rounds/{r:010d}/{sha256}.safetensors                 theta and outer payloads of r
-    blobs/snapshots/{r:010d}/{learner}/{sha256}.safetensors    snapshot payload
+    blobs/init/{p:03d}/{sha256}{ext}                           Θ⁰ candidates (Manifest.init)
+    blobs/rounds/{r:010d}/{sha256}{ext}                        theta and outer payloads of r
+    blobs/snapshots/{r:010d}/{learner}/{sha256}{ext}           snapshot payload
 
 Records and payloads live under different prefixes, so ``list("rounds/", after=...)`` returns
 exactly the new commits and ``list("snapshots/{r}/")`` exactly the candidates of round ``r``.
+``{ext}`` is ``.safetensors`` or ``.safetensors.zst``: the codec the writer stored the payload
+with (``compression`` module), which every reader decodes by the extension alone.
 
 Write ordering
 --------------
@@ -95,8 +97,11 @@ from typing import Literal, assert_never
 
 from gradientmail.algorithms import Estimates, Participant
 from gradientmail.clock import Clock
+from gradientmail.compression import EXTENSION, Compression, compression_of
+from gradientmail.compression import decode as decode_payload
+from gradientmail.compression import encode as encode_payload
 from gradientmail.mailbox import Mailbox, retrying
-from gradientmail.serialization import DType, ParameterSpec, Schema, TensorBytes, pack, unpack
+from gradientmail.serialization import DType, ParameterSpec, Schema, TensorBytes
 
 type Rejection = Literal["stale", "zero_steps", "schema", "corrupt", "missing"]
 
@@ -256,15 +261,16 @@ def lease_key(learner: str, beat: int) -> str:
 
 
 def init_blob_key(fragment: int, sha256: str) -> str:
-    return f"blobs/init/{fragment:03d}/{sha256}.safetensors"
+    """The payload key without its codec extension, as every ``*_blob_key`` is."""
+    return f"blobs/init/{fragment:03d}/{sha256}"
 
 
 def round_blob_key(round: int, sha256: str) -> str:
-    return f"blobs/rounds/{round:010d}/{sha256}.safetensors"
+    return f"blobs/rounds/{round:010d}/{sha256}"
 
 
 def snapshot_blob_key(round: int, learner: str, sha256: str) -> str:
-    return f"blobs/snapshots/{round:010d}/{learner}/{sha256}.safetensors"
+    return f"blobs/snapshots/{round:010d}/{learner}/{sha256}"
 
 
 def encode(record: Record) -> bytes:
@@ -430,12 +436,14 @@ class Exchange:
     """The protocol operations over a ``Mailbox``.
 
     Every operation runs through ``retrying``: a ``MailboxUnavailable`` is retried with
-    backoff on ``clock``; anything else propagates.
+    backoff on ``clock``; anything else propagates. ``compression`` is the codec this exchange
+    writes payloads with; it reads payloads in any.
     """
 
-    def __init__(self, mailbox: Mailbox, *, clock: Clock) -> None:
+    def __init__(self, mailbox: Mailbox, *, clock: Clock, compression: Compression = "off") -> None:
         self._mailbox = mailbox
         self._clock = clock
+        self._compression = compression
 
     async def manifest(self) -> Manifest | None:
         data = await self._retry(partial(self._mailbox.get, MANIFEST_KEY))
@@ -560,13 +568,16 @@ class Exchange:
 
     async def fetch(self, ref: PayloadRef) -> Mapping[str, TensorBytes] | None:
         """The tensors behind ``ref``; None once swept, ``PayloadCorrupt`` on a sha mismatch."""
+        compression = compression_of(ref.key)
+        if compression is None:
+            raise ProtocolError(f"{ref.key} names no payload codec")
         blob = await self._retry(partial(self._mailbox.get, ref.key))
         if blob is None:
             return None
         actual = _sha256(blob)
         if actual != ref.sha256:
             raise PayloadCorrupt(ref, actual)
-        return unpack(blob)
+        return decode_payload(blob, compression)
 
     async def commit(
         self,
@@ -621,9 +632,9 @@ class Exchange:
     async def _publish(
         self, key_of: Callable[[str], str], tensors: Mapping[str, TensorBytes]
     ) -> PayloadRef:
-        blob = pack(tensors)
+        blob = encode_payload(tensors, self._compression)
         sha256 = _sha256(blob)
-        ref = PayloadRef(key_of(sha256), sha256, len(blob))
+        ref = PayloadRef(key_of(sha256) + EXTENSION[self._compression], sha256, len(blob))
         # False means identical bytes are already there: the key contains their hash.
         await self._retry(partial(self._mailbox.put_if_absent, ref.key, blob))
         return ref

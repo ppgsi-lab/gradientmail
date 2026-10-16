@@ -318,6 +318,46 @@ def describe_fetch():
             assert list(remaining) == []
 
 
+def describe_compression():
+    def when_a_node_writes_zstd():
+        def it_names_the_codec_in_the_key_and_any_exchange_reads_it(clock: FakeClock):
+            store = MemoryMailbox()
+            writer = Exchange(store, clock=clock, compression="zstd")
+            reader = Exchange(store, clock=clock)
+
+            async def scenario():
+                await writer.publish_snapshot(snapshot_draft("a"), THETA)
+                [snapshot] = await reader.snapshots(0)
+                stored = await store.get(snapshot.payload.key)
+                return snapshot.payload, stored, await reader.fetch(snapshot.payload)
+
+            payload, stored, fetched = asyncio.run(scenario())
+
+            assert payload.key.endswith(".safetensors.zst")
+            assert stored is not None and stored != pack(THETA)
+            assert (hashlib.sha256(stored).hexdigest(), len(stored)) == (
+                payload.sha256,
+                payload.size,
+            )
+            assert fetched == THETA
+
+    def when_a_key_names_no_codec():
+        def it_raises_protocol_error(clock: FakeClock):
+            store = MemoryMailbox()
+            exchange = Exchange(store, clock=clock)
+            blob = pack(THETA)
+            unknown = PayloadRef(
+                "blobs/rounds/0000000000/x.bin", hashlib.sha256(blob).hexdigest(), len(blob)
+            )
+
+            async def scenario() -> None:
+                await store.put_if_absent(unknown.key, blob)
+                with pytest.raises(ProtocolError):
+                    await exchange.fetch(unknown)
+
+            asyncio.run(scenario())
+
+
 def describe_sweep_blobs():
     def it_removes_the_rounds_payloads_but_never_its_record(clock: FakeClock):
         store = MemoryMailbox()

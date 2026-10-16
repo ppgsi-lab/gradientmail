@@ -18,6 +18,7 @@ mlx = ["mlx"]
 jax = ["jax"]
 keras = ["keras"]
 tensorflow = ["tensorflow"]
+zstd = ["zstandard>=0.23"]
 
 [dependency-groups]
 dev = [
@@ -29,6 +30,7 @@ dev = [
     "moto[s3]>=5.1.5",
     "boto3>=1.36",
     "boto3-stubs-lite[s3]>=1.36",
+    "zstandard>=0.23",
 ]
 
 [build-system]
