@@ -146,11 +146,18 @@ def describe_decoupled_diloco():
             with pytest.raises(ValueError):
                 algorithm.schedule(3)
 
+    def it_rejects_a_global_batch_below_one():
+        with pytest.raises(ValueError):
+            DecoupledDiLoCo(sync_every=100, fragments=2, global_batch_size=0)
+
     @pytest.mark.parametrize(
         "merge", [WeightedMean(), Rda("tok_embeddings")], ids=["weighted_mean", "rda"]
     )
+    @pytest.mark.parametrize("global_batch_size", [None, 512], ids=["own_batches", "shared_batch"])
     @pytest.mark.parametrize("delta_dtype", [None, "BF16"], ids=["own_dtype", "bf16_deltas"])
-    def it_round_trips_through_json(merge: Merge, delta_dtype: DType | None):
+    def it_round_trips_through_json(
+        merge: Merge, global_batch_size: int | None, delta_dtype: DType | None
+    ):
         algorithm = DecoupledDiLoCo(
             sync_every=100,
             fragments=8,
@@ -159,6 +166,7 @@ def describe_decoupled_diloco():
             outer_lr=1.0,
             outer_momentum=0.0,
             merge=merge,
+            global_batch_size=global_batch_size,
             delta_dtype=delta_dtype,
         )
 

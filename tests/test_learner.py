@@ -475,3 +475,28 @@ def describe_learner():
 
             with pytest.raises(RunConfigMismatch):
                 other.start()
+
+
+def describe_batch_size():
+    def when_the_algorithm_sets_no_global_batch():
+        def it_is_none(clock: FakeClock):
+            trained, _ = joined(MemoryMailbox(), clock)
+
+            assert trained.batch_size is None
+
+    def it_splits_the_global_batch_among_the_live_learners_rounding_up(clock: FakeClock):
+        mailbox = MemoryMailbox()
+        exchange = Exchange(mailbox, clock=clock)
+        algorithm = DecoupledDiLoCo(sync_every=4, fragments=2, global_batch_size=10)
+        trained, _ = learner(mailbox, clock, algorithm=algorithm)
+        asyncio.run(trained.join())
+
+        assert trained.batch_size == 10
+        asyncio.run(exchange.beat("learner-b"))
+        asyncio.run(exchange.beat("learner-c"))
+        asyncio.run(trained.poll())
+        assert trained.batch_size == 4
+        # The others never renew: at the lease timeout this learner is alone again.
+        clock.advance(0.1)
+        asyncio.run(trained.poll())
+        assert trained.batch_size == 10

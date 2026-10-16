@@ -172,3 +172,9 @@ class Session:
     def rounds_seen(self) -> int:
         """The newest round whose committed fragment the model holds; -1 on a fresh run."""
         return self._learner.rounds_seen
+
+    @property
+    def batch_size(self) -> int | None:
+        """This node's share of the algorithm's global batch, for the training loop to size its
+        batches by; it changes as nodes join and leave. ``None`` when the algorithm sets none."""
+        return self._learner.batch_size

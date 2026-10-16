@@ -155,6 +155,10 @@ class Algorithm(Protocol):
 
     def quorum(self) -> int: ...
 
+    def global_batch(self) -> int | None:
+        """The batch the live learners share between them; ``None`` when each sets its own."""
+        ...
+
     def to_json(self) -> Mapping[str, object]:
         """A JSON-serializable record of the configuration, stored in the manifest."""
         ...

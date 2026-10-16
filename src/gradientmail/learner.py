@@ -14,8 +14,9 @@ runs ahead of a fragment that is not yet applied: that is what keeps a live lear
 snapshots at the syncer's current version.
 
 The receive loop also renews this learner's lease and lists everyone's (``lease`` module), so
-``step()`` knows how many learners are live when it judges whether a round is about to close,
-and ``close()`` releases the lease once the last snapshot is out.
+``step()`` knows how many learners are live when it judges whether a round is about to close
+and ``batch_size`` can split a global batch among them; ``close()`` releases the lease once the
+last snapshot is out.
 """
 
 import asyncio
@@ -207,6 +208,16 @@ class Learner:
     @property
     def rounds_seen(self) -> int:
         return self._state.rounds_seen
+
+    @property
+    def batch_size(self) -> int | None:
+        """This learner's share of the global batch, split among the learners live as of the
+        last poll and rounded up; ``None`` when the algorithm sets no global batch."""
+        global_batch = self._algorithm.global_batch()
+        if global_batch is None:
+            return None
+        live = len(self._live | {self._learner_id})
+        return (global_batch + live - 1) // live
 
     def start(self) -> None:
         """Join the run on the calling thread, then start the communication thread."""

@@ -117,6 +117,29 @@ def describe_session():
             # publishes it returns only once it is committed and installed.
             assert seen == [-1, 0, 0, 1, 1, 2]
 
+    def when_the_algorithm_sets_a_global_batch():
+        def it_gives_each_node_its_share_among_the_live_nodes():
+            mailbox = gm.MemoryMailbox()
+            algorithm = gm.DecoupledDiLoCo(sync_every=4, fragments=2, global_batch_size=8)
+
+            def session(name: str) -> gm.Session:
+                model = gm.MemoryAdapter({"a": f32(1.0, 2.0), "b": f32(3.0, 4.0)})
+                return gm.Session(
+                    model, algorithm=algorithm, mailbox=mailbox, learner_id=name, poll_interval=0.01
+                )
+
+            sessions = [session("one")]
+            try:
+                assert sessions[0].batch_size == 8
+                sessions.append(session("two"))
+                deadline = time.monotonic() + 20.0
+                while any(s.batch_size != 4 for s in sessions):
+                    assert time.monotonic() < deadline, "the nodes never saw each other's lease"
+                    time.sleep(0.001)
+            finally:
+                for s in sessions:
+                    s.close()
+
     def when_a_node_leaves():
         def it_keeps_closing_rounds_with_the_nodes_that_stay():
             mailbox = gm.MemoryMailbox()

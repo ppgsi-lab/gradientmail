@@ -59,6 +59,10 @@ class DecoupledDiLoCo(Algorithm):
     Standard DiLoCo is ``fragments=1`` with ``quorum_size`` equal to the number of learners;
     Local SGD is ``outer_lr=1, outer_momentum=0, merge=WeightedMean()``.
 
+    ``global_batch_size`` fixes the batch the live learners share: each trains on its share,
+    so a learner joining shrinks the others' batches instead of growing the global batch.
+    ``None`` leaves every learner's batch its own.
+
     ``delta_dtype`` is the dtype learners publish their deltas (``anchor - θ``) in. ``None``
     keeps each parameter's own dtype, the same bytes as publishing θ; ``"BF16"`` halves an fp32
     model's uploads, rounding each delta element to 8 significant bits.
@@ -71,6 +75,7 @@ class DecoupledDiLoCo(Algorithm):
     outer_lr: float = 0.7
     outer_momentum: float = 0.9
     merge: Merge = Rda()
+    global_batch_size: int | None = None
     delta_dtype: DType | None = None
 
     def __post_init__(self) -> None:
@@ -82,6 +87,8 @@ class DecoupledDiLoCo(Algorithm):
             )
         if self.quorum_size < 1:
             raise ValueError(f"quorum_size must be at least 1, got {self.quorum_size}")
+        if self.global_batch_size is not None and self.global_batch_size < 1:
+            raise ValueError(f"global_batch_size must be at least 1, got {self.global_batch_size}")
 
     def schedule(self, fragments: int) -> RoundSchedule:
         if fragments < self.in_flight:
@@ -102,6 +109,9 @@ class DecoupledDiLoCo(Algorithm):
     def quorum(self) -> int:
         return self.quorum_size
 
+    def global_batch(self) -> int | None:
+        return self.global_batch_size
+
     def to_json(self) -> Mapping[str, object]:
         def merge() -> Mapping[str, object]:
             match self.merge:
@@ -120,6 +130,7 @@ class DecoupledDiLoCo(Algorithm):
             "outer_lr": self.outer_lr,
             "outer_momentum": self.outer_momentum,
             "merge": merge(),
+            "global_batch_size": self.global_batch_size,
             "delta_dtype": self.delta_dtype,
         }
 
@@ -140,6 +151,15 @@ class DecoupledDiLoCo(Algorithm):
                     return float(value)
                 case other:
                     raise ValueError(f"{key!r} must be a number, got {other!r}")
+
+        def optional_integer(key: str) -> int | None:
+            match data.get(key):
+                case None:
+                    return None
+                case int() as value:
+                    return value
+                case other:
+                    raise ValueError(f"{key!r} must be an integer or null, got {other!r}")
 
         def optional_dtype(key: str) -> DType | None:
             match data.get(key):
@@ -170,6 +190,7 @@ class DecoupledDiLoCo(Algorithm):
             outer_lr=number("outer_lr"),
             outer_momentum=number("outer_momentum"),
             merge=merge(),
+            global_batch_size=optional_integer("global_batch_size"),
             delta_dtype=optional_dtype("delta_dtype"),
         )
 
