@@ -20,8 +20,10 @@ last snapshot is out.
 """
 
 import asyncio
+import logging
 import queue
 import threading
+import time
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, replace
 
@@ -54,6 +56,8 @@ __all__ = [
     "install",
     "publishable",
 ]
+
+log = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -151,8 +155,9 @@ class Learner:
     """Wraps a training loop: ``start()`` once, ``step()`` after every optimizer step, ``close()``.
 
     ``start`` blocks until the model holds the newest committed version of every fragment,
-    then starts the communication thread. A failure on that thread ends both loops and is
-    raised from the next ``step()``. When the algorithm is ``synchronous``, ``step()`` waits for
+    then starts the communication thread. An operation that fails on that thread is logged and
+    its loop goes on (``communicate``); only the thread's own death is raised from the next
+    ``step()``. When the algorithm is ``synchronous``, ``step()`` waits for
     a published round to be committed and installed before training on, as standard DiLoCo
     does; otherwise training goes on and the commit overwrites the steps taken meanwhile. The
     lease is renewed every ``lease_every`` seconds and the other learners' leases are presumed lost
@@ -296,11 +301,19 @@ class Learner:
             return
         try:
             if self._run is not None and self._failure is None:
+                log.info(
+                    "%s: closing: publishing the steps since the last rounds", self._learner_id
+                )
                 self._state = self._flushed(self._run, self._state)
         finally:
             self._outbox.put(None)
             self._thread.join(_CLOSE_TIMEOUT)
             if self._thread.is_alive() and self._main is not None:
+                log.warning(
+                    "%s: still publishing %.0f s after the flush; cancelling",
+                    self._learner_id,
+                    _CLOSE_TIMEOUT,
+                )
                 self._main.get_loop().call_soon_threadsafe(self._main.cancel)
                 self._thread.join()
 
@@ -347,6 +360,13 @@ class Learner:
         self._cursor = self._state.rounds_seen
         if records:
             self._estimates = records[-1].estimates
+        log.info(
+            "%s: joined the run created by %s: %d fragments, newest round %d",
+            self._learner_id,
+            manifest.created_by,
+            len(manifest.plan),
+            self._state.rounds_seen,
+        )
 
     async def create(self, schema: Schema) -> Manifest:
         """Create the run from this model, or wait for the node that is creating it.
@@ -379,8 +399,13 @@ class Learner:
         if self._learner_id in claimants or (
             not claimants and await self._exchange.claim_creation(1, self._learner_id)
         ):
+            log.info(
+                "%s: creating the run: uploading Θ⁰ of %d fragments", self._learner_id, len(plan)
+            )
             return await upload()
-        attempts = len(await self._exchange.creation_claims())
+        claimants = await self._exchange.creation_claims()
+        attempts = len(claimants)
+        log.info("%s: waiting for %s to create the run", self._learner_id, ", ".join(claimants))
         uploaded = await self._exchange.init_uploaded()
         seen_at = self._clock.now()
         while True:
@@ -393,27 +418,64 @@ class Learner:
                 uploaded, seen_at = count, self._clock.now()
             elif self._clock.now() - seen_at >= stall:
                 if await self._exchange.claim_creation(attempts + 1, self._learner_id):
+                    log.warning(
+                        "%s: no init payload landed for %.0f s; creating the run",
+                        self._learner_id,
+                        stall,
+                    )
                     return await upload()
                 attempts = len(await self._exchange.creation_claims())
                 seen_at = self._clock.now()
 
     async def communicate(self) -> None:
         """Receive, publish and renew the lease until ``close()``, then release the lease; what
-        the communication thread runs."""
+        the communication thread runs.
+
+        Neither loop dies of a failed operation: the failure is logged and the loop goes on,
+        the receive loop with its next poll (so the lease keeps being renewed), the publish loop
+        with the next snapshot (the failed round's steps stay counted and go out with the
+        fragment's next round). Only cancellation ends them, and the lease is released either
+        way.
+        """
 
         async def receive() -> None:
             renew_at = self._clock.now()
             while True:
-                if self._clock.now() >= renew_at:
-                    await self._exchange.beat(self._learner_id)
-                    renew_at = self._clock.now() + self._lease_every
-                await self.poll()
+                try:
+                    if self._clock.now() >= renew_at:
+                        await self._exchange.beat(self._learner_id)
+                        renew_at = self._clock.now() + self._lease_every
+                        log.debug("%s: lease renewed", self._learner_id)
+                    await self.poll()
+                except Exception:
+                    log.exception("%s: poll failed; retrying", self._learner_id)
                 await self._clock.sleep(self._poll_interval)
 
         async def publish() -> None:
             while (outgoing := await asyncio.to_thread(self._outbox.get)) is not None:
-                delta = await asyncio.to_thread(self._delta, run, outgoing)
-                await self._exchange.publish_snapshot(outgoing.draft, delta)
+                draft = outgoing.draft
+                try:
+                    delta = await asyncio.to_thread(self._delta, run, outgoing)
+                    started = time.perf_counter()
+                    published = await self._exchange.publish_snapshot(draft, delta)
+                    log.info(
+                        "%s: round %d published: fragment %d, %d steps, %d tokens, %d bytes, "
+                        "%.1f s",
+                        self._learner_id,
+                        draft.round,
+                        run.schedule.fragment_of(draft.round),
+                        draft.steps,
+                        draft.tokens,
+                        published.payload.size,
+                        time.perf_counter() - started,
+                    )
+                except Exception:
+                    log.exception(
+                        "%s: round %d: publishing failed; its steps go out with the fragment's "
+                        "next round",
+                        self._learner_id,
+                        draft.round,
+                    )
 
         if self._run is None:
             raise RuntimeError("Learner.communicate() before join()")
@@ -424,11 +486,15 @@ class Learner:
                 receiving = group.create_task(receive())
                 await publish()
                 receiving.cancel()
-            await self._exchange.release(self._learner_id)
         finally:
             # A cancelled publish leaves a worker thread blocked in outbox.get(), and asyncio.run
             # waits for the executor's threads on shutdown; the sentinel releases it.
             self._outbox.put(None)
+            try:
+                await self._exchange.release(self._learner_id)
+                log.info("%s: lease released", self._learner_id)
+            except Exception:
+                log.exception("%s: releasing the lease failed", self._learner_id)
 
     async def poll(self) -> None:
         """One receive iteration: queue the newest version of each fragment committed meanwhile,
@@ -476,6 +542,14 @@ class Learner:
         self._outbox.put(
             _Outgoing(draft, self._anchors[fragment], self._adapter.snapshot(run.plan[fragment]))
         )
+        log.debug(
+            "%s: round %d queued: fragment %d, %d steps at local step %d",
+            self._learner_id,
+            round,
+            fragment,
+            draft.steps,
+            state.local_step,
+        )
         return replace(state, last_published=round, step_at_last_publish=state.local_step)
 
     def _delta(self, run: "_Run", outgoing: "_Outgoing") -> Mapping[str, TensorBytes]:
@@ -490,6 +564,14 @@ class Learner:
         validate(run.schema, update.tensors, run.plan[update.fragment])
         self._adapter.apply(update.tensors)
         self._anchors[update.fragment] = update.tensors
+        log.info(
+            "%s: round %d installed: fragment %d version %d, at local step %d",
+            self._learner_id,
+            update.round,
+            update.fragment,
+            update.version,
+            state.local_step,
+        )
         return applied(state, update.round, update.fragment, update.version)
 
     def _drained(self, run: "_Run", state: LearnerState) -> LearnerState:
@@ -559,9 +641,21 @@ class Learner:
             while (round := publishable(state, run.schedule)) is not None:
                 state = self._publish(run, state, round)
             if state.rounds_seen >= state.last_published:
+                log.info(
+                    "%s: flushed: every round up to %d is installed",
+                    self._learner_id,
+                    state.last_published,
+                )
                 return state
             state = self._settled(run, state, settled, patience=patience)
             if not settled(state):
+                log.warning(
+                    "%s: giving up on round %d: nothing landed for %.0f s; newest installed is %d",
+                    self._learner_id,
+                    state.last_published,
+                    patience,
+                    state.rounds_seen,
+                )
                 return state
 
 

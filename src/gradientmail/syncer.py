@@ -14,10 +14,14 @@ Round ``r`` is closed by the node that created ``claims/{r}/001``, a create-once
 the claimant. The node that commits ``r`` claims ``r + 1`` in the same breath, before anyone
 else can have seen the record, so the closer stays put while it lives and a fresh run's first
 claimant keeps the role. A node that finds a claim by someone else follows: it polls for the
-round record and continues from it. If no record appears within a timeout measured on its own
-clock (three times the round duration the last record's estimates predict, never less than
-thirty poll intervals) it creates the next claim and closes the round itself. A node that
-restarts finds its own claim and resumes. Claims only avoid redundant work: whoever commits
+round record and continues from it. It creates the next claim and closes the round itself as
+soon as the claimant's lease is gone or stale (``lease`` module: released when the claimant
+closed, unrenewed since it crashed), or, for a claimant that is live but silent, once no record
+has appeared within a timeout measured on its own clock (three times the round duration the
+last record's estimates predict, never less than thirty poll intervals). The leases a follower
+observes carry into its ``close``, so a lease first met while following is not trusted afresh
+at takeover. A node that restarts finds its own claim and resumes. Claims only avoid redundant
+work: whoever commits
 first wins, and the other reads the committed record back (``Superseded``) and continues from
 it. A follower keeps no tensors in memory; once elected it reloads the fragments from the
 records (``recover``), so leadership changes cost one reload and steady state costs followers
@@ -70,7 +74,8 @@ next round is the one after the last record and the timing estimates are the las
 Nothing else is persisted, so a crash
 before the record write recomputes the round from the snapshots still in the store and a crash
 after it continues with the next round; the commit sequence is the same either way, except
-that a snapshot which landed in between may now be included. ``run`` raises
+that a snapshot which landed in between may now be included. A round that fails for any other
+reason is logged and retried the same way, from the store, one poll later. ``run`` raises
 ``RunConfigMismatch`` when the manifest was created with another algorithm configuration. A
 ``MailboxUnavailable`` is retried indefinitely with backoff. No ``asyncio.timeout`` wraps a
 store call, because a cancelled ``to_thread`` would leak its thread; botocore's own timeouts
@@ -89,7 +94,9 @@ deleted; ``rounds/`` is the tape of the run.
 """
 
 import asyncio
+import logging
 import math
+import time
 from collections.abc import Mapping
 from dataclasses import dataclass
 from statistics import fmean
@@ -125,6 +132,8 @@ from gradientmail.serialization import Schema, SchemaMismatch, TensorBytes, vali
 
 __all__ = ["Following", "Progress", "Syncer", "SyncerState"]
 
+log = logging.getLogger(__name__)
+
 
 @dataclass(frozen=True)
 class SyncerState:
@@ -142,7 +151,7 @@ class SyncerState:
 @dataclass(frozen=True)
 class Following:
     """A follower's knowledge: the next round, and how long to wait for its record before
-    claiming it."""
+    claiming it, unless the claimant's lease ends first."""
 
     round: int
     timeout: float
@@ -190,7 +199,8 @@ class Syncer:
 
         Returns once round ``until_round`` is committed; with ``None`` it runs until cancelled
         or ``stop()``. Raises ``RunConfigMismatch`` when the run was created with another
-        algorithm configuration.
+        algorithm configuration. A round that fails is logged and retried as after a restart:
+        the claim this node holds, if any, is found again and the round recomputed.
         """
         self._main = asyncio.current_task()
         if self._stopped:
@@ -200,9 +210,24 @@ class Syncer:
         expected = self._algorithm.to_json()
         if dict(manifest.algorithm) != dict(expected):
             raise RunConfigMismatch(expected, manifest.algorithm)
-        progress: Progress = await self.recover()
-        while until_round is None or progress.round <= until_round:
-            progress = await self.run_round(progress)
+        progress: Progress | None = None
+        while True:
+            try:
+                if progress is None:
+                    progress = await self.recover()
+                if until_round is not None and progress.round > until_round:
+                    return
+                progress = await self.run_round(progress)
+            except Exception:
+                log.exception(
+                    "%s: %s failed; retrying in %.1f s",
+                    self._learner_id,
+                    "recovery" if progress is None else f"round {progress.round}",
+                    self._poll_interval,
+                )
+                await self._clock.sleep(self._poll_interval)
+                if progress is not None:
+                    progress = Following(progress.round, self._timeout_of(progress))
 
     def stop(self) -> None:
         """Cancel ``run`` from any thread; a ``run`` that has not started yet returns at once."""
@@ -249,11 +274,13 @@ class Syncer:
         async with asyncio.TaskGroup() as group:
             loads = [group.create_task(fragment_state(p)) for p in range(count)]
         last = records[-1] if records else None
-        return SyncerState(
+        state = SyncerState(
             round=0 if last is None else last.round + 1,
             fragments=tuple(load.result() for load in loads),
             estimates=Estimates() if last is None else last.estimates,
         )
+        log.info("%s: recovered: next round %d", self._learner_id, state.round)
+        return state
 
     async def run_round(self, progress: Progress) -> Progress:
         """Advance one round: close it when elected, otherwise follow it to its record."""
@@ -274,27 +301,44 @@ class Syncer:
         claimants = await self._exchange.claims(round)
         if claimants:
             return self._learner_id in claimants
-        return await self._exchange.claim(round, 1, self._learner_id)
+        claimed = await self._exchange.claim(round, 1, self._learner_id)
+        if claimed:
+            log.info("%s: claimed round %d", self._learner_id, round)
+        return claimed
 
     async def follow(self, progress: Progress) -> Progress:
-        """Wait for the round's record; after the timeout, take the next claim and close it."""
+        """Wait for the round's record; take the next claim and close the round once the
+        claimant's lease is gone or stale, or after the timeout."""
         round = progress.round
-        timeout = (
-            progress.timeout
-            if isinstance(progress, Following)
-            else progress.estimates.timeout(self._poll_interval)
+        timeout = self._timeout_of(progress)
+        claimants = await self._exchange.claims(round)
+        log.info(
+            "%s: following round %d claimed by %s; takeover after %.0f s without a record",
+            self._learner_id,
+            round,
+            ", ".join(claimants),
+            timeout,
         )
-        attempts = len(await self._exchange.claims(round))
         seen_at = self._clock.now()
         while True:
             records = await self._exchange.rounds_after(round - 1)
             if records:
                 return Following(records[0].round + 1, self._timeout(records[0]))
-            if self._clock.now() - seen_at >= timeout:
-                if await self._exchange.claim(round, attempts + 1, self._learner_id):
+            leases = await self._exchange.leases()
+            now = self._clock.now()
+            self._liveness = self._liveness.observed(leases, now)
+            gone = bool(claimants) and claimants[-1] not in self._liveness.live(now)
+            if gone or now - seen_at >= timeout:
+                if await self._exchange.claim(round, len(claimants) + 1, self._learner_id):
+                    why = (
+                        f"{claimants[-1]}'s lease is gone"
+                        if gone
+                        else f"no record after {timeout:.0f} s"
+                    )
+                    log.warning("%s: taking over round %d: %s", self._learner_id, round, why)
                     state = await self.recover()
                     return state if state.round != round else await self.close(state)
-                attempts = len(await self._exchange.claims(round))
+                claimants = await self._exchange.claims(round)
                 seen_at = self._clock.now()
             await self._clock.sleep(self._poll_interval)
 
@@ -395,10 +439,31 @@ class Syncer:
             grace_seconds=grace_ended - quorum_at,
             estimates=estimates,
         )
+        log.info(
+            "%s: round %d closed: fragment %d, participants %s, rejected %s, quorum %.1f s, "
+            "grace %.1f s",
+            self._learner_id,
+            round,
+            fragment,
+            [c.learner for c in contributions],
+            [f"{learner} ({why})" for learner, why in draft.rejected],
+            draft.quorum_seconds,
+            draft.grace_seconds,
+        )
+        committing = time.perf_counter()
         outcome = await self._exchange.commit(draft, updated.theta, updated.outer)
         if isinstance(outcome, Superseded):
+            log.info("%s: round %d was committed by another node", self._learner_id, round)
             return Following(outcome.record.round + 1, self._timeout(outcome.record))
         sync_seconds = self._clock.now() - grace_ended
+        log.info(
+            "%s: round %d committed: version %d, %d bytes, %.1f s",
+            self._learner_id,
+            round,
+            updated.version,
+            outcome.record.theta.size + outcome.record.outer.size,
+            time.perf_counter() - committing,
+        )
 
         await self._exchange.claim(round + 1, 1, self._learner_id)
         count = len(state.fragments)
@@ -432,6 +497,13 @@ class Syncer:
     def _timeout(self, record: RoundRecord) -> float:
         """How long to wait for the round after ``record`` before taking it over."""
         return record.estimates.timeout(self._poll_interval)
+
+    def _timeout_of(self, progress: Progress) -> float:
+        return (
+            progress.timeout
+            if isinstance(progress, Following)
+            else progress.estimates.timeout(self._poll_interval)
+        )
 
 
 @dataclass(frozen=True)

@@ -9,6 +9,7 @@ process to operate.
 """
 
 import asyncio
+import logging
 import os
 import re
 import socket
@@ -26,6 +27,8 @@ from gradientmail.protocol import Exchange, ProtocolError
 from gradientmail.syncer import Syncer
 
 __all__ = ["Session", "install"]
+
+log = logging.getLogger(__name__)
 
 
 def install(model: object, *, mailbox: Mailbox) -> int:
@@ -109,6 +112,7 @@ class Session:
             except asyncio.CancelledError:
                 pass
             except BaseException as exc:
+                log.exception("%s: the syncer stopped; the next step() raises", learner_id)
                 self._failure = exc
 
         if backend is None:

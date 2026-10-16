@@ -89,7 +89,9 @@ completes it with the payload refs it wrote and stores the full record.
 import asyncio
 import hashlib
 import json
+import logging
 import re
+import time
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
 from functools import partial
@@ -102,6 +104,8 @@ from gradientmail.compression import decode as decode_payload
 from gradientmail.compression import encode as encode_payload
 from gradientmail.mailbox import Mailbox, retrying
 from gradientmail.serialization import DType, ParameterSpec, Schema, TensorBytes
+
+log = logging.getLogger(__name__)
 
 type Rejection = Literal["stale", "zero_steps", "schema", "corrupt", "missing"]
 
@@ -486,8 +490,11 @@ class Exchange:
 
     async def publish_snapshot(
         self, draft: SnapshotDraft, tensors: Mapping[str, TensorBytes]
-    ) -> None:
-        """Publish ``tensors`` as ``draft``'s snapshot; idempotent for one (round, learner)."""
+    ) -> Snapshot:
+        """Publish ``tensors`` as ``draft``'s snapshot; idempotent for one (round, learner).
+
+        Returns the snapshot as published, its payload reference included.
+        """
         payload = await self._publish(
             partial(snapshot_blob_key, draft.round, draft.learner), tensors
         )
@@ -511,6 +518,7 @@ class Exchange:
                 encode(snapshot),
             )
         )
+        return snapshot
 
     async def snapshots(self, round: int) -> Sequence[Snapshot]:
         return await self._records(snapshots_prefix(round), decode_snapshot)
@@ -571,9 +579,11 @@ class Exchange:
         compression = compression_of(ref.key)
         if compression is None:
             raise ProtocolError(f"{ref.key} names no payload codec")
+        started = time.perf_counter()
         blob = await self._retry(partial(self._mailbox.get, ref.key))
         if blob is None:
             return None
+        log.debug("got %s: %d bytes in %.1f s", ref.key, len(blob), time.perf_counter() - started)
         actual = _sha256(blob)
         if actual != ref.sha256:
             raise PayloadCorrupt(ref, actual)
@@ -635,8 +645,10 @@ class Exchange:
         blob = encode_payload(tensors, self._compression)
         sha256 = _sha256(blob)
         ref = PayloadRef(key_of(sha256) + EXTENSION[self._compression], sha256, len(blob))
+        started = time.perf_counter()
         # False means identical bytes are already there: the key contains their hash.
         await self._retry(partial(self._mailbox.put_if_absent, ref.key, blob))
+        log.debug("put %s: %d bytes in %.1f s", ref.key, len(blob), time.perf_counter() - started)
         return ref
 
     async def _claim(self, key: str, learner: str) -> bool:

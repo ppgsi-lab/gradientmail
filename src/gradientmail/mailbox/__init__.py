@@ -5,10 +5,13 @@ by prefix in UTF-8 byte order (``list``) and removed idempotently (``delete``). 
 knows about rounds or snapshots; ``gradientmail.protocol`` builds the exchange on top.
 """
 
+import logging
 from collections.abc import Awaitable, Callable, Iterable, Sequence
 from typing import Protocol, runtime_checkable
 
 from gradientmail.clock import Clock
+
+log = logging.getLogger(__name__)
 
 
 class MailboxUnavailable(Exception):
@@ -48,6 +51,7 @@ async def retrying[T](
     while True:
         try:
             return await op()
-        except MailboxUnavailable:
+        except MailboxUnavailable as exc:
+            log.warning("mailbox unavailable: %s; retrying in %.1f s", exc, delay)
             await clock.sleep(delay)
             delay = min(delay * 2, max_delay)

@@ -8,6 +8,7 @@ and the recorded timings are exact and no test waits on wall time.
 
 import asyncio
 import contextlib
+import logging
 import struct
 from array import array
 from collections.abc import Callable, Coroutine, Mapping, Sequence
@@ -15,7 +16,7 @@ from dataclasses import dataclass, replace
 from typing import Literal
 
 import pytest
-from fakes import FakeClock
+from fakes import FakeClock, TrippedMailbox
 
 from gradientmail.algorithms import Estimates
 from gradientmail.algorithms.diloco import DiLoCo, WeightedMean, grace_window
@@ -555,6 +556,9 @@ def describe_election():
 
             async def scenario():
                 await rig.create_run()
+                # A crashed node's lease stays, unrenewed, until the lease timeout (120 s
+                # here): to the survivor it is live, and only the takeover timeout applies.
+                await rig.alive("node-1")
                 dead, survivor = rig.syncer("node-1"), rig.syncer("node-2")
                 dead_state = await dead.recover()
                 await rig.publish("a", 0, (0.0, 1.0), tokens=2)
@@ -576,6 +580,62 @@ def describe_election():
             assert [record.round for record in records] == [0, 1]
             assert state.round == 2
             assert [p.learner for p in records[1].participants] == ["a"]
+
+    def when_the_claim_holder_leaves():
+        def it_takes_over_as_soon_as_the_lease_is_gone(clock: FakeClock):
+            rig = Rig(MemoryMailbox(), clock, algorithm(quorum=1))
+
+            async def scenario():
+                await rig.create_run()
+                await rig.alive("node-1")
+                leaving, survivor = rig.syncer("node-1"), rig.syncer("node-2")
+                state = await leaving.recover()
+                await rig.publish("a", 0, (0.0, 1.0), tokens=2)
+                loaded(await completed(leaving.run_round(state)))
+                # Round 0 committed and round 1 claimed; then the node closes and releases
+                # its lease, leaving the claim behind.
+                await rig.exchange.release("node-1")
+                await rig.publish("a", 1, (1.0, 0.0))
+                state = loaded(await completed(survivor.run_round(Following(1, timeout=5.0))))
+                return state, await rig.committed(), clock.now()
+
+            state, records, now = asyncio.run(scenario())
+
+            assert now < 5.0
+            assert [record.round for record in records] == [0, 1]
+            assert state.round == 2
+            assert [p.learner for p in records[1].participants] == ["a"]
+
+    def when_the_claim_holder_stalls():
+        def it_takes_over_once_its_lease_is_stale_and_keeps_the_leases_it_watched(
+            clock: FakeClock,
+        ):
+            rig = Rig(MemoryMailbox(), clock, algorithm(quorum=2))
+
+            async def scenario():
+                await rig.create_run()
+                await rig.alive("node-1", "a", "b")
+                stuck = rig.syncer("node-1")
+                state = await stuck.recover()
+                await rig.publish("a", 0, (0.0, 1.0))
+                await rig.publish("b", 0, (0.0, 1.0))
+                loaded(await completed(stuck.run_round(state)))
+                # Round 1 is claimed by node-1, which stalls; nobody renews a lease again, "a"
+                # publishes and "b" never does.
+                await rig.publish("a", 1, (1.0, 0.0))
+                survivor = rig.syncer("node-2", lease_timeout=3.0)
+                state = loaded(await completed(survivor.run_round(Following(1, timeout=5.0))))
+                return state, await rig.committed(), clock.now()
+
+            state, records, now = asyncio.run(scenario())
+
+            # Takeover at the lease timeout, before the 5 s takeover timeout; and since the
+            # survivor had watched "b"'s lease unchanged all along, it did not wait another
+            # lease timeout for "b" before closing with "a" alone.
+            assert now == pytest.approx(3.0, abs=2 * POLL)
+            assert [record.round for record in records] == [0, 1]
+            assert [p.learner for p in records[1].participants] == ["a"]
+            assert state.round == 2
 
     def when_two_nodes_commit_the_same_round():
         def it_keeps_the_first_record_and_the_loser_follows(clock: FakeClock):
@@ -622,6 +682,42 @@ def describe_run():
 
         assert still_waiting
         assert [record.round for record in records] == [0, 1]
+
+    def when_a_round_fails():
+        def it_logs_the_failure_and_retries_from_the_store(
+            clock: FakeClock, caplog: pytest.LogCaptureFixture
+        ):
+            inner = MemoryMailbox()
+            rig = Rig(inner, clock, algorithm(quorum=1))
+            # The first listing of the round's snapshots fails, inside close().
+            mailbox = TrippedMailbox(
+                inner,
+                lambda operation, key: (
+                    operation == "list" and key.startswith("snapshots/0000000000/")
+                ),
+                RuntimeError("boom"),
+            )
+            syncer = Syncer(
+                algorithm=rig.config,
+                mailbox=mailbox,
+                learner_id="node-1",
+                clock=clock,
+                poll_interval=POLL,
+            )
+
+            async def scenario():
+                await rig.create_run()
+                await rig.publish("a", 0, (0.0, 1.0))
+                caplog.set_level(logging.INFO, logger="gradientmail")
+                await completed(syncer.run(until_round=0))
+                return await rig.committed()
+
+            records = asyncio.run(scenario())
+
+            assert [record.round for record in records] == [0]
+            assert [p.learner for p in records[0].participants] == ["a"]
+            assert "node-1: round 0 failed" in caplog.text
+            assert "node-1: round 0 committed" in caplog.text
 
     def when_manifest_algorithm_differs():
         def it_raises_run_config_mismatch(clock: FakeClock):

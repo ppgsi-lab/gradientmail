@@ -1,7 +1,7 @@
 """Test doubles that are real implementations of the core protocols."""
 
 import asyncio
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 
 from gradientmail.clock import Clock
 from gradientmail.mailbox import Mailbox, MailboxUnavailable
@@ -61,3 +61,60 @@ class FaultyMailbox(Mailbox):
         self._operations += 1
         if self._operations == self._fail_after:
             raise MailboxUnavailable(f"response of operation {self._operations} lost")
+
+
+class TrippedMailbox(Mailbox):
+    """Raises ``error`` once, from the first operation ``when(operation, key)`` matches.
+
+    Every other operation reaches ``inner``. The error is not a ``MailboxUnavailable``, so the
+    exchange does not retry it: it is what a loop must survive on its own.
+    """
+
+    def __init__(self, inner: Mailbox, when: Callable[[str, str], bool], error: Exception) -> None:
+        self._inner = inner
+        self._when = when
+        self._error: Exception | None = error
+
+    async def put_if_absent(self, key: str, data: bytes) -> bool:
+        self._trip("put_if_absent", key)
+        return await self._inner.put_if_absent(key, data)
+
+    async def get(self, key: str) -> bytes | None:
+        self._trip("get", key)
+        return await self._inner.get(key)
+
+    async def list(self, prefix: str, *, after: str = "") -> Sequence[str]:
+        self._trip("list", prefix)
+        return await self._inner.list(prefix, after=after)
+
+    async def delete(self, keys: Iterable[str]) -> None:
+        self._trip("delete", "")
+        await self._inner.delete(keys)
+
+    def _trip(self, operation: str, key: str) -> None:
+        if self._error is not None and self._when(operation, key):
+            error, self._error = self._error, None
+            raise error
+
+
+class SlowMailbox(Mailbox):
+    """Takes ``seconds`` of wall time for every ``put_if_absent`` whose key ``when`` matches."""
+
+    def __init__(self, inner: Mailbox, when: Callable[[str], bool], seconds: float) -> None:
+        self._inner = inner
+        self._when = when
+        self._seconds = seconds
+
+    async def put_if_absent(self, key: str, data: bytes) -> bool:
+        if self._when(key):
+            await asyncio.sleep(self._seconds)
+        return await self._inner.put_if_absent(key, data)
+
+    async def get(self, key: str) -> bytes | None:
+        return await self._inner.get(key)
+
+    async def list(self, prefix: str, *, after: str = "") -> Sequence[str]:
+        return await self._inner.list(prefix, after=after)
+
+    async def delete(self, keys: Iterable[str]) -> None:
+        await self._inner.delete(keys)

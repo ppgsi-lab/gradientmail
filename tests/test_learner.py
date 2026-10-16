@@ -8,6 +8,7 @@ the communication thread.
 """
 
 import asyncio
+import logging
 import struct
 import time
 from array import array
@@ -15,7 +16,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import replace
 
 import pytest
-from fakes import FakeClock
+from fakes import FakeClock, SlowMailbox, TrippedMailbox
 
 from gradientmail.adapters import MemoryAdapter
 from gradientmail.algorithms import Algorithm, Estimates, RoundSchedule
@@ -318,6 +319,72 @@ def describe_learner():
             trained.close()
 
         assert dict(asyncio.run(exchange.leases())) == {}
+
+    def when_a_poll_raises():
+        def it_logs_the_failure_and_keeps_renewing_the_lease(
+            clock: FakeClock, caplog: pytest.LogCaptureFixture
+        ):
+            inner = MemoryMailbox()
+            exchange = Exchange(inner, clock=clock)
+            # The first lease listing is the first beat's: the renewal itself fails.
+            mailbox = TrippedMailbox(
+                inner,
+                lambda operation, key: operation == "list" and key.startswith("leases/"),
+                RuntimeError("boom"),
+            )
+            caplog.set_level(logging.INFO, logger="gradientmail")
+            trained, _ = started(mailbox, clock)
+            try:
+                step_until(trained, 1, lambda: "learner-a" in asyncio.run(exchange.leases()))
+            finally:
+                trained.close()
+
+            [failure] = [r for r in caplog.records if r.levelno == logging.ERROR]
+            assert failure.exc_info is not None
+            assert isinstance(failure.exc_info[1], RuntimeError)
+
+    def when_publishing_a_snapshot_raises():
+        def it_logs_the_failure_and_publishes_the_next_round(
+            clock: FakeClock, caplog: pytest.LogCaptureFixture
+        ):
+            inner = MemoryMailbox()
+            exchange = Exchange(inner, clock=clock)
+            mailbox = TrippedMailbox(
+                inner,
+                lambda operation, key: (
+                    operation == "put_if_absent" and key.startswith("blobs/snapshots/0000000000/")
+                ),
+                RuntimeError("boom"),
+            )
+            caplog.set_level(logging.INFO, logger="gradientmail")
+            trained, _ = started(mailbox, clock)
+            try:
+                step_until(trained, 1, lambda: len(asyncio.run(exchange.snapshots(1))) == 1)
+            finally:
+                trained.close()
+
+            assert list(asyncio.run(exchange.snapshots(0))) == []
+            assert "learner-a: round 0: publishing failed" in caplog.text
+            assert "learner-a: round 1 published" in caplog.text
+
+    def when_close_is_cut_short_by_a_slow_upload():
+        def it_still_releases_the_lease(
+            clock: FakeClock, caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+        ):
+            inner = MemoryMailbox()
+            exchange = Exchange(inner, clock=clock)
+            mailbox = SlowMailbox(inner, lambda key: key.startswith("blobs/snapshots/"), 0.5)
+            monkeypatch.setattr("gradientmail.learner._CLOSE_TIMEOUT", 0.05)
+            caplog.set_level(logging.INFO, logger="gradientmail")
+            trained, _ = started(mailbox, clock)
+            step_until(trained, 1, lambda: "learner-a" in asyncio.run(exchange.leases()))
+            # Round 0 is due by the second step; its upload outlasts the close timeout.
+            trained.step(samples=1)
+
+            trained.close()
+
+            assert "cancelling" in caplog.text
+            assert dict(asyncio.run(exchange.leases())) == {}
 
     def when_closed_with_steps_no_round_has_taken():
         def it_publishes_every_fragment_and_gives_up_once_nothing_lands(clock: FakeClock):
