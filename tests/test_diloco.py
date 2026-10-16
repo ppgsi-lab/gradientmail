@@ -1,4 +1,4 @@
-"""Pure pieces of Decoupled DiLoCo: fragment planning, the round schedule, weights, grace."""
+"""Pure pieces of DiLoCo: fragment planning, the round schedule, weights, grace."""
 
 import json
 from collections.abc import Mapping
@@ -7,7 +7,7 @@ from itertools import pairwise
 import pytest
 
 from gradientmail.algorithms.diloco import (
-    DecoupledDiLoCo,
+    DiLoCo,
     Estimates,
     Merge,
     Rda,
@@ -60,7 +60,7 @@ def describe_plan():
 
 def describe_schedule():
     def when_sync_every_is_100_and_fragments_8():
-        schedule = DecoupledDiLoCo(sync_every=100, fragments=8).schedule(8)
+        schedule = DiLoCo(sync_every=100, fragments=8).schedule(8)
         rounds = range(8 * 4)
 
         def it_synchronizes_each_fragment_every_100_steps():
@@ -134,34 +134,36 @@ def describe_grace_window():
         assert grace_window(estimates, in_flight=4, gap=1) == 10.0
 
 
-def describe_decoupled_diloco():
+def describe_diloco():
     def it_rejects_in_flight_above_fragments():
         with pytest.raises(ValueError):
-            DecoupledDiLoCo(sync_every=100, fragments=2, in_flight=3)
+            DiLoCo(sync_every=100, fragments=2, in_flight=3)
 
     def when_the_model_yields_fewer_fragments_than_in_flight():
         def it_rejects_the_schedule():
-            algorithm = DecoupledDiLoCo(sync_every=100, fragments=8, in_flight=4)
+            algorithm = DiLoCo(sync_every=100, fragments=8, in_flight=4)
 
             with pytest.raises(ValueError):
                 algorithm.schedule(3)
 
     def it_rejects_a_global_batch_below_one():
         with pytest.raises(ValueError):
-            DecoupledDiLoCo(sync_every=100, fragments=2, global_batch_size=0)
+            DiLoCo(sync_every=100, fragments=2, global_batch_size=0)
 
     @pytest.mark.parametrize(
         "merge", [WeightedMean(), Rda("tok_embeddings")], ids=["weighted_mean", "rda"]
     )
     @pytest.mark.parametrize("global_batch_size", [None, 512], ids=["own_batches", "shared_batch"])
     @pytest.mark.parametrize("delta_dtype", [None, "BF16"], ids=["own_dtype", "bf16_deltas"])
+    @pytest.mark.parametrize("synchronous", [False, True], ids=["overlapped", "synchronous"])
     def it_round_trips_through_json(
-        merge: Merge, global_batch_size: int | None, delta_dtype: DType | None
+        merge: Merge, global_batch_size: int | None, delta_dtype: DType | None, synchronous: bool
     ):
-        algorithm = DecoupledDiLoCo(
+        algorithm = DiLoCo(
             sync_every=100,
             fragments=8,
             in_flight=3,
+            synchronous=synchronous,
             quorum_size=2,
             outer_lr=1.0,
             outer_momentum=0.0,
@@ -172,20 +174,19 @@ def describe_decoupled_diloco():
 
         encoded = json.loads(json.dumps(algorithm.to_json(), sort_keys=True))
 
-        assert DecoupledDiLoCo.from_json(encoded) == algorithm
+        assert DiLoCo.from_json(encoded) == algorithm
 
     def it_rejects_an_unknown_delta_dtype_in_json():
-        encoded = {**DecoupledDiLoCo(sync_every=100, fragments=2).to_json(), "delta_dtype": "INT8"}
+        encoded = {**DiLoCo(sync_every=100, fragments=2).to_json(), "delta_dtype": "INT8"}
 
         with pytest.raises(ValueError):
-            DecoupledDiLoCo.from_json(encoded)
+            DiLoCo.from_json(encoded)
 
     def it_describes_deltas_in_its_dtype_or_each_parameters_own():
         schema = schema_of({"a": 2, "b": 3})
         in_bf16 = Schema(tuple(ParameterSpec(p.name, "BF16", p.shape) for p in schema.parameters))
 
-        assert DecoupledDiLoCo(sync_every=100, fragments=2).delta_schema(schema) == schema
+        assert DiLoCo(sync_every=100, fragments=2).delta_schema(schema) == schema
         assert (
-            DecoupledDiLoCo(sync_every=100, fragments=2, delta_dtype="BF16").delta_schema(schema)
-            == in_bf16
+            DiLoCo(sync_every=100, fragments=2, delta_dtype="BF16").delta_schema(schema) == in_bf16
         )

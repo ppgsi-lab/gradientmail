@@ -19,7 +19,7 @@ from fakes import FakeClock
 
 from gradientmail.adapters import MemoryAdapter
 from gradientmail.algorithms import Algorithm, Estimates, RoundSchedule
-from gradientmail.algorithms.diloco import DecoupledDiLoCo
+from gradientmail.algorithms.diloco import DiLoCo
 from gradientmail.learner import (
     Learner,
     LearnerState,
@@ -44,7 +44,7 @@ def f32(*values: float) -> TensorBytes:
 
 
 # Two equal-sized tensors give the plan (("a",), ("b",)); a round every two steps, "a" first.
-ALGORITHM = DecoupledDiLoCo(sync_every=4, fragments=2, in_flight=2)
+ALGORITHM = DiLoCo(sync_every=4, fragments=2, in_flight=2)
 SCHEDULE = RoundSchedule(sync_every=4, fragments=2, in_flight=2)
 TENSORS = {"a": f32(1.0, 2.0), "b": f32(3.0, 4.0)}
 A1 = {"a": f32(10.0, 20.0)}
@@ -263,7 +263,7 @@ def describe_learner():
             mailbox = MemoryMailbox()
             exchange = Exchange(mailbox, clock=clock)
             # A gap of four steps, so nothing is due on schedule before step 4.
-            algorithm = DecoupledDiLoCo(sync_every=8, fragments=2, in_flight=2, quorum_size=2)
+            algorithm = DiLoCo(sync_every=8, fragments=2, in_flight=2, quorum_size=2)
             trained, _ = started(mailbox, clock, algorithm=algorithm)
             try:
                 asyncio.run(exchange.publish_snapshot(other_snapshot(0, "learner-b"), A1))
@@ -281,7 +281,7 @@ def describe_learner():
             exchange = Exchange(mailbox, clock=clock)
             # Quorum three, but only learner-b holds a lease besides this one: its snapshot
             # alone means the round is about to close.
-            algorithm = DecoupledDiLoCo(sync_every=8, fragments=2, in_flight=2, quorum_size=3)
+            algorithm = DiLoCo(sync_every=8, fragments=2, in_flight=2, quorum_size=3)
             asyncio.run(exchange.beat("learner-b"))
             asyncio.run(exchange.publish_snapshot(other_snapshot(0, "learner-b"), A1))
             trained, _ = started(mailbox, clock, algorithm=algorithm)
@@ -295,7 +295,7 @@ def describe_learner():
     def it_publishes_the_delta_against_the_installed_anchor(clock: FakeClock):
         mailbox = MemoryMailbox()
         exchange = Exchange(mailbox, clock=clock)
-        algorithm = DecoupledDiLoCo(sync_every=4, fragments=2, in_flight=2, delta_dtype="BF16")
+        algorithm = DiLoCo(sync_every=4, fragments=2, in_flight=2, delta_dtype="BF16")
         trained, adapter = started(mailbox, clock, algorithm=algorithm)
         try:
             # Local training moved "a" away from the (1, 2) that join() installed as its anchor.
@@ -470,7 +470,7 @@ def describe_learner():
             mailbox = MemoryMailbox()
             joined(mailbox, clock)
             other, _ = learner(
-                mailbox, clock, algorithm=DecoupledDiLoCo(sync_every=8, fragments=2, in_flight=2)
+                mailbox, clock, algorithm=DiLoCo(sync_every=8, fragments=2, in_flight=2)
             )
 
             with pytest.raises(RunConfigMismatch):
@@ -487,7 +487,7 @@ def describe_batch_size():
     def it_splits_the_global_batch_among_the_live_learners_rounding_up(clock: FakeClock):
         mailbox = MemoryMailbox()
         exchange = Exchange(mailbox, clock=clock)
-        algorithm = DecoupledDiLoCo(sync_every=4, fragments=2, global_batch_size=10)
+        algorithm = DiLoCo(sync_every=4, fragments=2, global_batch_size=10)
         trained, _ = learner(mailbox, clock, algorithm=algorithm)
         asyncio.run(trained.join())
 

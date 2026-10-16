@@ -78,10 +78,6 @@ class Session:
         The codec this node's payloads are stored with: ``"off"`` for safetensors as is, or
         ``"zstd"`` for byte-shuffled zstandard (the ``zstd`` extra), 16% smaller for fp32 and
         31% for bf16. Every node reads every codec; nodes of one run may differ.
-    synchronous
-        Make ``step`` wait for a published round to be committed and installed before training
-        on, standard DiLoCo's barrier, once ``in_flight`` rounds are outstanding. By default
-        training goes on and the commit overwrites the steps taken meanwhile.
     lease_every, lease_timeout
         Seconds between renewals of this node's lease, and seconds without a renewal after
         which the other nodes stop waiting for it. A round closes at ``quorum_size`` snapshots
@@ -99,7 +95,6 @@ class Session:
         poll_interval: float = 1.0,
         backend: Backend | None = None,
         compression: Compression = "off",
-        synchronous: bool = False,
         lease_every: float = 60.0,
         lease_timeout: float = 120.0,
     ) -> None:
@@ -128,7 +123,6 @@ class Session:
             learner_id=learner_id,
             backend=backend,
             poll_interval=poll_interval,
-            synchronous=synchronous,
             lease_every=lease_every,
             lease_timeout=lease_timeout,
             compression=compression,
@@ -152,7 +146,8 @@ class Session:
     def step(self, *, samples: int) -> None:
         """Account for one training step of ``samples`` tokens; never awaits or does I/O.
 
-        Blocks only when ``synchronous``. Raises what either background thread died of.
+        Blocks only when the algorithm is synchronous. Raises what either background thread
+        died of.
         """
         if self._failure is not None:
             raise self._failure

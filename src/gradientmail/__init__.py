@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 from gradientmail.adapters import Adapter, Backend, MemoryAdapter, MissingExtra
 from gradientmail.algorithms import Algorithm
-from gradientmail.algorithms.diloco import DecoupledDiLoCo, Rda, WeightedMean
+from gradientmail.algorithms.diloco import DiLoCo, Rda, WeightedMean
 from gradientmail.mailbox import Mailbox, MailboxUnavailable
 from gradientmail.mailbox.memory import MemoryMailbox
 from gradientmail.protocol import RunConfigMismatch
@@ -25,7 +25,7 @@ __all__ = [
     "Adapter",
     "Algorithm",
     "Backend",
-    "DecoupledDiLoCo",
+    "DiLoCo",
     "Mailbox",
     "MailboxUnavailable",
     "MemoryAdapter",

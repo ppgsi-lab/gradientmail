@@ -42,7 +42,7 @@ def train_step(model: gm.MemoryAdapter, batch: Sequence[int]) -> None:
 def describe_session():
     def it_runs_intros_example_against_memory_mailbox():
         mailbox = gm.MemoryMailbox()
-        algorithm = gm.DecoupledDiLoCo(sync_every=100, fragments=8)
+        algorithm = gm.DiLoCo(sync_every=100, fragments=8)
         model = gm.MemoryAdapter(MODEL)
 
         def dataloader() -> Iterator[Sequence[int]]:
@@ -77,7 +77,7 @@ def describe_session():
     def when_closed_between_rounds():
         def it_commits_the_steps_trained_since_the_last_round():
             mailbox = gm.MemoryMailbox()
-            algorithm = gm.DecoupledDiLoCo(sync_every=4, fragments=2)
+            algorithm = gm.DiLoCo(sync_every=4, fragments=2)
             model = gm.MemoryAdapter({"a": f32(1.0, 2.0), "b": f32(3.0, 4.0)})
             with gm.Session(
                 model, algorithm=algorithm, mailbox=mailbox, poll_interval=0.01
@@ -102,10 +102,10 @@ def describe_session():
     def when_synchronous():
         def it_installs_a_published_round_before_the_next_step():
             mailbox = gm.MemoryMailbox()
-            algorithm = gm.DecoupledDiLoCo(sync_every=4, fragments=2, in_flight=1)
+            algorithm = gm.DiLoCo(sync_every=4, fragments=2, in_flight=1, synchronous=True)
             model = gm.MemoryAdapter({"a": f32(1.0, 2.0), "b": f32(3.0, 4.0)})
             with gm.Session(
-                model, algorithm=algorithm, mailbox=mailbox, poll_interval=0.01, synchronous=True
+                model, algorithm=algorithm, mailbox=mailbox, poll_interval=0.01
             ) as session:
                 seen = []
                 for _ in range(6):
@@ -120,7 +120,7 @@ def describe_session():
     def when_compression_is_zstd():
         def it_stores_every_payload_compressed_and_installs_the_commits():
             mailbox = gm.MemoryMailbox()
-            algorithm = gm.DecoupledDiLoCo(sync_every=4, fragments=2)
+            algorithm = gm.DiLoCo(sync_every=4, fragments=2)
             model = gm.MemoryAdapter({"a": f32(1.0, 2.0), "b": f32(3.0, 4.0)})
             session = gm.Session(
                 model, algorithm=algorithm, mailbox=mailbox, poll_interval=0.01, compression="zstd"
@@ -147,7 +147,7 @@ def describe_session():
     def when_the_algorithm_sets_a_global_batch():
         def it_gives_each_node_its_share_among_the_live_nodes():
             mailbox = gm.MemoryMailbox()
-            algorithm = gm.DecoupledDiLoCo(sync_every=4, fragments=2, global_batch_size=8)
+            algorithm = gm.DiLoCo(sync_every=4, fragments=2, global_batch_size=8)
 
             def session(name: str) -> gm.Session:
                 model = gm.MemoryAdapter({"a": f32(1.0, 2.0), "b": f32(3.0, 4.0)})
@@ -170,7 +170,7 @@ def describe_session():
     def when_a_node_leaves():
         def it_keeps_closing_rounds_with_the_nodes_that_stay():
             mailbox = gm.MemoryMailbox()
-            algorithm = gm.DecoupledDiLoCo(sync_every=4, fragments=2, quorum_size=2)
+            algorithm = gm.DiLoCo(sync_every=4, fragments=2, quorum_size=2)
             models = {
                 name: gm.MemoryAdapter({"a": f32(1.0, 2.0), "b": f32(3.0, 4.0)})
                 for name in ("leaves", "stays")
@@ -213,7 +213,7 @@ def describe_session():
 def describe_install():
     def it_loads_the_newest_commit_of_every_fragment_without_joining():
         mailbox = gm.MemoryMailbox()
-        algorithm = gm.DecoupledDiLoCo(sync_every=4, fragments=2, quorum_size=1)
+        algorithm = gm.DiLoCo(sync_every=4, fragments=2, quorum_size=1)
         model = gm.MemoryAdapter({"a": f32(1.0, 2.0), "b": f32(3.0, 4.0)})
         with gm.Session(model, algorithm=algorithm, mailbox=mailbox, poll_interval=0.01) as session:
             deadline = time.monotonic() + 20.0

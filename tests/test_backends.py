@@ -16,7 +16,7 @@ from hypothesis import strategies as st
 from gradientmail.adapters import Backend, Value
 from gradientmail.algorithms import Aggregator, Contribution, FragmentState, Participant
 from gradientmail.algorithms.diloco import (
-    DecoupledDiLoCo,
+    DiLoCo,
     DiLoCoAggregator,
     Merge,
     Rda,
@@ -93,7 +93,7 @@ def aggregator(
     momentum: float,
 ) -> Aggregator:
     schema = Schema(tuple(ParameterSpec(name, dtype, (2,)) for name in sorted(names)))
-    config = DecoupledDiLoCo(
+    config = DiLoCo(
         sync_every=10, fragments=1, in_flight=1, outer_lr=lr, outer_momentum=momentum, merge=merge
     )
     return config.aggregator(schema, names, backend)
@@ -275,7 +275,7 @@ def describe_close_round():
         generator = random.Random(7)
         names = ["a", "b"]
         schema = Schema(tuple(ParameterSpec(name, "BF16", (64,)) for name in names))
-        config = DecoupledDiLoCo(sync_every=10, fragments=1, in_flight=1)
+        config = DiLoCo(sync_every=10, fragments=1, in_flight=1)
         close = config.aggregator(schema, names, backend)
         state = FragmentState(
             version=0,
@@ -300,7 +300,7 @@ def describe_close_round():
         generator = random.Random(11)
         names = ["a", "b"]
         schema = Schema(tuple(ParameterSpec(name, "F32", (64,)) for name in names))
-        config = DecoupledDiLoCo(sync_every=10, fragments=1, in_flight=1)
+        config = DiLoCo(sync_every=10, fragments=1, in_flight=1)
         state = FragmentState(
             version=0,
             theta={n: f32(*(generator.gauss(0.0, 1.0) for _ in range(64))) for n in names},
@@ -369,7 +369,7 @@ def describe_close_round():
 def describe_decoupled_diloco():
     def it_builds_a_diloco_aggregator_on_the_given_backend(backend: Backend):
         schema = Schema((ParameterSpec("w", "F32", (2,)),))
-        algorithm = DecoupledDiLoCo(sync_every=10, fragments=1, in_flight=1)
+        algorithm = DiLoCo(sync_every=10, fragments=1, in_flight=1)
 
         built = algorithm.aggregator(schema, ["w"], backend)
 

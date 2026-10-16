@@ -21,7 +21,7 @@ from collections.abc import Generator, Mapping, Sequence
 from dataclasses import dataclass
 
 from gradientmail.adapters import MemoryAdapter
-from gradientmail.algorithms.diloco import DecoupledDiLoCo, WeightedMean
+from gradientmail.algorithms.diloco import DiLoCo, WeightedMean
 from gradientmail.clock import MonotonicClock
 from gradientmail.learner import Learner
 from gradientmail.mailbox import Mailbox
@@ -60,9 +60,9 @@ SLOW = Profile("slow", delta=-0.5, samples=5, pace=0.004)
 DELTAS = {FAST.learner_id: FAST.delta, SLOW.learner_id: SLOW.delta}
 
 
-def algorithm(*, quorum: int) -> DecoupledDiLoCo:
+def algorithm(*, quorum: int) -> DiLoCo:
     """lr 1, momentum 0 and the weighted mean: a commit is the weighted average of the fragments."""
-    return DecoupledDiLoCo(
+    return DiLoCo(
         sync_every=8,
         fragments=2,
         in_flight=2,
@@ -80,7 +80,7 @@ class Trainer:
         self,
         profile: Profile,
         mailbox: Mailbox,
-        config: DecoupledDiLoCo,
+        config: DiLoCo,
         tensors: Mapping[str, TensorBytes] = TENSORS,
         adapter: MemoryAdapter | None = None,
     ) -> None:
@@ -196,9 +196,7 @@ class Tape:
 
 
 @contextlib.contextmanager
-def training(
-    mailbox: Mailbox, config: DecoupledDiLoCo
-) -> Generator[tuple[Trainer, Trainer], None, None]:
+def training(mailbox: Mailbox, config: DiLoCo) -> Generator[tuple[Trainer, Trainer], None, None]:
     """Both learners joined and training; stopped on the way out, whatever happened.
 
     Both hold a lease before either trains, so every round waits for both up to quorum.
@@ -219,9 +217,7 @@ def training(
         fast.stop()
 
 
-def rejoin(
-    adapter: MemoryAdapter, learner_id: str, mailbox: Mailbox, config: DecoupledDiLoCo
-) -> None:
+def rejoin(adapter: MemoryAdapter, learner_id: str, mailbox: Mailbox, config: DiLoCo) -> None:
     """Start and close a bare learner on ``adapter``: it then holds the newest commits."""
     learner = Learner(
         adapter=adapter,

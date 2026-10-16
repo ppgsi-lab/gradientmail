@@ -24,7 +24,7 @@ import torch.nn
 from gradientmail.adapters import Adapter
 from gradientmail.adapters.mlx import MlxAdapter
 from gradientmail.adapters.torch import TorchAdapter
-from gradientmail.algorithms.diloco import DecoupledDiLoCo
+from gradientmail.algorithms.diloco import DiLoCo
 from gradientmail.clock import MonotonicClock
 from gradientmail.learner import Learner
 from gradientmail.mailbox import Mailbox
@@ -114,7 +114,7 @@ def describe_two_frameworks_one_syncer():
     def it_leaves_both_models_with_identical_bytes_after_three_rounds_through_moto(
         connect: Callable[[], Mailbox],
     ):
-        algorithm = DecoupledDiLoCo(sync_every=8, fragments=2, quorum_size=2)
+        algorithm = DiLoCo(sync_every=8, fragments=2, quorum_size=2)
         torch_model, mlx_model = TorchMLP(), MlxMLP()
         initial = TorchAdapter(torch_model).snapshot(NAMES)
         MlxAdapter(mlx_model).apply(initial)

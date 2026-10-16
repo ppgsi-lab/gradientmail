@@ -18,7 +18,7 @@ import pytest
 from fakes import FakeClock
 
 from gradientmail.algorithms import Estimates
-from gradientmail.algorithms.diloco import DecoupledDiLoCo, WeightedMean, grace_window
+from gradientmail.algorithms.diloco import DiLoCo, WeightedMean, grace_window
 from gradientmail.mailbox.memory import MemoryMailbox
 from gradientmail.protocol import (
     Exchange,
@@ -55,10 +55,10 @@ TIMINGS = Estimates(step=0.2, quorum=0.1, sync=0.1)
 WINDOW = grace_window(TIMINGS, 2, 5)
 
 
-def algorithm(*, quorum: int = 1, lr: float = 1.0, momentum: float = 0.0) -> DecoupledDiLoCo:
+def algorithm(*, quorum: int = 1, lr: float = 1.0, momentum: float = 0.0) -> DiLoCo:
     """lr 1 and momentum 0 with the weighted mean make Θ the anchor minus the token-weighted
     mean of the published deltas."""
-    return DecoupledDiLoCo(
+    return DiLoCo(
         sync_every=10,
         fragments=2,
         in_flight=2,
@@ -73,7 +73,7 @@ def algorithm(*, quorum: int = 1, lr: float = 1.0, momentum: float = 0.0) -> Dec
 class Rig:
     store: MemoryMailbox
     clock: FakeClock
-    config: DecoupledDiLoCo
+    config: DiLoCo
 
     @property
     def exchange(self) -> Exchange:

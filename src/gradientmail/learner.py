@@ -6,8 +6,8 @@ anchor it was trained from, to the publish loop when a round is due; the publish
 computes their difference in the backend and publishes that delta. A daemon thread runs the
 receive and publish loops on its own event loop; the two sides meet only through two
 ``queue.SimpleQueue``s, so ``step()`` never awaits and never does I/O. It blocks only when
-asked to: a synchronous learner waits in ``step()`` for its published rounds to be installed,
-and ``close()`` waits for the last ones.
+the algorithm is synchronous, waiting in ``step()`` for its published rounds to be
+installed, and ``close()`` waits for the last ones.
 
 A fetched batch is queued only once every payload in it is in hand, so ``rounds_seen`` never
 runs ahead of a fragment that is not yet applied: that is what keeps a live learner's
@@ -152,10 +152,10 @@ class Learner:
 
     ``start`` blocks until the model holds the newest committed version of every fragment,
     then starts the communication thread. A failure on that thread ends both loops and is
-    raised from the next ``step()``. A ``synchronous`` learner waits in ``step()`` for a
-    published round to be committed and installed before training on, as standard DiLoCo does;
-    otherwise training goes on and the commit overwrites the steps taken meanwhile. The lease
-    is renewed every ``lease_every`` seconds and the other learners' leases are presumed lost
+    raised from the next ``step()``. When the algorithm is ``synchronous``, ``step()`` waits for
+    a published round to be committed and installed before training on, as standard DiLoCo
+    does; otherwise training goes on and the commit overwrites the steps taken meanwhile. The
+    lease is renewed every ``lease_every`` seconds and the other learners' leases are presumed lost
     after ``lease_timeout`` seconds without a change.
 
     What goes out is ``anchor - θ``, computed in ``backend`` (the installed one by default)
@@ -173,7 +173,6 @@ class Learner:
         backend: Backend | None = None,
         clock: Clock | None = None,
         poll_interval: float = 1.0,
-        synchronous: bool = False,
         lease_every: float = 60.0,
         lease_timeout: float = 120.0,
         compression: Compression = "off",
@@ -188,7 +187,6 @@ class Learner:
         self._backend = backend if backend is not None else default_backend()
         self._clock = clock if clock is not None else MonotonicClock()
         self._poll_interval = poll_interval
-        self._synchronous = synchronous
         self._lease_every = lease_every
         self._lease_timeout = lease_timeout
         self._exchange = Exchange(mailbox, clock=self._clock, compression=compression)
@@ -251,9 +249,9 @@ class Learner:
 
         Queued fragment versions are validated against the schema and applied here, while the
         model is quiescent, and so is the snapshot of a fragment whose round is due. Only bytes
-        are copied; the delta, packing, hashing and I/O happen on the communication thread. A
-        synchronous learner then waits until fewer than ``in_flight`` of its rounds are
-        outstanding; the wait does not count as step time.
+        are copied; the delta, packing, hashing and I/O happen on the communication thread. When
+        the algorithm is synchronous, it then waits until fewer than ``in_flight`` of its rounds
+        are outstanding; the wait does not count as step time.
         """
         if self._failure is not None:
             raise self._failure
@@ -272,7 +270,7 @@ class Learner:
         )
         if round is not None:
             state = self._publish(run, state, round)
-        if self._synchronous:
+        if self._algorithm.synchronous:
             state = self._settled(
                 run,
                 state,

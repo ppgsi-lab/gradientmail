@@ -34,7 +34,7 @@ import torch
 
 import gradientmail as gm
 
-ALGORITHM = gm.DecoupledDiLoCo(sync_every=20, fragments=2, quorum_size=2)
+ALGORITHM = gm.DiLoCo(sync_every=20, fragments=2, quorum_size=2)
 BATCH = 32
 
 

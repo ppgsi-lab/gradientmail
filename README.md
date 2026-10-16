@@ -31,7 +31,7 @@ import gradientmail as gm
 
 with gm.Session(
     model,
-    algorithm=gm.DecoupledDiLoCo(sync_every=100, fragments=8),
+    algorithm=gm.DiLoCo(sync_every=100, fragments=8),
     mailbox=gm.S3Mailbox(bucket="my-training", prefix="experiments/run-1"),
 ) as session:
     for batch in dataloader:
@@ -43,7 +43,9 @@ Run this on each node with the same bucket, prefix, algorithm configuration and 
 
 `sync_every=100, fragments=8` splits the model into up to eight parameter groups, each synchronized every 100 local steps. `step(samples=...)` reports the tokens or samples processed by that optimizer step. Leaving the context publishes pending updates and waits for commits, stopping the wait if the run stalls.
 
-Training continues during synchronization. Installing a committed fragment replaces local updates made while it was in flight. Pass `synchronous=True` to `Session` to wait when its in-flight limit is reached.
+Training continues during synchronization. Installing a committed fragment replaces local updates made while it was in flight. Pass `synchronous=True` to `gm.DiLoCo` to make every node wait when its in-flight limit is reached.
+
+The defaults follow Decoupled DiLoCo. `fragments=1, in_flight=1, synchronous=True, merge=gm.WeightedMean()` with `quorum_size` equal to the number of nodes is standard DiLoCo.
 
 `quorum_size` sets the target number of contributions per round (default 1). Rounds can close with fewer contributions once every live node has reported. Crashed nodes stop being counted after their lease expires (default 120 seconds).
 

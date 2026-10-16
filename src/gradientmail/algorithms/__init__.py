@@ -155,6 +155,12 @@ class Algorithm(Protocol):
 
     def quorum(self) -> int: ...
 
+    @property
+    def synchronous(self) -> bool:
+        """Whether a learner's ``step()`` waits, once ``in_flight`` of its rounds are
+        outstanding, for the oldest to be committed and installed."""
+        ...
+
     def global_batch(self) -> int | None:
         """The batch the live learners share between them; ``None`` when each sets its own."""
         ...

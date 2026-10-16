@@ -21,7 +21,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from gradientmail.adapters import MemoryAdapter
-from gradientmail.algorithms.diloco import DecoupledDiLoCo, WeightedMean
+from gradientmail.algorithms.diloco import DiLoCo, WeightedMean
 from gradientmail.clock import MonotonicClock
 from gradientmail.mailbox.memory import MemoryMailbox
 from gradientmail.protocol import Exchange, RoundRecord
@@ -44,7 +44,7 @@ class Profile:
 FAST = Profile("fast", delta=0.25, samples=2, pace=0.001)
 SLOW = Profile("slow", delta=-0.5, samples=5, pace=0.004)
 DELTAS = {FAST.learner_id: FAST.delta, SLOW.learner_id: SLOW.delta}
-ALGORITHM = DecoupledDiLoCo(
+ALGORITHM = DiLoCo(
     sync_every=8,
     fragments=2,
     in_flight=2,

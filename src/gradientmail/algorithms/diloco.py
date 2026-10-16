@@ -1,4 +1,4 @@
-"""Decoupled DiLoCo: its configuration, the pure pieces of its round logic and the outer step.
+"""DiLoCo: its configuration, the pure pieces of its round logic and the outer step.
 
 The outer step (``DiLoCoAggregator.close_round``) is written once, over the ``Value``
 arithmetic of whatever ``Backend`` the syncer runs on, so this module imports no framework.
@@ -22,7 +22,7 @@ from gradientmail.algorithms import (
 from gradientmail.serialization import DType, Schema
 
 __all__ = [
-    "DecoupledDiLoCo",
+    "DiLoCo",
     "DiLoCoAggregator",
     "Merge",
     "Rda",
@@ -53,11 +53,16 @@ type Merge = WeightedMean | Rda
 
 
 @dataclass(frozen=True)
-class DecoupledDiLoCo(Algorithm):
-    """Decoupled DiLoCo configuration: ``sync_every`` is H, ``fragments`` is P, ``in_flight`` is τ.
+class DiLoCo(Algorithm):
+    """DiLoCo configuration: ``sync_every`` is H, ``fragments`` is P, ``in_flight`` is τ.
 
-    Standard DiLoCo is ``fragments=1`` with ``quorum_size`` equal to the number of learners;
-    Local SGD is ``outer_lr=1, outer_momentum=0, merge=WeightedMean()``.
+    The defaults are Decoupled DiLoCo's. Standard DiLoCo is ``fragments=1, in_flight=1,
+    synchronous=True, merge=WeightedMean()`` with ``quorum_size`` equal to the number of
+    learners; Local SGD is ``outer_lr=1, outer_momentum=0, merge=WeightedMean()``.
+
+    ``synchronous`` makes every learner's ``step()`` wait, once ``in_flight`` of its rounds are
+    outstanding, until the oldest is committed and installed: standard DiLoCo's barrier.
+    Otherwise training goes on and the commit overwrites the steps taken meanwhile.
 
     ``global_batch_size`` fixes the batch the live learners share: each trains on its share,
     so a learner joining shrinks the others' batches instead of growing the global batch.
@@ -71,6 +76,7 @@ class DecoupledDiLoCo(Algorithm):
     sync_every: int
     fragments: int
     in_flight: int = 2
+    synchronous: bool = False
     quorum_size: int = 1
     outer_lr: float = 0.7
     outer_momentum: float = 0.9
@@ -126,6 +132,7 @@ class DecoupledDiLoCo(Algorithm):
             "sync_every": self.sync_every,
             "fragments": self.fragments,
             "in_flight": self.in_flight,
+            "synchronous": self.synchronous,
             "quorum_size": self.quorum_size,
             "outer_lr": self.outer_lr,
             "outer_momentum": self.outer_momentum,
@@ -151,6 +158,13 @@ class DecoupledDiLoCo(Algorithm):
                     return float(value)
                 case other:
                     raise ValueError(f"{key!r} must be a number, got {other!r}")
+
+        def boolean(key: str) -> bool:
+            match data.get(key):
+                case bool() as value:
+                    return value
+                case other:
+                    raise ValueError(f"{key!r} must be a boolean, got {other!r}")
 
         def optional_integer(key: str) -> int | None:
             match data.get(key):
@@ -186,6 +200,7 @@ class DecoupledDiLoCo(Algorithm):
             sync_every=integer("sync_every"),
             fragments=integer("fragments"),
             in_flight=integer("in_flight"),
+            synchronous=boolean("synchronous"),
             quorum_size=integer("quorum_size"),
             outer_lr=number("outer_lr"),
             outer_momentum=number("outer_momentum"),
@@ -197,7 +212,7 @@ class DecoupledDiLoCo(Algorithm):
 
 @dataclass(frozen=True)
 class DiLoCoAggregator(Aggregator):
-    """Closes one round of the fragment holding ``names`` with Decoupled DiLoCo's outer step.
+    """Closes one round of the fragment holding ``names`` with DiLoCo's outer step.
 
     The contributions are the deltas the learners computed against the published ``theta``,
     which is the anchor as is, so a learner whose bytes did not change contributes an exactly
@@ -206,7 +221,7 @@ class DiLoCoAggregator(Aggregator):
     ``outer["momentum.<name>"]``. Pure for one backend: equal inputs give equal bytes.
     """
 
-    config: DecoupledDiLoCo
+    config: DiLoCo
     schema: Schema
     names: Sequence[str]
     backend: Backend

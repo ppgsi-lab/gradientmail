@@ -17,7 +17,7 @@ import pytest
 from fakes import FakeClock, FaultyMailbox
 
 from gradientmail.algorithms import Estimates, Participant
-from gradientmail.algorithms.diloco import DecoupledDiLoCo
+from gradientmail.algorithms.diloco import DiLoCo
 from gradientmail.mailbox.memory import MemoryMailbox
 from gradientmail.protocol import (
     Committed,
@@ -54,7 +54,7 @@ def manifest_draft(created_by: str) -> ManifestDraft:
     return ManifestDraft(
         schema=SCHEMA,
         plan=PLAN,
-        algorithm=DecoupledDiLoCo(sync_every=100, fragments=2).to_json(),
+        algorithm=DiLoCo(sync_every=100, fragments=2).to_json(),
         created_by=created_by,
     )
 
@@ -95,7 +95,7 @@ def describe_records():
     manifest = Manifest(
         schema=SCHEMA,
         plan=PLAN,
-        algorithm=DecoupledDiLoCo(sync_every=100, fragments=2).to_json(),
+        algorithm=DiLoCo(sync_every=100, fragments=2).to_json(),
         created_by="learner-a",
         init=(ref("blobs/init/000/a.safetensors"), ref("blobs/init/001/b.safetensors")),
     )

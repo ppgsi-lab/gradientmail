@@ -296,7 +296,7 @@ import gradientmail as gm
 
 with gm.Session(
     model,
-    algorithm=gm.DecoupledDiLoCo(sync_every=100, fragments=8),
+    algorithm=gm.DiLoCo(sync_every=100, fragments=8),
     mailbox=gm.S3Mailbox(bucket="my-training", prefix="runs/example"),
 ) as session:
     for batch in dataloader:
@@ -324,8 +324,8 @@ same run must use the same unit.
 
 By default, training continues during exchange. Installing a committed fragment
 replaces that fragment's local parameters, including updates made while its
-contribution was in flight. `synchronous=True` makes the learner wait when its
-configured in-flight limit is reached.
+contribution was in flight. `gm.DiLoCo(..., synchronous=True)` makes every
+learner wait when its configured in-flight limit is reached.
 
 `quorum_size` defaults to `1`, allowing a round to proceed with one contribution.
 A larger quorum seeks more contributions before merging, at the cost of more

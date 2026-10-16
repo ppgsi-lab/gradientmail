@@ -224,7 +224,7 @@ def train(
         if solo
         else gm.Session(
             model,
-            algorithm=gm.DecoupledDiLoCo(
+            algorithm=gm.DiLoCo(
                 sync_every=sync_every,
                 fragments=fragments,
                 quorum_size=quorum,
