@@ -134,6 +134,8 @@ class Manifest(ManifestDraft):
 
 @dataclass(frozen=True)
 class SnapshotDraft:
+    """``final`` marks a snapshot published by ``close()``: the learner trains no further."""
+
     learner: str
     round: int
     local_step: int
@@ -143,6 +145,7 @@ class SnapshotDraft:
     rounds_seen: int
     step_seconds: float
     schema_digest: str
+    final: bool
 
     def __post_init__(self) -> None:
         if not _LEARNER_ID.fullmatch(self.learner):
@@ -307,6 +310,7 @@ def encode(record: Record) -> bytes:
                     "rounds_seen": record.rounds_seen,
                     "step_seconds": record.step_seconds,
                     "schema_digest": record.schema_digest,
+                    "final": record.final,
                     "payload": ref(record.payload),
                 }
             case RoundRecord():
@@ -389,6 +393,7 @@ def decode_snapshot(data: bytes) -> Snapshot:
         rounds_seen=fields.integer("rounds_seen"),
         step_seconds=fields.number("step_seconds"),
         schema_digest=fields.string("schema_digest"),
+        final=fields.boolean("final"),
         payload=_ref(fields.nested("payload")),
     )
 
@@ -508,6 +513,7 @@ class Exchange:
             rounds_seen=draft.rounds_seen,
             step_seconds=draft.step_seconds,
             schema_digest=draft.schema_digest,
+            final=draft.final,
             payload=payload,
         )
         # False means this (round, learner) already has a record: an earlier attempt landed.
@@ -705,6 +711,13 @@ class _Fields:
 
     def integer(self, key: str) -> int:
         return _integer(self.values.get(key), key)
+
+    def boolean(self, key: str) -> bool:
+        match self.values.get(key):
+            case bool() as value:
+                return value
+            case other:
+                raise ProtocolError(f"{key}: expected a boolean, got {other!r}")
 
     def number(self, key: str) -> float:
         match self.values.get(key):

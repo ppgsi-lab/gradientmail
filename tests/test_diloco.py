@@ -156,8 +156,13 @@ def describe_diloco():
     @pytest.mark.parametrize("global_batch_size", [None, 512], ids=["own_batches", "shared_batch"])
     @pytest.mark.parametrize("delta_dtype", [None, "BF16"], ids=["own_dtype", "bf16_deltas"])
     @pytest.mark.parametrize("synchronous", [False, True], ids=["overlapped", "synchronous"])
+    @pytest.mark.parametrize("flush_on_close", [False, True], ids=["drop_tail", "flush_tail"])
     def it_round_trips_through_json(
-        merge: Merge, global_batch_size: int | None, delta_dtype: DType | None, synchronous: bool
+        merge: Merge,
+        global_batch_size: int | None,
+        delta_dtype: DType | None,
+        synchronous: bool,
+        flush_on_close: bool,
     ):
         algorithm = DiLoCo(
             sync_every=100,
@@ -170,6 +175,7 @@ def describe_diloco():
             merge=merge,
             global_batch_size=global_batch_size,
             delta_dtype=delta_dtype,
+            flush_on_close=flush_on_close,
         )
 
         encoded = json.loads(json.dumps(algorithm.to_json(), sort_keys=True))

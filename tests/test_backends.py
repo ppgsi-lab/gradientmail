@@ -78,9 +78,16 @@ def read(backend: Backend, tensor: TensorBytes) -> list[float]:
 
 
 def contribution(
-    learner: str, tensors: Mapping[str, TensorBytes], *, tokens: int, steps: int = 1
+    learner: str,
+    tensors: Mapping[str, TensorBytes],
+    *,
+    tokens: int,
+    steps: int = 1,
+    final: bool = False,
 ) -> Contribution:
-    return Contribution(learner, steps, steps, tokens, step_seconds=0.1, tensors=tensors)
+    return Contribution(
+        learner, steps, steps, tokens, step_seconds=0.1, final=final, tensors=tensors
+    )
 
 
 def aggregator(
@@ -364,6 +371,40 @@ def describe_close_round():
             assert new_state.theta["w"] == published
             assert new_state.outer["master.w"] == master
             assert floats(new_state.outer["momentum.w"]) == [0.0, 0.0]
+
+    def when_every_contribution_is_final():
+        def it_moves_by_the_merged_delta_and_keeps_the_momentum(backend: Backend):
+            state = FragmentState(
+                version=3, theta={"w": f32(1, 1)}, outer={"momentum.w": f32(4, -2)}
+            )
+            contributions = [
+                contribution("a", {"w": f32(1, 0)}, tokens=2, final=True),
+                contribution("b", {"w": f32(0, 1)}, tokens=1, final=True),
+            ]
+            close = aggregator(backend, "F32", ["w"], merge=WeightedMean(), lr=0.7, momentum=0.9)
+
+            new_state, _ = close.close_round(state, contributions)
+
+            assert floats(new_state.theta["w"]) == pytest.approx([0.2, 0.8], rel=1e-6)
+            assert new_state.outer == {"momentum.w": f32(4, -2)}
+            assert new_state.version == 4
+
+    def when_a_contribution_is_not_final():
+        def it_takes_the_nesterov_step(backend: Backend):
+            state = FragmentState(
+                version=3, theta={"w": f32(1, 1)}, outer={"momentum.w": f32(4, -2)}
+            )
+            contributions = [
+                contribution("a", {"w": f32(1, 0)}, tokens=2, final=True),
+                contribution("b", {"w": f32(0, 1)}, tokens=1, final=False),
+            ]
+            close = aggregator(backend, "F32", ["w"], merge=WeightedMean(), lr=0.7, momentum=0.9)
+
+            new_state, _ = close.close_round(state, contributions)
+
+            # Δ = (0.8, 0.2), m = 0.9·(4, -2) + Δ, Θ = (1, 1) - 0.7·(Δ + 0.9·m).
+            assert floats(new_state.theta["w"]) == pytest.approx([-2.332, 1.868], rel=1e-6)
+            assert floats(new_state.outer["momentum.w"]) == pytest.approx([4.4, -1.6], rel=1e-6)
 
 
 def describe_decoupled_diloco():

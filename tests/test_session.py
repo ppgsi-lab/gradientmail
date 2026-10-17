@@ -25,6 +25,10 @@ def f32(*values: float) -> gm.TensorBytes:
     return gm.TensorBytes("F32", (len(values),), array("f", values).tobytes())
 
 
+def floats(tensor: gm.TensorBytes) -> list[float]:
+    return array("f", tensor.data).tolist()
+
+
 # Eight tensors, so INTRO's ``fragments=8`` is the effective fragment count.
 MODEL = {f"block{i}.weight": f32(float(i), float(i)) for i in range(8)}
 
@@ -75,7 +79,7 @@ def describe_session():
         assert {name: model.tensors[name] for name in theta} == dict(theta)
 
     def when_closed_between_rounds():
-        def it_commits_the_steps_trained_since_the_last_round():
+        def it_drops_the_steps_trained_since_the_last_round():
             mailbox = gm.MemoryMailbox()
             algorithm = gm.DiLoCo(sync_every=4, fragments=2)
             model = gm.MemoryAdapter({"a": f32(1.0, 2.0), "b": f32(3.0, 4.0)})
@@ -87,17 +91,70 @@ def describe_session():
                     session.step(samples=1)
 
             exchange = Exchange(mailbox, clock=MonotonicClock())
-            records = asyncio.run(exchange.rounds_after(-1))
-            committed = {
-                name: tensor
-                for record in records
-                for name, tensor in (asyncio.run(exchange.fetch(record.theta)) or {}).items()
-            }
-            # Round 0 ("a") went out on schedule at step 2; round 1 ("b") was a step short of
-            # its gap and is what close() published, with every step since the start.
-            assert [(r.round, r.participants[0].steps) for r in records] == [(0, 2), (1, 3)]
-            assert dict(model.tensors) == committed
-            assert session.rounds_seen == 1
+            [record] = asyncio.run(exchange.rounds_after(-1))
+            committed = asyncio.run(exchange.fetch(record.theta))
+            assert committed is not None
+            # Round 0 ("a") went out on schedule at step 2; the third step reaches neither the
+            # run nor the model, which holds round 0's "a" and the initial "b".
+            assert (record.round, record.participants[0].steps) == (0, 2)
+            assert dict(model.tensors) == {**committed, "b": f32(3.0, 4.0)}
+            assert session.rounds_seen == 0
+
+        def when_the_algorithm_flushes_on_close():
+            def it_commits_the_steps_trained_since_the_last_round():
+                mailbox = gm.MemoryMailbox()
+                algorithm = gm.DiLoCo(sync_every=4, fragments=2, flush_on_close=True)
+                model = gm.MemoryAdapter({"a": f32(1.0, 2.0), "b": f32(3.0, 4.0)})
+                with gm.Session(
+                    model, algorithm=algorithm, mailbox=mailbox, poll_interval=0.01
+                ) as session:
+                    for _ in range(3):
+                        train_step(model, (1,))
+                        session.step(samples=1)
+
+                exchange = Exchange(mailbox, clock=MonotonicClock())
+                records = asyncio.run(exchange.rounds_after(-1))
+                committed = {
+                    name: tensor
+                    for record in records
+                    for name, tensor in (asyncio.run(exchange.fetch(record.theta)) or {}).items()
+                }
+                # Round 0 ("a") went out on schedule at step 2; round 1 ("b") was a step short
+                # of its gap and is what close() published, with every step since the start.
+                assert [(r.round, r.participants[0].steps) for r in records] == [(0, 2), (1, 3)]
+                assert dict(model.tensors) == committed
+                assert session.rounds_seen == 1
+
+            def when_earlier_rounds_built_up_momentum():
+                def it_commits_the_parameters_it_trained_without_an_outer_step():
+                    mailbox = gm.MemoryMailbox()
+                    # One round in flight, synchronous: every round a step publishes is
+                    # installed before the step returns, so close() starts with nothing
+                    # outstanding.
+                    algorithm = gm.DiLoCo(
+                        sync_every=4,
+                        fragments=2,
+                        in_flight=1,
+                        synchronous=True,
+                        outer_momentum=0.9,
+                        flush_on_close=True,
+                    )
+                    model = gm.MemoryAdapter({"a": f32(1.0, 2.0), "b": f32(3.0, 4.0)})
+                    with gm.Session(
+                        model, algorithm=algorithm, mailbox=mailbox, poll_interval=0.01
+                    ) as session:
+                        for _ in range(9):
+                            train_step(model, (1,))
+                            session.step(samples=1)
+                        trained = {name: floats(tensor) for name, tensor in model.tensors.items()}
+
+                    # Rounds 0 to 3 went out on schedule; close() published round 4 ("a", three
+                    # steps since round 2) and round 5 ("b", one step since round 3). Nesterov
+                    # would have carried both along the momentum of the earlier rounds.
+                    assert session.rounds_seen == 5
+                    assert {name: floats(tensor) for name, tensor in model.tensors.items()} == {
+                        name: pytest.approx(values, rel=1e-6) for name, values in trained.items()
+                    }
 
     def when_synchronous():
         def it_installs_a_published_round_before_the_next_step():

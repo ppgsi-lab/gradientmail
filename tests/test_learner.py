@@ -81,6 +81,7 @@ def other_snapshot(round: int, learner: str) -> SnapshotDraft:
         rounds_seen=-1,
         step_seconds=0.1,
         schema_digest=MemoryAdapter(TENSORS).schema().digest(),
+        final=False,
     )
 
 
@@ -248,7 +249,12 @@ def describe_learner():
             assert dict(adapter.tensors) == {**TENSORS, **A1}
             assert trained.rounds_seen == 0
             untouched = snapshot(exchange, 1)
-            assert (untouched.steps, untouched.tokens, untouched.base_version) == (4, 12, 0)
+            assert (
+                untouched.steps,
+                untouched.tokens,
+                untouched.base_version,
+                untouched.final,
+            ) == (4, 12, 0, False)
             reset = snapshot(exchange, 2)
             since_reset = published_at - applied_at
             assert (reset.steps, reset.tokens, reset.base_version, reset.local_step) == (
@@ -387,19 +393,31 @@ def describe_learner():
             assert dict(asyncio.run(exchange.leases())) == {}
 
     def when_closed_with_steps_no_round_has_taken():
-        def it_publishes_every_fragment_and_gives_up_once_nothing_lands(clock: FakeClock):
+        def it_publishes_nothing(clock: FakeClock):
             mailbox = MemoryMailbox()
-            exchange = Exchange(mailbox, clock=clock)
             trained, _ = started(mailbox, clock)
             trained.step(samples=3)
 
             trained.close()
 
-            # One step of a two-step gap: neither round was due. Both fragments go out, and
-            # with nobody closing rounds the wait ends after the lease timeout plus the floor
-            # of thirty polls.
-            assert (snapshot(exchange, 0).steps, snapshot(exchange, 1).steps) == (1, 1)
-            assert clock.now() >= 0.1 + 30 * 0.01
+            assert asyncio.run(mailbox.list("snapshots/")) == []
+
+        def when_the_algorithm_flushes_on_close():
+            def it_publishes_every_fragment_and_gives_up_once_nothing_lands(clock: FakeClock):
+                mailbox = MemoryMailbox()
+                exchange = Exchange(mailbox, clock=clock)
+                algorithm = DiLoCo(sync_every=4, fragments=2, in_flight=2, flush_on_close=True)
+                trained, _ = started(mailbox, clock, algorithm=algorithm)
+                trained.step(samples=3)
+
+                trained.close()
+
+                # One step of a two-step gap: neither round was due. Both fragments go out, and
+                # with nobody closing rounds the wait ends after the lease timeout plus the
+                # floor of thirty polls.
+                assert (snapshot(exchange, 0).steps, snapshot(exchange, 1).steps) == (1, 1)
+                assert snapshot(exchange, 0).final and snapshot(exchange, 1).final
+                assert clock.now() >= 0.1 + 30 * 0.01
 
     def when_two_versions_of_a_fragment_arrive_together():
         def it_applies_only_the_newest(clock: FakeClock):

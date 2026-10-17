@@ -274,7 +274,7 @@ class Learner:
             publishers=self._publishers,
         )
         if round is not None:
-            state = self._publish(run, state, round)
+            state = self._publish(run, state, round, final=False)
         if self._algorithm.synchronous:
             state = self._settled(
                 run,
@@ -286,36 +286,39 @@ class Learner:
         self._state = state
 
     def close(self) -> None:
-        """Publish the steps trained since the last rounds, wait for their commits, then stop.
+        """Wait for this learner's rounds in flight to be committed and installed, then stop.
 
-        Every fragment trained since it was last overwritten is published, round after round,
-        and each round is waited for and installed, so the run's parameters end with this
-        learner's last steps and the model holds them. The wait gives up once nothing has
-        landed for the lease timeout plus the takeover timeout the last record predicts (at
-        least thirty polls): time for crashed learners to be presumed lost, then for a round
-        without them to be presumed not to commit, as when nobody is left to close one. Then
-        the lease is released, the outbox is drained, bounded by ``_CLOSE_TIMEOUT`` seconds, and
-        the communication thread is joined.
+        The steps trained since a fragment's last round are dropped: the model is set back to
+        the newest version of every fragment it installed. With the algorithm's
+        ``flush_on_close`` they are published instead, as final snapshots, round after round,
+        each waited for and installed, so the run's parameters end with them and the model holds
+        them. The wait gives up once nothing has landed for the lease timeout plus the takeover
+        timeout the last record predicts (at least thirty polls): time for crashed learners to
+        be presumed lost, then for a round without them to be presumed not to commit, as when
+        nobody is left to close one. Then the lease is released, the outbox is drained, bounded
+        by ``_CLOSE_TIMEOUT`` seconds, and the communication thread is joined. Closing again
+        does nothing.
         """
         if self._thread is None:
             return
         try:
             if self._run is not None and self._failure is None:
-                log.info(
-                    "%s: closing: publishing the steps since the last rounds", self._learner_id
-                )
-                self._state = self._flushed(self._run, self._state)
+                self._state = self._concluded(self._run, self._state)
+                if not self._algorithm.flush_on_close:
+                    for anchor in self._anchors:
+                        self._adapter.apply(anchor)
         finally:
             self._outbox.put(None)
             self._thread.join(_CLOSE_TIMEOUT)
             if self._thread.is_alive() and self._main is not None:
                 log.warning(
-                    "%s: still publishing %.0f s after the flush; cancelling",
+                    "%s: still publishing %.0f s after the last rounds; cancelling",
                     self._learner_id,
                     _CLOSE_TIMEOUT,
                 )
                 self._main.get_loop().call_soon_threadsafe(self._main.cancel)
                 self._thread.join()
+            self._thread = None
 
     async def join(self) -> None:
         """Create the run or adopt it, then load the newest committed version of every fragment.
@@ -524,9 +527,11 @@ class Learner:
         others = await self._exchange.publishers(round)
         self._publishers = Publishers(round, others - {self._learner_id})
 
-    def _publish(self, run: "_Run", state: LearnerState, round: int) -> LearnerState:
+    def _publish(
+        self, run: "_Run", state: LearnerState, round: int, *, final: bool
+    ) -> LearnerState:
         """Snapshot ``round``'s fragment and its anchor for the publish loop; the bytes are
-        copied here."""
+        copied here. ``final`` when closing."""
         fragment = run.schedule.fragment_of(round)
         draft = SnapshotDraft(
             learner=self._learner_id,
@@ -538,6 +543,7 @@ class Learner:
             rounds_seen=state.rounds_seen,
             step_seconds=state.step_seconds,
             schema_digest=run.digest,
+            final=final,
         )
         self._outbox.put(
             _Outgoing(draft, self._anchors[fragment], self._adapter.snapshot(run.plan[fragment]))
@@ -621,28 +627,36 @@ class Learner:
                 break
         return state
 
-    def _flushed(self, run: "_Run", state: LearnerState) -> LearnerState:
-        """Publish every fragment trained since its last overwrite and wait for the commits.
+    def _concluded(self, run: "_Run", state: LearnerState) -> LearnerState:
+        """Wait for the commits of the rounds in flight; with ``flush_on_close``, first publish
+        every fragment trained since its last overwrite as a final snapshot.
 
-        Rounds go out as the schedule allows, ``in_flight`` at a time, each next one once the
-        commits make it publishable; done when nothing is publishable and nothing is
+        Flushed rounds go out as the schedule allows, ``in_flight`` at a time, each next one
+        once the commits make it publishable; done when nothing is publishable and nothing is
         outstanding, or when the run stalls for the lease timeout plus the takeover timeout.
         """
 
-        def settled(state: LearnerState) -> bool:
-            return (
-                publishable(state, run.schedule) is not None
-                or state.rounds_seen >= state.last_published
-            )
+        def flushable(state: LearnerState) -> int | None:
+            return publishable(state, run.schedule) if self._algorithm.flush_on_close else None
 
+        def settled(state: LearnerState) -> bool:
+            return flushable(state) is not None or state.rounds_seen >= state.last_published
+
+        log.info(
+            "%s: closing: %s",
+            self._learner_id,
+            "publishing the steps since the last rounds"
+            if self._algorithm.flush_on_close
+            else "waiting for the rounds in flight",
+        )
         patience = self._lease_timeout + self._estimates.timeout(self._poll_interval)
         state = self._drained(run, state)
         while True:
-            while (round := publishable(state, run.schedule)) is not None:
-                state = self._publish(run, state, round)
+            while (round := flushable(state)) is not None:
+                state = self._publish(run, state, round, final=True)
             if state.rounds_seen >= state.last_published:
                 log.info(
-                    "%s: flushed: every round up to %d is installed",
+                    "%s: closed: every round up to %d is installed",
                     self._learner_id,
                     state.last_published,
                 )

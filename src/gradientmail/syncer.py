@@ -374,6 +374,7 @@ class Syncer:
                 snapshot.steps,
                 snapshot.tokens,
                 snapshot.step_seconds,
+                snapshot.final,
                 tensors,
             )
 

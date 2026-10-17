@@ -158,7 +158,8 @@ class Session:
         self._learner.step(samples)
 
     def close(self) -> None:
-        """Publish the steps since the last rounds, wait for their commits, stop both threads.
+        """Wait for the learner's rounds in flight to commit (``Learner.close``), stop both
+        threads.
 
         The syncer keeps closing rounds until the learner is done, so a node closing alone
         still commits what it published when quorum allows.

@@ -128,6 +128,7 @@ class Rig:
             rounds_seen=round - 1,
             step_seconds=0.5,
             schema_digest=digest,
+            final=False,
         )
         tensor = f32(*delta) if dtype == "F32" else bf16(*delta)
         await self.exchange.publish_snapshot(draft, {PLAN[round % 2][0]: tensor})

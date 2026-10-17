@@ -41,7 +41,7 @@ with gm.Session(
 
 Run this on each node with the same bucket, prefix, algorithm configuration and parameter schema (names, shapes and dtypes). `model` can be a PyTorch or MLX module. The first node initializes the run; later nodes load its committed parameters before training. Use a new prefix for each run.
 
-`sync_every=100, fragments=8` splits the model into up to eight parameter groups, each synchronized every 100 local steps. `step(samples=...)` reports the tokens or samples processed by that optimizer step. Leaving the context publishes pending updates and waits for commits, stopping the wait if the run stalls.
+`sync_every=100, fragments=8` splits the model into up to eight parameter groups, each synchronized every 100 local steps. `step(samples=...)` reports the tokens or samples processed by that optimizer step. Leaving the context waits for the node's rounds in flight to commit, stopping the wait if the run stalls, and sets the model to the newest committed parameters. Steps trained since a fragment's last round are dropped, as in the DiLoCo papers; `flush_on_close=True` publishes them instead, and a round made only of those final contributions commits them without the outer momentum.
 
 Training continues during synchronization. Installing a committed fragment replaces local updates made while it was in flight. Pass `synchronous=True` to `gm.DiLoCo` to make every node wait when its in-flight limit is reached.
 

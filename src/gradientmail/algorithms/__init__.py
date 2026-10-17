@@ -61,13 +61,15 @@ class FragmentState:
 @dataclass(frozen=True)
 class Contribution:
     """One learner's accepted delta of a fragment for one round: ``anchor - θ`` as the learner
-    computed it against the version it had installed, in the algorithm's delta schema."""
+    computed it against the version it had installed, in the algorithm's delta schema.
+    ``final`` when the learner published it while closing: it trains no further."""
 
     learner: str
     local_step: int
     steps: int
     tokens: int
     step_seconds: float
+    final: bool
     tensors: Mapping[str, TensorBytes]
 
 
@@ -159,6 +161,12 @@ class Algorithm(Protocol):
     def synchronous(self) -> bool:
         """Whether a learner's ``step()`` waits, once ``in_flight`` of its rounds are
         outstanding, for the oldest to be committed and installed."""
+        ...
+
+    @property
+    def flush_on_close(self) -> bool:
+        """Whether a closing learner publishes the steps trained since each fragment's last
+        round, as final snapshots, instead of only waiting for its rounds in flight."""
         ...
 
     def global_batch(self) -> int | None:

@@ -70,6 +70,7 @@ def snapshot_draft(learner: str, round: int = 0) -> SnapshotDraft:
         rounds_seen=-1,
         step_seconds=0.25,
         schema_digest=SCHEMA.digest(),
+        final=False,
     )
 
 
@@ -109,6 +110,7 @@ def describe_records():
         rounds_seen=2,
         step_seconds=0.125,
         schema_digest=SCHEMA.digest(),
+        final=True,
         payload=ref("blobs/snapshots/0000000003/learner-a/c.safetensors"),
     )
     record = RoundRecord(
@@ -142,6 +144,7 @@ def describe_records():
                 (decode_snapshot, b"[]"),
                 (decode_snapshot, json.dumps(without_tokens).encode()),
                 (decode_snapshot, json.dumps({**fields, "round": "3"}).encode()),
+                (decode_snapshot, json.dumps({**fields, "final": 1}).encode()),
                 (
                     decode_round_record,
                     json.dumps(

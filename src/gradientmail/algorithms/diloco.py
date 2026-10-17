@@ -71,6 +71,12 @@ class DiLoCo(Algorithm):
     ``delta_dtype`` is the dtype learners publish their deltas (``anchor - θ``) in. ``None``
     keeps each parameter's own dtype, the same bytes as publishing θ; ``"BF16"`` halves an fp32
     model's uploads, rounding each delta element to 8 significant bits.
+
+    ``flush_on_close`` makes a closing learner publish the steps trained since each fragment's
+    last round as final snapshots, and a round of final snapshots alone commits the closing
+    learners' merged parameters without the outer step. Off, as in the DiLoCo papers, closing
+    waits only for the rounds in flight and those steps are dropped: in a run of many learners
+    the parameters of the few that close last are worse than the merged ones they replace.
     """
 
     sync_every: int
@@ -83,6 +89,7 @@ class DiLoCo(Algorithm):
     merge: Merge = Rda()
     global_batch_size: int | None = None
     delta_dtype: DType | None = None
+    flush_on_close: bool = False
 
     def __post_init__(self) -> None:
         if not 1 <= self.in_flight <= self.fragments <= self.sync_every:
@@ -139,6 +146,7 @@ class DiLoCo(Algorithm):
             "merge": merge(),
             "global_batch_size": self.global_batch_size,
             "delta_dtype": self.delta_dtype,
+            "flush_on_close": self.flush_on_close,
         }
 
     @classmethod
@@ -207,6 +215,7 @@ class DiLoCo(Algorithm):
             merge=merge(),
             global_batch_size=optional_integer("global_batch_size"),
             delta_dtype=optional_dtype("delta_dtype"),
+            flush_on_close=boolean("flush_on_close"),
         )
 
 
@@ -219,6 +228,12 @@ class DiLoCoAggregator(Aggregator):
     zero delta. The fp32 master lives in ``outer["master.<name>"]`` when the schema dtype is
     not F32 (otherwise the published tensor is the master) and the fp32 momentum in
     ``outer["momentum.<name>"]``. Pure for one backend: equal inputs give equal bytes.
+
+    A round whose contributions are all final (``flush_on_close``) moves the master by the
+    merged delta alone and
+    keeps the momentum: the commit holds the closing learners' parameters. Nesterov's step
+    would also move it by ``η·β²·m``, about as far as a full round moves it however few steps
+    the deltas hold, and no training follows to correct that.
     """
 
     config: DiLoCo
@@ -243,16 +258,17 @@ class DiLoCoAggregator(Aggregator):
         def stepped(name: str) -> tuple[Value, Value]:
             anchor = load(state.theta[name])
             delta = merged(name, [load(c.tensors[name]) for c in contributions])
-            master = state.outer.get(f"master.{name}")
+            stored = state.outer.get(f"master.{name}")
+            master = anchor if stored is None else load(stored)
+            momentum = load(state.outer[f"momentum.{name}"])
+            if final:
+                return master - delta, momentum
             return nesterov(
-                anchor if master is None else load(master),
-                load(state.outer[f"momentum.{name}"]),
-                delta,
-                lr=self.config.outer_lr,
-                beta=self.config.outer_momentum,
+                master, momentum, delta, lr=self.config.outer_lr, beta=self.config.outer_momentum
             )
 
         load = self.backend.load
+        final = all(c.final for c in contributions)
         weights = [weight(c.tokens, c.steps) for c in contributions]
         dtypes: Mapping[str, DType] = {spec.name: spec.dtype for spec in self.schema.parameters}
         stepped_by_name = {name: stepped(name) for name in self.names}
