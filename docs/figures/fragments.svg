@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="400" viewBox="0 0 960 400" role="img" aria-label="Eight fragment rows over 200 local steps, with sync_every = 100 and fragments = 8. DiLoCo exchanges every fragment together at steps 100 and 200, a single column. Streaming DiLoCo exchanges one fragment at a time, at steps 12, 25, 37, 50, 62, 75, 87 and 100 and again 100 steps later, a staircase: each fragment is still exchanged once every 100 steps, but each exchange carries an eighth of the model.">
+<rect width="960" height="400" rx="6" class="ground"/>
+<text x="24" y="40" class="code muted">gm.DiLoCo(sync_every=100, fragments=8)</text>
+
+<path d="M 540 70 V 334 M 880 70 V 334" class="guide"/>
+
+<text x="24" y="84" class="title">DiLoCo</text>
+<text x="24" y="102" class="small muted">The whole model, every</text>
+<text x="24" y="116" class="small muted">100 steps.</text>
+<text x="190" y="68" class="small end muted">parameters</text>
+<text x="190" y="84" class="small end muted">0</text>
+<text x="190" y="97" class="small end muted">1</text>
+<text x="190" y="110" class="small end muted">2</text>
+<text x="190" y="123" class="small end muted">3</text>
+<text x="190" y="136" class="small end muted">4</text>
+<text x="190" y="149" class="small end muted">5</text>
+<text x="190" y="162" class="small end muted">6</text>
+<text x="190" y="175" class="small end muted">7</text>
+<rect x="200" y="76" width="680" height="9" rx="4.5" class="track"/>
+<rect x="200" y="89" width="680" height="9" rx="4.5" class="track"/>
+<rect x="200" y="102" width="680" height="9" rx="4.5" class="track"/>
+<rect x="200" y="115" width="680" height="9" rx="4.5" class="track"/>
+<rect x="200" y="128" width="680" height="9" rx="4.5" class="track"/>
+<rect x="200" y="141" width="680" height="9" rx="4.5" class="track"/>
+<rect x="200" y="154" width="680" height="9" rx="4.5" class="track"/>
+<rect x="200" y="167" width="680" height="9" rx="4.5" class="track"/>
+<rect x="536" y="73" width="8" height="106" rx="4" class="xchg"/>
+<rect x="876" y="73" width="8" height="106" rx="4" class="xchg"/>
+
+<text x="24" y="236" class="title">Streaming DiLoCo</text>
+<text x="24" y="254" class="small muted">One fragment every 12 or 13</text>
+<text x="24" y="268" class="small muted">steps; each one still every</text>
+<text x="24" y="282" class="small muted">100 steps.</text>
+<path d="M 240.8 212 V 220 M 240.8 216 H 580.8 M 580.8 212 V 220" class="span"/>
+<text x="410.8" y="206" class="small mid acc">100 steps between two exchanges of fragment 0</text>
+<text x="190" y="220" class="small end muted">fragment</text>
+<text x="190" y="236" class="small end muted">0</text>
+<text x="190" y="249" class="small end muted">1</text>
+<text x="190" y="262" class="small end muted">2</text>
+<text x="190" y="275" class="small end muted">3</text>
+<text x="190" y="288" class="small end muted">4</text>
+<text x="190" y="301" class="small end muted">5</text>
+<text x="190" y="314" class="small end muted">6</text>
+<text x="190" y="327" class="small end muted">7</text>
+<rect x="200" y="228" width="680" height="9" rx="4.5" class="track"/>
+<rect x="200" y="241" width="680" height="9" rx="4.5" class="track"/>
+<rect x="200" y="254" width="680" height="9" rx="4.5" class="track"/>
+<rect x="200" y="267" width="680" height="9" rx="4.5" class="track"/>
+<rect x="200" y="280" width="680" height="9" rx="4.5" class="track"/>
+<rect x="200" y="293" width="680" height="9" rx="4.5" class="track"/>
+<rect x="200" y="306" width="680" height="9" rx="4.5" class="track"/>
+<rect x="200" y="319" width="680" height="9" rx="4.5" class="track"/>
+<rect x="236.8" y="226" width="8" height="13" rx="4" class="xchg"/>
+<rect x="576.8" y="226" width="8" height="13" rx="4" class="xchg"/>
+<rect x="281" y="239" width="8" height="13" rx="4" class="xchg"/>
+<rect x="621" y="239" width="8" height="13" rx="4" class="xchg"/>
+<rect x="321.8" y="252" width="8" height="13" rx="4" class="xchg"/>
+<rect x="661.8" y="252" width="8" height="13" rx="4" class="xchg"/>
+<rect x="366" y="265" width="8" height="13" rx="4" class="xchg"/>
+<rect x="706" y="265" width="8" height="13" rx="4" class="xchg"/>
+<rect x="406.8" y="278" width="8" height="13" rx="4" class="xchg"/>
+<rect x="746.8" y="278" width="8" height="13" rx="4" class="xchg"/>
+<rect x="451" y="291" width="8" height="13" rx="4" class="xchg"/>
+<rect x="791" y="291" width="8" height="13" rx="4" class="xchg"/>
+<rect x="491.8" y="304" width="8" height="13" rx="4" class="xchg"/>
+<rect x="831.8" y="304" width="8" height="13" rx="4" class="xchg"/>
+<rect x="536" y="317" width="8" height="13" rx="4" class="xchg"/>
+<rect x="876" y="317" width="8" height="13" rx="4" class="xchg"/>
+
+<path d="M 200 344 H 880 M 200 344 V 349 M 285 344 V 349 M 370 344 V 349 M 455 344 V 349 M 540 344 V 349 M 625 344 V 349 M 710 344 V 349 M 795 344 V 349 M 880 344 V 349" class="axis"/>
+<text x="200" y="363" class="small mid muted">0</text>
+<text x="285" y="363" class="small mid muted">25</text>
+<text x="370" y="363" class="small mid muted">50</text>
+<text x="455" y="363" class="small mid muted">75</text>
+<text x="540" y="363" class="small mid muted">100</text>
+<text x="625" y="363" class="small mid muted">125</text>
+<text x="710" y="363" class="small mid muted">150</text>
+<text x="795" y="363" class="small mid muted">175</text>
+<text x="880" y="363" class="small mid muted">200</text>
+<text x="540" y="386" class="small mid muted">local steps</text>
+</svg>

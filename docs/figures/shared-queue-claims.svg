@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="420" viewBox="0 0 960 420" role="img" aria-label="Two nodes claim units through the mailbox. Both list units/ to skip the claimed ones, then both try put_if_absent on units/000003-1 at the same moment, each with its own learner ID. The store creates it for node 1 and answers node 2 that it exists. Node 1 reads the object back, finds its own ID and loads the unit. Node 2 moves on to the next unit in its order, 000003-2, creates it, reads back its own ID and loads it.">
+<rect width="960" height="420" rx="6" class="ground"/>
+
+<rect x="472" y="68" width="16" height="276" class="store"/>
+<path d="M 160 68 V 344" class="life-a"/>
+<path d="M 800 68 V 344" class="life-b"/>
+
+<rect x="100" y="24" width="120" height="44" rx="6" class="card"/>
+<text x="160" y="51" class="title mid">Node 1</text>
+<rect x="400" y="24" width="160" height="44" rx="6" class="store-card"/>
+<text x="480" y="43" class="title mid">Mailbox</text>
+<text x="480" y="59" class="code small mid muted">units/{identifier}</text>
+<rect x="740" y="24" width="120" height="44" rx="6" class="card"/>
+<text x="800" y="51" class="title mid">Node 2</text>
+
+<path d="M 163 100 H 471" class="arrow-a"/>
+<text x="175" y="94" class="code">list units/</text>
+<path d="M 472 116 H 164" class="reply"/>
+<path d="M 797 100 H 489" class="arrow-b"/>
+<text x="785" y="94" class="code end">list units/</text>
+<path d="M 488 116 H 796" class="reply"/>
+<rect x="376" y="123" width="208" height="15" rx="3" class="backing"/>
+<text x="480" y="134" class="small mid muted">claimed so far: 000000-0 … 000003-0</text>
+
+<path d="M 163 166 H 471" class="arrow-a"/>
+<text x="175" y="160" class="code">put_if_absent(000003-1, node-1)</text>
+<path d="M 797 176 H 489" class="arrow-b"/>
+<text x="785" y="170" class="code end">put_if_absent(000003-1, node-2)</text>
+<path d="M 472 196 H 164" class="reply"/>
+<text x="460" y="191" class="small end acc b">created</text>
+<path d="M 488 206 H 796" class="reply"/>
+<text x="500" y="201" class="small sig b">exists</text>
+
+<path d="M 163 236 H 471" class="arrow-a"/>
+<text x="175" y="230" class="code">get 000003-1</text>
+<path d="M 472 252 H 164" class="reply"/>
+<text x="460" y="247" class="code end">node-1</text>
+<rect x="168" y="262" width="150" height="24" rx="6" class="note-a"/>
+<text x="243" y="278" class="small mid">its own ID: loads 000003-1</text>
+
+<path d="M 797 236 H 489" class="arrow-b"/>
+<text x="785" y="230" class="code end">put_if_absent(000003-2, node-2)</text>
+<path d="M 488 252 H 796" class="reply"/>
+<text x="500" y="247" class="small acc b">created</text>
+<path d="M 797 280 H 489" class="arrow-b"/>
+<text x="785" y="274" class="code end">get 000003-2</text>
+<path d="M 488 296 H 796" class="reply"/>
+<text x="500" y="291" class="code">node-2</text>
+<rect x="642" y="306" width="150" height="24" rx="6" class="note-b"/>
+<text x="717" y="322" class="small mid">its own ID: loads 000003-2</text>
+
+<path d="M 24 360 H 936" class="rule"/>
+<text x="24" y="382">When the store accepts both writes at once, the read-back names one owner and the node it does not name moves on.</text>
+<text x="24" y="400" class="small muted">The read-back does not make a non-atomic store safe: exclusive claims need an atomic <tspan class="code">put_if_absent</tspan>.</text>
+</svg>

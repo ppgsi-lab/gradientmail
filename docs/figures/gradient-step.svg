@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="380" viewBox="0 0 960 380" role="img" aria-label="Contour lines of the loss L = (2w + b − 6)² over the parameters w and b. The lines are parallel, and the loss is zero along the line 2w + b = 6. From the start (1, 0), where L = 16, the step −η times the gradient crosses the lines at a right angle. With η = 0.1 it lands at (2.6, 0.8) on the zero-loss line; with η = 0.25 it continues past the valley to (5, 2), where L = 36.">
+<rect width="960" height="380" rx="6" class="ground"/>
+
+<polygon points="96,96 114,96 222,312 96,312" class="band" fill-opacity="0.099"/>
+<polygon points="114,96 150,96 258,312 222,312" class="band" fill-opacity="0.077"/>
+<polygon points="150,96 186,96 294,312 258,312" class="band" fill-opacity="0.055"/>
+<polygon points="186,96 222,96 330,312 294,312" class="band" fill-opacity="0.033"/>
+<polygon points="222,96 258,96 366,312 330,312" class="band" fill-opacity="0.011"/>
+<polygon points="258,96 294,96 402,312 366,312" class="band" fill-opacity="0.011"/>
+<polygon points="294,96 330,96 438,312 402,312" class="band" fill-opacity="0.033"/>
+<polygon points="330,96 366,96 474,312 438,312" class="band" fill-opacity="0.055"/>
+<polygon points="366,96 402,96 510,312 474,312" class="band" fill-opacity="0.077"/>
+<polygon points="402,96 438,96 528,276 528,312 510,312" class="band" fill-opacity="0.099"/>
+<polygon points="438,96 474,96 528,204 528,276" class="band" fill-opacity="0.121"/>
+<polygon points="474,96 510,96 528,132 528,204" class="band" fill-opacity="0.143"/>
+<polygon points="510,96 528,96 528,132" class="band" fill-opacity="0.165"/>
+
+<path d="M 114 96 L 222 312 M 150 96 L 258 312 M 186 96 L 294 312 M 222 96 L 330 312 M 294 96 L 402 312 M 330 96 L 438 312 M 366 96 L 474 312 M 402 96 L 510 312 M 438 96 L 528 276 M 474 96 L 528 204 M 510 96 L 528 132" class="contour"/>
+<path d="M 258 96 L 366 312" class="valley"/>
+<rect x="96" y="96" width="432" height="216" class="frame"/>
+
+<text x="96" y="64" class="small muted">loss <tspan class="var">L</tspan> on each line</text>
+<text x="114" y="88" class="small mid muted">16</text>
+<text x="150" y="88" class="small mid muted">9</text>
+<text x="186" y="88" class="small mid muted">4</text>
+<text x="222" y="88" class="small mid muted">1</text>
+<text x="258" y="88" class="small mid acc b">0</text>
+<text x="294" y="88" class="small mid muted">1</text>
+<text x="330" y="88" class="small mid muted">4</text>
+<text x="366" y="88" class="small mid muted">9</text>
+<text x="402" y="88" class="small mid muted">16</text>
+<text x="438" y="88" class="small mid muted">25</text>
+<text x="474" y="88" class="small mid muted">36</text>
+<text x="510" y="88" class="small mid muted">49</text>
+
+<path d="M 132 312 V 318 M 204 312 V 318 M 276 312 V 318 M 348 312 V 318 M 420 312 V 318 M 492 312 V 318" class="tick"/>
+<text x="132" y="332" class="small mid muted">0</text>
+<text x="204" y="332" class="small mid muted">1</text>
+<text x="276" y="332" class="small mid muted">2</text>
+<text x="348" y="332" class="small mid muted">3</text>
+<text x="420" y="332" class="small mid muted">4</text>
+<text x="492" y="332" class="small mid muted">5</text>
+<text x="312" y="356" class="m i mid">w</text>
+<path d="M 90 276 H 96 M 90 204 H 96 M 90 132 H 96" class="tick"/>
+<text x="84" y="280" class="small end muted">0</text>
+<text x="84" y="208" class="small end muted">1</text>
+<text x="84" y="136" class="small end muted">2</text>
+<text x="56" y="209" class="m i mid">b</text>
+
+<path d="M 204 276 L 486.6 134.7" class="arrow-sig strong"/>
+<path d="M 204 276 L 313.8 221.1" class="arrow-acc strong"/>
+<circle cx="204" cy="276" r="4.5" class="dot-ink"/>
+<circle cx="319.2" cy="218.4" r="4.5" class="dot-acc"/>
+<circle cx="492" cy="132" r="4.5" class="sig"/>
+<text x="198" y="298" class="m end halo">(1, 0) · <tspan class="i">L</tspan> = 16</text>
+<text x="330" y="236" class="m acc halo">(2.6, 0.8) · <tspan class="i">L</tspan> = 0</text>
+<text x="484" y="122" class="m end sig halo">(5, 2) · <tspan class="i">L</tspan> = 36</text>
+
+<text x="584" y="112" class="small b muted">start</text>
+<text x="584" y="136" class="m">(<tspan class="i">w</tspan>, <tspan class="i">b</tspan>) = (1, 0),  <tspan class="i">L</tspan> = 16</text>
+<text x="584" y="160" class="m">∇<tspan class="sub i" dy="4">θ</tspan><tspan class="i" dy="-4">L</tspan> = (−16, −8)</text>
+<text x="584" y="200" class="small b muted">one step</text>
+<text x="642" y="201" class="m muted"><tspan class="i">θ</tspan> − <tspan class="i">η</tspan>∇<tspan class="sub i" dy="3">θ</tspan><tspan class="i" dy="-3">L</tspan></text>
+<text x="584" y="224" class="m acc"><tspan class="i">η</tspan> = 0.1:  (2.6, 0.8),  <tspan class="i">L</tspan> = 0</text>
+<text x="584" y="248" class="m sig"><tspan class="i">η</tspan> = 0.25:  (5, 2),  <tspan class="i">L</tspan> = 36</text>
+<text x="584" y="290" class="muted">Every point of the line 2<tspan class="var">w</tspan> + <tspan class="var">b</tspan> = 6 predicts 6,</text>
+<text x="584" y="308" class="muted">so the loss is zero along it. The step crosses</text>
+<text x="584" y="326" class="muted">the lines at a right angle; <tspan class="var">η</tspan> sets its length.</text>
+</svg>

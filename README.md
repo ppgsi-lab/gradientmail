@@ -67,6 +67,11 @@ uv run python examples/synthetic.py
 
 For a PyTorch/MLX run across two machines, use [torch_learner.py](examples/torch_learner.py) and [mlx_learner.py](examples/mlx_learner.py). The PyTorch example includes the MinIO setup and commands.
 
+## Further reading
+
+- [Shared Queue](docs/patterns/00-shared-queue.md): distributing work across nodes with different processing speeds.
+- [Pythia-14M on four rented GPUs and a bucket](docs/posts/00-pythia-14m-on-four-salad-gpus.md): a Salad training run, including failures and comparisons with the published checkpoints.
+
 ## Development
 
 ```sh

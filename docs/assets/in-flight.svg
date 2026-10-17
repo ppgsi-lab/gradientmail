@@ -1,0 +1,176 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="460" viewBox="0 0 960 460" role="img" aria-label="One learner's fragment over time. While training with the default, the learner publishes its delta for a round and keeps training; when the commit arrives it aligns with it, which replaces the steps trained while the round was in flight. With synchronous = True it waits for the commit instead, and nothing is replaced. At close, by default, it waits for its rounds in flight and the model is set to the newest committed parameters, so the steps trained since the last snapshot are dropped. With flush_on_close = True those steps go out as a final snapshot, and the round made of final snapshots commits Θ − Δ without the outer momentum.">
+<style>
+svg { --paper: #fefdfc; --wash: #f5f1ec; --rule: #dedad5; --hatch: #cfc8c0; --muted: #665f5a; --ink: #1c1714; --accent: #065f74; --accent-wash: #e4f1f5; --on-accent: #ffffff; --signal: #86262e; --signal-wash: #fbeae9; --learner-a: #556892; --learner-b: #ac853f; --learner-c: #598361; --learner-d: #825172; --serif: "Newsreader", Georgia, "Times New Roman", serif; --math: "Source Serif 4", "Noto Sans Math", Georgia, serif; --sans: "Source Sans 3", "Source Sans Pro", system-ui, -apple-system, "Segoe UI", sans-serif; --mono: "Source Code Pro", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+@media (prefers-color-scheme: dark) { svg { --paper: #191512; --wash: #241f1c; --rule: #413c38; --hatch: #544f4a; --muted: #b3ada6; --ink: #eeebe5; --accent: #6ebccb; --accent-wash: #192f35; --on-accent: #191512; --signal: #e38182; --signal-wash: #3d2323; --learner-a: #899ecb; --learner-b: #d6ad68; --learner-c: #80b38a; --learner-d: #bd88ab; } }
+@font-face { font-family: "Source Sans 3"; font-style: normal; font-weight: 600; src: url(data:font/woff2;base64,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) format("woff2"); }
+@font-face { font-family: "Source Sans 3"; font-style: normal; font-weight: 400; src: url(data:font/woff2;base64,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) format("woff2"); }
+@font-face { font-family: "Source Serif 4"; font-style: italic; font-weight: 400; src: url(data:font/woff2;base64,d09GMgABAAAAAANYABEAAAAAByAAAAL+AAQBBgAAAAAAAAAAAAAAAAAAAAAAAAAAGUYaFBt4HDYGYD9TVEFUWgA0EQgKeIEEATYCJAMICwYABCAFhVIHIAwHG/wFKI7DxhlFlJOI8WRxiIfn1z3/a587T3KlmqBG4n9HMxJtjtba7JtH8MXsDHGLr3Piv7evjRYpgUpqlgiR+b+m3jV/wKsyOMMKOo7teSTY7J/AgIYTaIwUSuLh3sCgbWda1Lc9JklOMnvuJgWKI1NWmjUVPeY5LkR69716gr4pq5gNfTMWowV9cydxF/rEQEiKKy3yMQgCpQEho6Wk9naQzQh8IcOcacyFhDJkSihur8UJxSWVRVDTUOB3lqd2c0dL+Dg+To/vAkCWRmO3KGlrGpn/btDxQl3EeErUASmLhiORaCgUAQIAevQ+uIU3DMtK/98BhT+iNxAQX6aTQH1hIRRXQGVhtBZasDDokilgxQydkyXIrKVlmwwTUlRFowjEbAWgIKRoxm6QngMhEcMQkMAnQSCiPpqhkS/Oc/kz8l0ICJHnyiEkkCGhMdABgAyQqpYdMTx969MPS217UuPw5ZJbn1at2qfx5Vc/Gjmmd3i9EU2GVhl6+qP6Ty//jfWqOKHTkHsNajZYVPyVGhUj/7Vnp3U/tr042mTMjf/a2eCznVrUPlmnyoSLlece7BEH3RFkEftqvHF1Qr7zP4lC+Be+av/xPXx958AFUv5/PIy/JEUlEDw9TaszyE9WddzH+VsASPEixThDQpA0Vi9nC5V2UFhkSeBtHCHU9ikkpf0gFAz1J2RaRk+hiKkxly+qY7xnIM8yfhCqelISTInUJwQyaXS5plwSvKMUEtkSakGBQj6VfTWeCkQ96ghwyBGgzrmqPIzPw5RxqIaapuM43waRqLWrgjIyEerHOkQz5lEtBk5HPUABxDSJOeFx70PdKHMgWr+6R54Gpgrr1yC49mAb88AMKmrJOa7MZqhaIpBIlmzad+TArU1EIP0EXvBcHv7WgeMBMNXkJZEFjMtgOqlX5+GqcdRkXJ4tkMlWbHKUWTCrVKE2RBV0GaxYHrREvqh2y8dP20/oyKwL2+34Sb1CBo2Oe4A0DbYyJkz+N/k7OrLux5FvuJ3tAA==) format("woff2"); }
+@font-face { font-family: "Source Code Pro"; font-style: normal; font-weight: 400; src: url(data:font/woff2;base64,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) format("woff2"); }
+/* The classes figure sources draw with. build.py prepends the theme's colors and font families as
+   variables; a source sets no color or font of its own. */
+
+text { font-family: var(--sans); font-size: 12px; fill: var(--ink); }
+.m { font-family: var(--math); font-size: 16px; }
+.code { font-family: var(--mono); font-size: 12px; }
+.title { font-size: 15px; font-weight: 600; }
+.small { font-size: 11px; }
+.sub { font-size: 11px; }
+.big { font-size: 20px; }
+.b { font-weight: 600; }
+.i { font-style: italic; }
+.var { font-family: var(--math); font-style: italic; font-size: 1.2em; }
+.muted { fill: var(--muted); }
+.acc { fill: var(--accent); }
+.sig { fill: var(--signal); }
+.on-accent { fill: var(--on-accent); }
+.mid { text-anchor: middle; }
+.end { text-anchor: end; }
+.digit { font-size: 9.5px; font-weight: 600; fill: var(--paper); text-anchor: middle; }
+.halo { paint-order: stroke; stroke: var(--paper); stroke-width: 4px; stroke-linejoin: round; }
+
+.ground, .backing { fill: var(--paper); }
+.card { fill: var(--paper); stroke: var(--rule); stroke-width: 1.5; }
+.store { fill: var(--wash); }
+.store-card { fill: var(--wash); stroke: var(--rule); stroke-width: 1.5; }
+.elected { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.5; }
+.note { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.25; }
+.note-a { fill: var(--paper); stroke: var(--learner-a); stroke-width: 1.25; }
+.note-b { fill: var(--paper); stroke: var(--learner-b); stroke-width: 1.25; }
+.note-c { fill: var(--paper); stroke: var(--learner-c); stroke-width: 1.25; }
+.op { fill: var(--paper); stroke: var(--muted); stroke-width: 1.5; }
+.out { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.param { fill: var(--wash); stroke: var(--ink); stroke-width: 1.5; }
+.pill { fill: var(--paper); stroke: var(--rule); stroke-width: 1.25; }
+.chip { fill: var(--accent); }
+.tile, .layer, .slot-full { fill: var(--wash); stroke: var(--rule); stroke-width: 1; }
+.slot { fill: var(--paper); stroke: var(--rule); stroke-width: 1.25; }
+.tile-k { fill: var(--accent); }
+.picked { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.5; }
+.track { fill: var(--wash); }
+
+.sA { fill: var(--learner-a); }
+.sB { fill: var(--learner-b); }
+.sC { fill: var(--learner-c); }
+.sD { fill: var(--learner-d); }
+.wait { fill: url(#hatch); }
+.lost { fill: url(#lost); stroke: var(--signal); stroke-width: 1; }
+.xchg, .commit, .dot-acc, .badge-acc { fill: var(--accent); }
+.dot-ink, .badge, .close { fill: var(--ink); }
+.snap { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.round { fill: var(--paper); stroke: var(--accent); stroke-width: 1.25; }
+.miss { fill: none; stroke: var(--signal); stroke-width: 2.5; }
+.band { fill: var(--accent); }
+
+.rule { fill: none; stroke: var(--rule); stroke-width: 1; }
+.guide { fill: none; stroke: var(--rule); stroke-width: 1; stroke-dasharray: 4 4; }
+.axis, .tick { fill: none; stroke: var(--muted); stroke-width: 1; }
+.contour { fill: none; stroke: var(--hatch); stroke-width: 1; }
+.frame { fill: none; stroke: var(--rule); stroke-width: 1.5; }
+.valley { fill: none; stroke: var(--accent); stroke-width: 2; }
+.span { fill: none; stroke: var(--accent); stroke-width: 1; }
+.join { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+.batches { stroke: var(--accent); stroke-width: 0.75; stroke-opacity: 0.45; }
+.life-a { stroke: var(--learner-a); stroke-width: 2.5; }
+.life-b { stroke: var(--learner-b); stroke-width: 2.5; }
+.life-c { stroke: var(--learner-c); stroke-width: 2.5; }
+.life-s { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3; }
+
+.arrow { fill: none; stroke: var(--muted); stroke-width: 1.5; marker-end: url(#head-muted); }
+.arrow-ink { fill: none; stroke: var(--ink); stroke-width: 1.5; marker-end: url(#head-ink); }
+.arrow-acc { fill: none; stroke: var(--accent); stroke-width: 1.5; marker-end: url(#head-accent); }
+.arrow-sig { fill: none; stroke: var(--signal); stroke-width: 1.5; marker-end: url(#head-signal); }
+.arrow-a { fill: none; stroke: var(--learner-a); stroke-width: 1.5; marker-end: url(#head-a); }
+.arrow-b { fill: none; stroke: var(--learner-b); stroke-width: 1.5; marker-end: url(#head-b); }
+.arrow-c { fill: none; stroke: var(--learner-c); stroke-width: 1.5; marker-end: url(#head-c); }
+.reply { fill: none; stroke: var(--muted); stroke-width: 1.25; stroke-dasharray: 4 3; marker-end: url(#head-muted); }
+.strong { stroke-width: 2.5; }
+.loop { fill: none; stroke: var(--muted); stroke-width: 1.25; marker-end: url(#head-muted); }
+
+.hatch-bg { fill: var(--wash); }
+.hatch-line { stroke: var(--hatch); stroke-width: 2.5; }
+.lost-bg { fill: var(--signal-wash); }
+.lost-line { stroke: var(--signal); stroke-opacity: 0.4; stroke-width: 2.5; }
+.head-ink { fill: var(--ink); }
+.head-muted { fill: var(--muted); }
+.head-accent { fill: var(--accent); }
+.head-signal { fill: var(--signal); }
+.head-a { fill: var(--learner-a); }
+.head-b { fill: var(--learner-b); }
+.head-c { fill: var(--learner-c); }
+</style>
+<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="hatch-bg"/><path d="M 0 0 V 6" class="hatch-line"/></pattern><pattern id="lost" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="lost-bg"/><path d="M 0 0 V 6" class="lost-line"/></pattern><marker id="head-ink" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-ink"/></marker><marker id="head-muted" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-muted"/></marker><marker id="head-accent" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-accent"/></marker><marker id="head-signal" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-signal"/></marker><marker id="head-a" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-a"/></marker><marker id="head-b" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-b"/></marker><marker id="head-c" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-c"/></marker></defs>
+<rect width="960" height="460" rx="6" class="ground"/>
+
+<text x="24" y="44" class="title">While training</text>
+<text x="560" y="78" class="small mid">publish Δ for round <tspan class="var">r</tspan></text>
+<text x="696" y="78" class="small mid acc b">align v4</text>
+
+<text x="24" y="102" class="b">training continues</text>
+<text x="24" y="118" class="code small muted">synchronous=False</text>
+<rect x="220" y="94" width="338" height="20" rx="10" class="note-a"/>
+<text x="389" y="108" class="small mid">trains fragment k from anchor v3</text>
+<rect x="562" y="94" width="132" height="20" rx="10" class="lost"/>
+<text x="628" y="108" class="small mid halo">in flight</text>
+<rect x="698" y="94" width="202" height="20" rx="10" class="note-a"/>
+<text x="799" y="108" class="small mid">trains from v4</text>
+<circle cx="560" cy="104" r="5" class="snap"/>
+<rect x="691" y="99" width="10" height="10" rx="2" class="commit" transform="rotate(45 696 104)"/>
+<text x="628" y="134" class="small mid sig">trained while in flight: aligning replaces it</text>
+
+<text x="24" y="172" class="b">waits for the commit</text>
+<text x="24" y="188" class="code small muted">synchronous=True</text>
+<rect x="220" y="164" width="338" height="20" rx="10" class="note-a"/>
+<text x="389" y="178" class="small mid">trains fragment k from anchor v3</text>
+<rect x="562" y="164" width="132" height="20" rx="10" class="wait"/>
+<rect x="698" y="164" width="202" height="20" rx="10" class="note-a"/>
+<text x="799" y="178" class="small mid">trains from v4</text>
+<circle cx="560" cy="174" r="5" class="snap"/>
+<rect x="691" y="169" width="10" height="10" rx="2" class="commit" transform="rotate(45 696 174)"/>
+<text x="628" y="204" class="small mid muted">waits at the in_flight limit; nothing is replaced</text>
+
+<path d="M 24 228 H 936" class="rule"/>
+
+<text x="24" y="260" class="title">At close()</text>
+<text x="424" y="286" class="small mid">snapshot, round <tspan class="var">r</tspan></text>
+<text x="628" y="286" class="small mid b">close()</text>
+<text x="798" y="286" class="small mid acc b">align</text>
+
+<text x="24" y="306" class="b">drops the tail</text>
+<text x="24" y="322" class="code small muted">flush_on_close=False</text>
+<rect x="220" y="298" width="202" height="20" rx="10" class="note-a"/>
+<text x="321" y="312" class="small mid">in round <tspan class="var">r</tspan></text>
+<rect x="426" y="298" width="200" height="20" rx="10" class="lost"/>
+<rect x="632" y="298" width="164" height="20" rx="10" class="wait"/>
+<text x="714" y="312" class="small mid halo">waits for round <tspan class="var">r</tspan></text>
+<rect x="627" y="290" width="2.5" height="36" class="close"/>
+<circle cx="424" cy="308" r="5" class="snap"/>
+<rect x="793" y="303" width="10" height="10" rx="2" class="commit" transform="rotate(45 798 308)"/>
+<text x="812" y="312" class="small muted">stops</text>
+<text x="526" y="338" class="small mid sig">dropped: the model is set to the newest commit</text>
+
+<text x="24" y="376" class="b">publishes the tail</text>
+<text x="24" y="392" class="code small muted">flush_on_close=True</text>
+<rect x="220" y="368" width="202" height="20" rx="10" class="note-a"/>
+<text x="321" y="382" class="small mid">in round <tspan class="var">r</tspan></text>
+<rect x="426" y="368" width="200" height="20" rx="10" class="note-a"/>
+<text x="526" y="382" class="small mid">in round <tspan class="var">r</tspan> + 1</text>
+<rect x="640" y="368" width="156" height="20" rx="10" class="wait"/>
+<text x="718" y="382" class="small mid halo">waits for <tspan class="var">r</tspan>, <tspan class="var">r</tspan> + 1</text>
+<rect x="627" y="360" width="2.5" height="36" class="close"/>
+<circle cx="424" cy="378" r="5" class="snap"/>
+<circle cx="636" cy="378" r="5" class="snap"/>
+<rect x="793" y="373" width="10" height="10" rx="2" class="commit" transform="rotate(45 798 378)"/>
+<text x="812" y="382" class="small muted">stops</text>
+<text x="526" y="408" class="small mid acc">a final snapshot: a round of final snapshots commits Θ − Δ, without momentum</text>
+
+<rect x="24" y="428" width="24" height="12" rx="6" class="note-a"/>
+<text x="54" y="438" class="small">local steps on fragment k</text>
+<rect x="210" y="428" width="24" height="12" rx="6" class="lost"/>
+<text x="240" y="438" class="small">steps no commit keeps</text>
+<rect x="382" y="428" width="24" height="12" rx="6" class="wait"/>
+<text x="412" y="438" class="small">waiting</text>
+<circle cx="476" cy="434" r="5" class="snap"/>
+<text x="488" y="438" class="small">snapshot published</text>
+<rect x="613" y="429" width="10" height="10" rx="2" class="commit" transform="rotate(45 618 434)"/>
+<text x="632" y="438" class="small">aligned with the commit</text>
+</svg>

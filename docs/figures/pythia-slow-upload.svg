@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="360" viewBox="0 0 960 360" role="img" aria-label="A 64-step smoke test on four nodes with quorum_size = 3. Nodes 0, 1 and 2 publish their snapshots in seconds, and every round closes with the three of them. Node 3 uploads at 60 KB/s: its first 26 MB snapshot takes about seven minutes, and lands after its round has closed and the round's objects have been cleaned up. Node 3 is in no round.">
+<rect width="960" height="360" rx="6" class="ground"/>
+
+<text x="24" y="40" class="title">A node at 60 KB/s is in no round</text>
+<text x="24" y="58" class="small muted">The other three close every round at quorum_size=3; node 3's first snapshot lands after its round is gone.</text>
+
+<text x="190" y="96" class="small end muted">rounds</text>
+<rect x="225.5" y="84" width="30" height="16" rx="8" class="round"/>
+<circle cx="233.5" cy="92" r="2.5" class="sA"/><circle cx="240.5" cy="92" r="2.5" class="sB"/><circle cx="247.5" cy="92" r="2.5" class="sC"/>
+<rect x="261.5" y="84" width="30" height="16" rx="8" class="round"/>
+<circle cx="269.5" cy="92" r="2.5" class="sA"/><circle cx="276.5" cy="92" r="2.5" class="sB"/><circle cx="283.5" cy="92" r="2.5" class="sC"/>
+<rect x="297.5" y="84" width="30" height="16" rx="8" class="round"/>
+<circle cx="305.5" cy="92" r="2.5" class="sA"/><circle cx="312.5" cy="92" r="2.5" class="sB"/><circle cx="319.5" cy="92" r="2.5" class="sC"/>
+<rect x="333.5" y="84" width="30" height="16" rx="8" class="round"/>
+<circle cx="341.5" cy="92" r="2.5" class="sA"/><circle cx="348.5" cy="92" r="2.5" class="sB"/><circle cx="355.5" cy="92" r="2.5" class="sC"/>
+<rect x="369.5" y="84" width="30" height="16" rx="8" class="round"/>
+<circle cx="377.5" cy="92" r="2.5" class="sA"/><circle cx="384.5" cy="92" r="2.5" class="sB"/><circle cx="391.5" cy="92" r="2.5" class="sC"/>
+<text x="420" y="96" class="small muted">every round closes with nodes 0, 1 and 2</text>
+
+<text x="190" y="123" class="small end b">node 0</text>
+<rect x="200" y="112" width="189" height="14" rx="7" class="track"/>
+<rect x="236" y="112" width="4" height="14" rx="2" class="sA"/><rect x="272" y="112" width="4" height="14" rx="2" class="sA"/><rect x="308" y="112" width="4" height="14" rx="2" class="sA"/><rect x="344" y="112" width="4" height="14" rx="2" class="sA"/><rect x="380" y="112" width="4" height="14" rx="2" class="sA"/>
+<text x="400" y="123" class="small muted">64 steps; each mark is a snapshot, uploaded in seconds</text>
+
+<text x="190" y="149" class="small end b">node 1</text>
+<rect x="200" y="138" width="189" height="14" rx="7" class="track"/>
+<rect x="236" y="138" width="4" height="14" rx="2" class="sB"/><rect x="272" y="138" width="4" height="14" rx="2" class="sB"/><rect x="308" y="138" width="4" height="14" rx="2" class="sB"/><rect x="344" y="138" width="4" height="14" rx="2" class="sB"/><rect x="380" y="138" width="4" height="14" rx="2" class="sB"/>
+
+<text x="190" y="175" class="small end b">node 2</text>
+<rect x="200" y="164" width="189" height="14" rx="7" class="track"/>
+<rect x="236" y="164" width="4" height="14" rx="2" class="sC"/><rect x="272" y="164" width="4" height="14" rx="2" class="sC"/><rect x="308" y="164" width="4" height="14" rx="2" class="sC"/><rect x="344" y="164" width="4" height="14" rx="2" class="sC"/><rect x="380" y="164" width="4" height="14" rx="2" class="sC"/>
+
+<text x="190" y="201" class="small end b">node 3</text>
+<text x="190" y="216" class="small end muted">60 KB/s</text>
+<rect x="200" y="190" width="189" height="14" rx="7" class="track"/>
+<rect x="236" y="190" width="4" height="14" rx="2" class="sD"/>
+<rect x="236" y="208" width="648" height="10" rx="5" class="lost"/>
+<path d="M 879 208 L 889 218 M 889 208 L 879 218" class="miss"/>
+<text x="560" y="236" class="small mid">first snapshot: 26 MB at 60 KB/s, about 7 minutes</text>
+<text x="920" y="254" class="small end sig">lands after its round closed and the round's objects were cleaned up</text>
+
+<path d="M 200 276 H 920 M 200 276 V 281 M 290 276 V 281 M 380 276 V 281 M 470 276 V 281 M 560 276 V 281 M 650 276 V 281 M 740 276 V 281 M 830 276 V 281 M 920 276 V 281" class="axis"/>
+<text x="200" y="294" class="small mid muted">0</text>
+<text x="290" y="294" class="small mid muted">1</text>
+<text x="380" y="294" class="small mid muted">2</text>
+<text x="470" y="294" class="small mid muted">3</text>
+<text x="560" y="294" class="small mid muted">4</text>
+<text x="650" y="294" class="small mid muted">5</text>
+<text x="740" y="294" class="small mid muted">6</text>
+<text x="830" y="294" class="small mid muted">7</text>
+<text x="920" y="294" class="small mid muted">8</text>
+<text x="560" y="312" class="small mid muted">minutes (the upload to scale; the rest schematic)</text>
+
+<text x="24" y="340">The loss still fell: a quarter of every batch never reached the model. Since then, each node times a 26 MB PUT and refuses to join under 2 MB/s.</text>
+</svg>

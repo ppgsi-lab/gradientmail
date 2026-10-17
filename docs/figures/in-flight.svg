@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="460" viewBox="0 0 960 460" role="img" aria-label="One learner's fragment over time. While training with the default, the learner publishes its delta for a round and keeps training; when the commit arrives it aligns with it, which replaces the steps trained while the round was in flight. With synchronous = True it waits for the commit instead, and nothing is replaced. At close, by default, it waits for its rounds in flight and the model is set to the newest committed parameters, so the steps trained since the last snapshot are dropped. With flush_on_close = True those steps go out as a final snapshot, and the round made of final snapshots commits Θ − Δ without the outer momentum.">
+<rect width="960" height="460" rx="6" class="ground"/>
+
+<text x="24" y="44" class="title">While training</text>
+<text x="560" y="78" class="small mid">publish Δ for round <tspan class="var">r</tspan></text>
+<text x="696" y="78" class="small mid acc b">align v4</text>
+
+<text x="24" y="102" class="b">training continues</text>
+<text x="24" y="118" class="code small muted">synchronous=False</text>
+<rect x="220" y="94" width="338" height="20" rx="10" class="note-a"/>
+<text x="389" y="108" class="small mid">trains fragment k from anchor v3</text>
+<rect x="562" y="94" width="132" height="20" rx="10" class="lost"/>
+<text x="628" y="108" class="small mid halo">in flight</text>
+<rect x="698" y="94" width="202" height="20" rx="10" class="note-a"/>
+<text x="799" y="108" class="small mid">trains from v4</text>
+<circle cx="560" cy="104" r="5" class="snap"/>
+<rect x="691" y="99" width="10" height="10" rx="2" class="commit" transform="rotate(45 696 104)"/>
+<text x="628" y="134" class="small mid sig">trained while in flight: aligning replaces it</text>
+
+<text x="24" y="172" class="b">waits for the commit</text>
+<text x="24" y="188" class="code small muted">synchronous=True</text>
+<rect x="220" y="164" width="338" height="20" rx="10" class="note-a"/>
+<text x="389" y="178" class="small mid">trains fragment k from anchor v3</text>
+<rect x="562" y="164" width="132" height="20" rx="10" class="wait"/>
+<rect x="698" y="164" width="202" height="20" rx="10" class="note-a"/>
+<text x="799" y="178" class="small mid">trains from v4</text>
+<circle cx="560" cy="174" r="5" class="snap"/>
+<rect x="691" y="169" width="10" height="10" rx="2" class="commit" transform="rotate(45 696 174)"/>
+<text x="628" y="204" class="small mid muted">waits at the in_flight limit; nothing is replaced</text>
+
+<path d="M 24 228 H 936" class="rule"/>
+
+<text x="24" y="260" class="title">At close()</text>
+<text x="424" y="286" class="small mid">snapshot, round <tspan class="var">r</tspan></text>
+<text x="628" y="286" class="small mid b">close()</text>
+<text x="798" y="286" class="small mid acc b">align</text>
+
+<text x="24" y="306" class="b">drops the tail</text>
+<text x="24" y="322" class="code small muted">flush_on_close=False</text>
+<rect x="220" y="298" width="202" height="20" rx="10" class="note-a"/>
+<text x="321" y="312" class="small mid">in round <tspan class="var">r</tspan></text>
+<rect x="426" y="298" width="200" height="20" rx="10" class="lost"/>
+<rect x="632" y="298" width="164" height="20" rx="10" class="wait"/>
+<text x="714" y="312" class="small mid halo">waits for round <tspan class="var">r</tspan></text>
+<rect x="627" y="290" width="2.5" height="36" class="close"/>
+<circle cx="424" cy="308" r="5" class="snap"/>
+<rect x="793" y="303" width="10" height="10" rx="2" class="commit" transform="rotate(45 798 308)"/>
+<text x="812" y="312" class="small muted">stops</text>
+<text x="526" y="338" class="small mid sig">dropped: the model is set to the newest commit</text>
+
+<text x="24" y="376" class="b">publishes the tail</text>
+<text x="24" y="392" class="code small muted">flush_on_close=True</text>
+<rect x="220" y="368" width="202" height="20" rx="10" class="note-a"/>
+<text x="321" y="382" class="small mid">in round <tspan class="var">r</tspan></text>
+<rect x="426" y="368" width="200" height="20" rx="10" class="note-a"/>
+<text x="526" y="382" class="small mid">in round <tspan class="var">r</tspan> + 1</text>
+<rect x="640" y="368" width="156" height="20" rx="10" class="wait"/>
+<text x="718" y="382" class="small mid halo">waits for <tspan class="var">r</tspan>, <tspan class="var">r</tspan> + 1</text>
+<rect x="627" y="360" width="2.5" height="36" class="close"/>
+<circle cx="424" cy="378" r="5" class="snap"/>
+<circle cx="636" cy="378" r="5" class="snap"/>
+<rect x="793" y="373" width="10" height="10" rx="2" class="commit" transform="rotate(45 798 378)"/>
+<text x="812" y="382" class="small muted">stops</text>
+<text x="526" y="408" class="small mid acc">a final snapshot: a round of final snapshots commits Θ − Δ, without momentum</text>
+
+<rect x="24" y="428" width="24" height="12" rx="6" class="note-a"/>
+<text x="54" y="438" class="small">local steps on fragment k</text>
+<rect x="210" y="428" width="24" height="12" rx="6" class="lost"/>
+<text x="240" y="438" class="small">steps no commit keeps</text>
+<rect x="382" y="428" width="24" height="12" rx="6" class="wait"/>
+<text x="412" y="438" class="small">waiting</text>
+<circle cx="476" cy="434" r="5" class="snap"/>
+<text x="488" y="438" class="small">snapshot published</text>
+<rect x="613" y="429" width="10" height="10" rx="2" class="commit" transform="rotate(45 618 434)"/>
+<text x="632" y="438" class="small">aligned with the commit</text>
+</svg>

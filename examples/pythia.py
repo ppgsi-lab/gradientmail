@@ -30,20 +30,31 @@ this one uses bf16 autocast.
 
 Data: ``EleutherAI/pile-standard-pythia-preshuffled`` holds the run's 146,432,000 sequences of
 2049 tokens (2048 inputs, each followed by its target) in training order, as uint16 across
-21 files of up to 30 GB; step ``s`` is sequences ``1024·s`` to ``1024·s + 1023``. Node ``r`` of
-``n`` reads its ``1024 / n`` sequences of each step with one HTTP range request, a step ahead on
-a background thread, so a node of four downloads 1 MB per step and never a whole file. The
-batch of step 140,000 is held out for validation. The official run trains on it long after
-any step compared here; the seeds take the same sequences in other orders, so about 3% of it
-falls in their first 4000 steps.
+21 files of up to 30 GB; step ``s`` is sequences ``1024·s`` to ``1024·s + 1023``. A node reads
+a ``1024 / n`` slice of a step's sequences with one HTTP range request, a step ahead on a
+background thread, so a node of four downloads 1 MB per step and never a whole file. The batch
+of step 140,000 is held out for validation. The official run trains on it long after any step
+compared here; the seeds take the same sequences in other orders, so about 3% of it falls in
+their first 4000 steps.
 
-Each node trains exactly ``--steps`` steps, so the nodes together see the official run's
-sequences up to that step and none after it; rounds commit behind the steps, and a node that
-finishes first waits in ``close`` until the rounds of its last steps are committed. The
-learning rate follows the step, as the official schedule does. With the defaults the two
-embeddings, 26 MB each in fp32, are a fragment each and the blocks share the other two, and a
-node publishes a fragment every 12 or 13 steps, about 1 MB/s to the bucket to be in every
-round. ``--quorum`` is three of four: a node that cannot keep up is left out of the rounds
+The work is a pool of units, ``--unit`` consecutive steps of one of the ``n`` slices (4000 steps
+in four slices are 800 units of 20), claimed as create-once objects (``units/``) through the
+mailbox the session uses, earliest steps first. A node claims its next unit when its data
+thread gets there, so a fast node takes more units than a slow one and the nodes finish within
+one unit of each other whatever their speeds; with a fixed split, the slowest node of a smoke
+run would have trained its last 18% alone, closing rounds by itself. Every sequence up to
+``--steps`` is trained once, at the official learning rate of its step, in slices of the
+official batch; only how many a node takes varies. Within a block the nodes try their own
+slice first, so they seldom claim one unit at once; when they do (the gateway has accepted two
+create-once PUTs made in the same instant), the object is read back and the node it does not
+name moves on. A unit claimed by a node that died is not redone. ``--solo`` keeps the fixed
+split: node ``r`` trains slice ``r`` of every step, alone.
+
+Rounds commit behind the steps, and a node that finishes first waits in ``close`` until the
+rounds of its last steps are committed. With the defaults the two embeddings, 26 MB each in
+fp32, are a fragment each and the blocks share the other two, and a node publishes a fragment
+every 12 or 13 steps, about 1 MB/s to the bucket to be in every round. ``--quorum`` is three
+of four: a node that cannot keep up is left out of the rounds
 rather than stalling them, and its share of each batch does not reach the model; in two smoke
 runs one Salad node uploaded at about 60 KB/s and never got a snapshot in. So before joining,
 each node times a PUT the size of that fragment and refuses to train under ``--min-upload``
@@ -80,13 +91,10 @@ from __future__ import annotations
 import asyncio
 import configparser
 import contextlib
-import itertools
 import logging
 import math
 import os
-import queue
 import statistics
-import threading
 import time
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
@@ -121,6 +129,18 @@ HEAD = DIM // HEADS
 ROTARY = HEAD // 4
 VOCAB = 50304
 STALE_BUFFERS = ("attention.bias", "attention.masked_bias", "attention.rotary_emb.inv_freq")
+
+log = logging.getLogger("pythia")
+
+
+@dataclass(frozen=True)
+class Unit:
+    """``count`` official steps from ``first``, slice ``lane`` of ``lanes`` of each one's batch."""
+
+    first: int
+    count: int
+    lane: int
+    lanes: int
 
 
 def s3_credentials() -> dict[str, str]:
@@ -182,7 +202,7 @@ class Pythia:
 
     model: Callable[[], nn.Module]
     checkpoint: Callable[[str, int], dict[str, Tensor]]
-    batches: Callable[[int, int, torch.device], Iterator[Tensor]]
+    load_unit: Callable[[Unit], Iterator[tuple[int, Tensor]]]
     held_out: Callable[[], Tensor]
     pick_device: Callable[[], torch.device]
     autocast: Callable[[torch.device], contextlib.AbstractContextManager[object]]
@@ -200,16 +220,18 @@ def train(
     quorum: int = 3,
     micro_batch: int = 8,
     min_upload: float = 2.0,
+    unit: int = 20,
     solo: bool = False,
     rank: int = -1,
     nodes: int = 0,
 ) -> dict[str, float]:
-    """Re-train Pythia-14M from step 0 to STEPS across the run's nodes; --solo trains one
-    node's share alone."""
+    """Re-train Pythia-14M from step 0 to STEPS across the run's nodes, in units of UNIT steps
+    claimed from the bucket; --solo trains one node's fixed slice alone."""
     import torch
 
     import gradientmail as gm
     from gradientmail.adapters.torch import TorchBackend
+    from gradientmail.patterns.shared_queue import shared_queue
 
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s", datefmt="%H:%M:%S"
@@ -230,7 +252,6 @@ def train(
     model.to(device)
     optimizer = nano.adamw(model, device)
     per_step = share * CONTEXT
-    batches = nano.batches(place.rank, place.nodes, device)
     box = None if solo else mailbox(bucket, prefix)
     if box is not None:
         rate = upload_rate(box, place.rank)
@@ -243,6 +264,14 @@ def train(
                 f"rank {place.rank} uploads at {rate:.2f} MB/s, under --min-upload {min_upload}: "
                 "it would be in no round"
             )
+    lanes = (
+        (place.rank,) if solo else tuple((place.rank + i) % place.nodes for i in range(place.nodes))
+    )
+    units = {
+        f"{first // unit:06d}-{lane}.json": Unit(first, min(unit, steps - first), lane, place.nodes)
+        for first in range(0, steps, unit)
+        for lane in lanes
+    }
     session = (
         None
         if box is None
@@ -262,22 +291,32 @@ def train(
     )
 
     print(
-        f"rank {place.rank} of {place.nodes}: {steps} steps of {per_step:,} tokens on {device}",
+        f"rank {place.rank} of {place.nodes}: {'slice ' + str(place.rank) if solo else 'units'} "
+        f"of {steps} steps, {per_step:,} tokens per step, on {device}",
         flush=True,
     )
     started = time.monotonic()
     ema = math.nan
     seen = -1
-    step = 0
+    done = 0
     with contextlib.ExitStack() as stack:
         if session is not None:
             stack.enter_context(session)
-        while step < steps:
+        batches = stack.enter_context(
+            shared_queue(
+                units,
+                mailbox=box if box is not None else gm.MemoryMailbox(),
+                learner_id=f"node-{place.rank}",
+                load=nano.load_unit,
+            )
+        )
+        for step, batch in batches:
+            batch = batch.to(device)
             lr = learning_rate(step)
             for group in optimizer.param_groups:
                 group["lr"] = lr
             loss = 0.0
-            for chunk in next(batches).split(micro_batch):
+            for chunk in batch.split(micro_batch):
                 with nano.autocast(device):
                     micro = model(chunk[:, :-1], chunk[:, 1:]) / accumulation
                 micro.backward()
@@ -287,20 +326,20 @@ def train(
             optimizer.zero_grad(set_to_none=True)
             if session is not None:
                 session.step(samples=per_step)
-            step += 1
+            done += 1
             ema = loss if math.isnan(ema) else 0.95 * ema + 0.05 * loss
             rounds_seen = -1 if session is None else session.rounds_seen
-            if step == 1 or step % 20 == 0 or rounds_seen != seen:
+            if done == 1 or done % 20 == 0 or rounds_seen != seen:
                 seen = rounds_seen
-                rate = step * per_step / (time.monotonic() - started)
+                rate = done * per_step / (time.monotonic() - started)
                 print(
-                    f"step {step}  {step / steps:.0%}  loss {ema:.3f}  lr {lr:.2e}  "
-                    f"{rate:,.0f} tok/s  round {rounds_seen}",
+                    f"step {step}  {(step + 1) / steps:.0%}  done {done}  loss {ema:.3f}  "
+                    f"lr {lr:.2e}  {rate:,.0f} tok/s  round {rounds_seen}",
                     flush=True,
                 )
     return {
-        "steps": step,
-        "tokens": step * per_step,
+        "steps": done,
+        "tokens": done * per_step,
         "rounds": -1 if session is None else session.rounds_seen,
         "loss": ema,
         "val_loss": nano.validation(model, nano.held_out(), micro_batch, device),
@@ -419,7 +458,7 @@ def pythia() -> Pythia:
     """
     import torch
     from huggingface_hub import HfFileSystem, hf_hub_download
-    from torch import Tensor, nn
+    from torch import nn
     from torch.nn import functional as F
 
     hub = HfFileSystem()
@@ -520,29 +559,12 @@ def pythia() -> Pythia:
             begin += size
         return torch.frombuffer(data, dtype=torch.uint16).to(torch.long).view(count, SEQUENCE)
 
-    class Batches(Iterator[Tensor]):
-        """This node's share of every official step's sequences, from step 0 on, read ahead on
-        a background thread."""
-
-        def __init__(self, rank: int, nodes: int, device: torch.device, depth: int = 8) -> None:
-            self._queue: queue.Queue[Tensor | BaseException] = queue.Queue(maxsize=depth)
-            self._device = device
-            share = BATCH // nodes
-            threading.Thread(target=self._produce, args=(rank * share, share), daemon=True).start()
-
-        def __next__(self) -> Tensor:
-            match self._queue.get():
-                case BaseException() as failure:
-                    raise failure
-                case chunk:
-                    return chunk.to(self._device)
-
-        def _produce(self, first: int, share: int) -> None:
-            try:
-                for step in itertools.count():
-                    self._queue.put(sequences(step * BATCH + first, share))
-            except BaseException as failure:
-                self._queue.put(failure)
+    def load_unit(unit: Unit) -> Iterator[tuple[int, Tensor]]:
+        share = BATCH // unit.lanes
+        last = unit.first + unit.count - 1
+        log.info("unit: steps %d-%d, slice %d", unit.first, last, unit.lane)
+        for step in range(unit.first, last + 1):
+            yield step, sequences(step * BATCH + unit.lane * share, share)
 
     def held_out() -> Tensor:
         return sequences(HELD_OUT * BATCH, BATCH)
@@ -584,7 +606,7 @@ def pythia() -> Pythia:
     return Pythia(
         model=GPTNeoX,
         checkpoint=checkpoint,
-        batches=Batches,
+        load_unit=load_unit,
         held_out=held_out,
         pick_device=pick_device,
         autocast=autocast,

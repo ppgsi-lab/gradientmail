@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="340" viewBox="0 0 960 340" role="img" aria-label="Computation graph of the guide's example. Data x = 2 and parameter w = 1 enter a multiplication giving wx = 2; adding parameter b = 0 gives the prediction ŷ = 2; subtracting the target y = 6 gives −4; squaring gives the loss L = 16. The backward pass runs right to left: the derivative of L is 1 at the loss, 2(ŷ − y) = −8 after the square, −8 through the subtraction and the addition, so ∂L/∂b = −8, and multiplied by x = 2 at the multiplication, so ∂L/∂w = −16. The gradient is (−16, −8).">
+<rect width="960" height="340" rx="6" class="ground"/>
+
+<text x="40" y="74" class="small b muted">data</text>
+<text x="40" y="294" class="small b muted">parameters</text>
+
+<path d="M 200 88 V 157" class="arrow"/>
+<path d="M 600 88 V 157" class="arrow"/>
+<path d="M 191 272 V 203" class="arrow"/>
+<path d="M 391 272 V 203" class="arrow"/>
+<path d="M 222 172 H 377" class="arrow"/>
+<path d="M 422 172 H 577" class="arrow"/>
+<path d="M 622 172 H 757" class="arrow"/>
+<path d="M 802 172 H 845" class="arrow"/>
+
+<path d="M 846 190 H 803" class="arrow-acc"/>
+<path d="M 758 190 H 623" class="arrow-acc"/>
+<path d="M 578 190 H 423" class="arrow-acc"/>
+<path d="M 378 190 H 223" class="arrow-acc"/>
+<path d="M 209 203 V 271" class="arrow-acc"/>
+<path d="M 409 203 V 271" class="arrow-acc"/>
+
+<rect x="158" y="52" width="84" height="36" rx="6" class="card"/>
+<text x="200" y="75" class="m mid"><tspan class="i">x</tspan> = 2</text>
+<rect x="558" y="52" width="84" height="36" rx="6" class="card"/>
+<text x="600" y="75" class="m mid"><tspan class="i">y</tspan> = 6</text>
+<rect x="158" y="272" width="84" height="36" rx="6" class="param"/>
+<text x="200" y="295" class="m mid"><tspan class="i">w</tspan> = 1</text>
+<rect x="358" y="272" width="84" height="36" rx="6" class="param"/>
+<text x="400" y="295" class="m mid"><tspan class="i">b</tspan> = 0</text>
+
+<rect x="178" y="158" width="44" height="44" rx="6" class="op"/>
+<text x="200" y="187" class="m big mid">×</text>
+<rect x="378" y="158" width="44" height="44" rx="6" class="op"/>
+<text x="400" y="187" class="m big mid">+</text>
+<rect x="578" y="158" width="44" height="44" rx="6" class="op"/>
+<text x="600" y="187" class="m big mid">−</text>
+<rect x="758" y="158" width="44" height="44" rx="6" class="op"/>
+<text x="780" y="186" class="m mid">( )²</text>
+<rect x="846" y="160" width="80" height="40" rx="6" class="out"/>
+<text x="886" y="185" class="m mid b"><tspan class="i">L</tspan> = 16</text>
+
+<text x="300" y="163" class="m mid"><tspan class="i">wx</tspan> = 2</text>
+<text x="500" y="163" class="m mid"><tspan class="i">ŷ</tspan> = 2</text>
+<text x="690" y="163" class="m mid"><tspan class="i">ŷ</tspan> − <tspan class="i">y</tspan> = −4</text>
+
+<text x="824" y="212" class="m mid acc">1</text>
+<text x="690" y="212" class="m mid acc">2(<tspan class="i">ŷ</tspan> − <tspan class="i">y</tspan>) = −8</text>
+<text x="500" y="212" class="m mid acc">−8</text>
+<text x="300" y="212" class="m mid acc">−8</text>
+<text x="219" y="234" class="m acc">∂<tspan class="i">L</tspan>/∂<tspan class="i">w</tspan></text>
+<text x="219" y="253" class="m acc">−8 · <tspan class="i">x</tspan> = −16</text>
+<text x="419" y="234" class="m acc">∂<tspan class="i">L</tspan>/∂<tspan class="i">b</tspan></text>
+<text x="419" y="253" class="m acc">−8 · 1 = −8</text>
+
+<text x="520" y="290" class="m acc">∇<tspan class="sub i" dy="4">θ</tspan><tspan class="i" dy="-4">L</tspan> = (−16, −8)</text>
+<text x="520" y="309" class="small muted">the gradient: one derivative per parameter</text>
+
+<path d="M 700 62 H 736" class="arrow"/>
+<text x="746" y="66">forward pass: values</text>
+<path d="M 736 86 H 700" class="arrow-acc"/>
+<text x="746" y="90">backward pass: derivatives of <tspan class="var">L</tspan></text>
+</svg>

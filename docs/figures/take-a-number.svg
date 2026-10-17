@@ -1,0 +1,207 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="356" viewBox="0 0 960 356" role="img" aria-label="Four nodes process the same 24 units, four slices of six groups of dataset steps. A processes a unit in one time unit, B and C in two, D in four. With a fixed split each node owns one slice of every step: A finishes its six units at t = 6, B and C at t = 12, and D works alone until t = 24. With a shared queue each node claims the next unclaimed unit when it is ready: A processes 11 units, B and C 5 each and D 3, and all are done at t = 12.">
+<rect width="960" height="356" rx="6" class="ground"/>
+<rect x="24" y="27" width="12" height="12" rx="6" class="sA"/>
+<rect x="40" y="27" width="12" height="12" rx="6" class="sB"/>
+<rect x="56" y="27" width="12" height="12" rx="6" class="sC"/>
+<rect x="72" y="27" width="12" height="12" rx="6" class="sD"/>
+<text x="92" y="37" class="small">a unit processed by A, B, C or D: A takes 1 time unit, B and C take 2, D takes 4</text>
+<text x="936" y="37" class="small end b" opacity="0"><tspan class="var">t</tspan> = 0<animate attributeName="opacity" values="0;1;0" keyTimes="0;0.0588;0.0882" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<text x="936" y="37" class="small end b" opacity="0"><tspan class="var">t</tspan> = 1<animate attributeName="opacity" values="0;1;0" keyTimes="0;0.0882;0.1176" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<text x="936" y="37" class="small end b" opacity="0"><tspan class="var">t</tspan> = 2<animate attributeName="opacity" values="0;1;0" keyTimes="0;0.1176;0.1471" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<text x="936" y="37" class="small end b" opacity="0"><tspan class="var">t</tspan> = 3<animate attributeName="opacity" values="0;1;0" keyTimes="0;0.1471;0.1765" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<text x="936" y="37" class="small end b" opacity="0"><tspan class="var">t</tspan> = 4<animate attributeName="opacity" values="0;1;0" keyTimes="0;0.1765;0.2059" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<text x="936" y="37" class="small end b" opacity="0"><tspan class="var">t</tspan> = 5<animate attributeName="opacity" values="0;1;0" keyTimes="0;0.2059;0.2353" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<text x="936" y="37" class="small end b" opacity="0"><tspan class="var">t</tspan> = 6<animate attributeName="opacity" values="0;1;0" keyTimes="0;0.2353;0.2647" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<text x="936" y="37" class="small end b" opacity="0"><tspan class="var">t</tspan> = 7<animate attributeName="opacity" values="0;1;0" keyTimes="0;0.2647;0.2941" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<text x="936" y="37" class="small end b" opacity="0"><tspan class="var">t</tspan> = 8<animate attributeName="opacity" values="0;1;0" keyTimes="0;0.2941;0.3235" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<text x="936" y="37" class="small end b" opacity="0"><tspan class="var">t</tspan> = 9<animate attributeName="opacity" values="0;1;0" keyTimes="0;0.3235;0.3529" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<text x="936" y="37" class="small end b" opacity="0"><tspan class="var">t</tspan> = 10<animate attributeName="opacity" values="0;1;0" keyTimes="0;0.3529;0.3824" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<text x="936" y="37" class="small end b" opacity="0"><tspan class="var">t</tspan> = 11<animate attributeName="opacity" values="0;1;0" keyTimes="0;0.3824;0.4118" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<text x="936" y="37" class="small end b" opacity="0"><tspan class="var">t</tspan> = 12<animate attributeName="opacity" values="0;1;0" keyTimes="0;0.4118;0.4412" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<text x="936" y="37" class="small end b" opacity="0"><tspan class="var">t</tspan> = 13<animate attributeName="opacity" values="0;1;0" keyTimes="0;0.4412;0.4706" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<text x="936" y="37" class="small end b" opacity="0"><tspan class="var">t</tspan> = 14<animate attributeName="opacity" values="0;1;0" keyTimes="0;0.4706;0.5000" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<text x="936" y="37" class="small end b" opacity="0"><tspan class="var">t</tspan> = 15<animate attributeName="opacity" values="0;1;0" keyTimes="0;0.5000;0.5294" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<text x="936" y="37" class="small end b" opacity="0"><tspan class="var">t</tspan> = 16<animate attributeName="opacity" values="0;1;0" keyTimes="0;0.5294;0.5588" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<text x="936" y="37" class="small end b" opacity="0"><tspan class="var">t</tspan> = 17<animate attributeName="opacity" values="0;1;0" keyTimes="0;0.5588;0.5882" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<text x="936" y="37" class="small end b" opacity="0"><tspan class="var">t</tspan> = 18<animate attributeName="opacity" values="0;1;0" keyTimes="0;0.5882;0.6176" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<text x="936" y="37" class="small end b" opacity="0"><tspan class="var">t</tspan> = 19<animate attributeName="opacity" values="0;1;0" keyTimes="0;0.6176;0.6471" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<text x="936" y="37" class="small end b" opacity="0"><tspan class="var">t</tspan> = 20<animate attributeName="opacity" values="0;1;0" keyTimes="0;0.6471;0.6765" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<text x="936" y="37" class="small end b" opacity="0"><tspan class="var">t</tspan> = 21<animate attributeName="opacity" values="0;1;0" keyTimes="0;0.6765;0.7059" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<text x="936" y="37" class="small end b" opacity="0"><tspan class="var">t</tspan> = 22<animate attributeName="opacity" values="0;1;0" keyTimes="0;0.7059;0.7353" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<text x="936" y="37" class="small end b" opacity="0"><tspan class="var">t</tspan> = 23<animate attributeName="opacity" values="0;1;0" keyTimes="0;0.7353;0.7647" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<text x="936" y="37" class="small end b"><tspan class="var">t</tspan> = 24<animate attributeName="opacity" values="0;1" keyTimes="0;0.7647" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<path d="M 24 64 H 936 M 480 80 V 312" class="rule"/>
+<text x="24" y="96" class="title">Fixed split</text>
+<text x="24" y="114" class="small muted">Each node owns one slice of every step.</text>
+<text x="76" y="146" class="small b muted">dataset steps</text>
+<text x="105" y="162" class="small mid muted">0</text>
+<text x="169" y="162" class="small mid muted">20</text>
+<text x="233" y="162" class="small mid muted">40</text>
+<text x="297" y="162" class="small mid muted">60</text>
+<text x="361" y="162" class="small mid muted">80</text>
+<text x="425" y="162" class="small mid muted">100</text>
+<text x="68" y="186" class="small end muted">slice 0</text>
+<rect x="76" y="172" width="58" height="20" rx="8" class="track"/>
+<rect x="140" y="172" width="58" height="20" rx="8" class="track"/>
+<rect x="204" y="172" width="58" height="20" rx="8" class="track"/>
+<rect x="268" y="172" width="58" height="20" rx="8" class="track"/>
+<rect x="332" y="172" width="58" height="20" rx="8" class="track"/>
+<rect x="396" y="172" width="58" height="20" rx="8" class="track"/>
+<text x="68" y="214" class="small end muted">slice 1</text>
+<rect x="76" y="200" width="58" height="20" rx="8" class="track"/>
+<rect x="140" y="200" width="58" height="20" rx="8" class="track"/>
+<rect x="204" y="200" width="58" height="20" rx="8" class="track"/>
+<rect x="268" y="200" width="58" height="20" rx="8" class="track"/>
+<rect x="332" y="200" width="58" height="20" rx="8" class="track"/>
+<rect x="396" y="200" width="58" height="20" rx="8" class="track"/>
+<text x="68" y="242" class="small end muted">slice 2</text>
+<rect x="76" y="228" width="58" height="20" rx="8" class="track"/>
+<rect x="140" y="228" width="58" height="20" rx="8" class="track"/>
+<rect x="204" y="228" width="58" height="20" rx="8" class="track"/>
+<rect x="268" y="228" width="58" height="20" rx="8" class="track"/>
+<rect x="332" y="228" width="58" height="20" rx="8" class="track"/>
+<rect x="396" y="228" width="58" height="20" rx="8" class="track"/>
+<text x="68" y="270" class="small end muted">slice 3</text>
+<rect x="76" y="256" width="58" height="20" rx="8" class="track"/>
+<rect x="140" y="256" width="58" height="20" rx="8" class="track"/>
+<rect x="204" y="256" width="58" height="20" rx="8" class="track"/>
+<rect x="268" y="256" width="58" height="20" rx="8" class="track"/>
+<rect x="332" y="256" width="58" height="20" rx="8" class="track"/>
+<rect x="396" y="256" width="58" height="20" rx="8" class="track"/>
+<rect x="76" y="172" height="20" rx="8" class="sA" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.0588;0.0882;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="105" y="186" class="mid b on-learner">A<animate attributeName="opacity" values="0;1" keyTimes="0;0.0765" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="140" y="172" height="20" rx="8" class="sA" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.0882;0.1176;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="169" y="186" class="mid b on-learner">A<animate attributeName="opacity" values="0;1" keyTimes="0;0.1059" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="204" y="172" height="20" rx="8" class="sA" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.1176;0.1471;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="233" y="186" class="mid b on-learner">A<animate attributeName="opacity" values="0;1" keyTimes="0;0.1353" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="268" y="172" height="20" rx="8" class="sA" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.1471;0.1765;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="297" y="186" class="mid b on-learner">A<animate attributeName="opacity" values="0;1" keyTimes="0;0.1647" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="332" y="172" height="20" rx="8" class="sA" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.1765;0.2059;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="361" y="186" class="mid b on-learner">A<animate attributeName="opacity" values="0;1" keyTimes="0;0.1941" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="396" y="172" height="20" rx="8" class="sA" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.2059;0.2353;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="425" y="186" class="mid b on-learner">A<animate attributeName="opacity" values="0;1" keyTimes="0;0.2235" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="76" y="200" height="20" rx="8" class="sB" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.0588;0.1176;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="105" y="214" class="mid b on-learner">B<animate attributeName="opacity" values="0;1" keyTimes="0;0.0941" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="140" y="200" height="20" rx="8" class="sB" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.1176;0.1765;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="169" y="214" class="mid b on-learner">B<animate attributeName="opacity" values="0;1" keyTimes="0;0.1529" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="204" y="200" height="20" rx="8" class="sB" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.1765;0.2353;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="233" y="214" class="mid b on-learner">B<animate attributeName="opacity" values="0;1" keyTimes="0;0.2118" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="268" y="200" height="20" rx="8" class="sB" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.2353;0.2941;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="297" y="214" class="mid b on-learner">B<animate attributeName="opacity" values="0;1" keyTimes="0;0.2706" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="332" y="200" height="20" rx="8" class="sB" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.2941;0.3529;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="361" y="214" class="mid b on-learner">B<animate attributeName="opacity" values="0;1" keyTimes="0;0.3294" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="396" y="200" height="20" rx="8" class="sB" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.3529;0.4118;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="425" y="214" class="mid b on-learner">B<animate attributeName="opacity" values="0;1" keyTimes="0;0.3882" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="76" y="228" height="20" rx="8" class="sC" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.0588;0.1176;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="105" y="242" class="mid b on-learner">C<animate attributeName="opacity" values="0;1" keyTimes="0;0.0941" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="140" y="228" height="20" rx="8" class="sC" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.1176;0.1765;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="169" y="242" class="mid b on-learner">C<animate attributeName="opacity" values="0;1" keyTimes="0;0.1529" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="204" y="228" height="20" rx="8" class="sC" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.1765;0.2353;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="233" y="242" class="mid b on-learner">C<animate attributeName="opacity" values="0;1" keyTimes="0;0.2118" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="268" y="228" height="20" rx="8" class="sC" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.2353;0.2941;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="297" y="242" class="mid b on-learner">C<animate attributeName="opacity" values="0;1" keyTimes="0;0.2706" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="332" y="228" height="20" rx="8" class="sC" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.2941;0.3529;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="361" y="242" class="mid b on-learner">C<animate attributeName="opacity" values="0;1" keyTimes="0;0.3294" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="396" y="228" height="20" rx="8" class="sC" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.3529;0.4118;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="425" y="242" class="mid b on-learner">C<animate attributeName="opacity" values="0;1" keyTimes="0;0.3882" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="76" y="256" height="20" rx="8" class="sD" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.0588;0.1765;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="105" y="270" class="mid b on-learner">D<animate attributeName="opacity" values="0;1" keyTimes="0;0.1294" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="140" y="256" height="20" rx="8" class="sD" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.1765;0.2941;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="169" y="270" class="mid b on-learner">D<animate attributeName="opacity" values="0;1" keyTimes="0;0.2471" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="204" y="256" height="20" rx="8" class="sD" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.2941;0.4118;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="233" y="270" class="mid b on-learner">D<animate attributeName="opacity" values="0;1" keyTimes="0;0.3647" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="268" y="256" height="20" rx="8" class="sD" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.4118;0.5294;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="297" y="270" class="mid b on-learner">D<animate attributeName="opacity" values="0;1" keyTimes="0;0.4824" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="332" y="256" height="20" rx="8" class="sD" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.5294;0.6471;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="361" y="270" class="mid b on-learner">D<animate attributeName="opacity" values="0;1" keyTimes="0;0.6000" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="396" y="256" height="20" rx="8" class="sD" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.6471;0.7647;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="425" y="270" class="mid b on-learner">D<animate attributeName="opacity" values="0;1" keyTimes="0;0.7176" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<text x="24" y="304" class="small"><tspan class="b">all done at <tspan class="var">t</tspan> = 24</tspan><tspan class="muted">: 6 units per node</tspan><animate attributeName="opacity" values="0;1" keyTimes="0;0.7647" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<text x="504" y="96" class="title">Shared queue</text>
+<text x="504" y="114" class="small muted">Each node claims the next unclaimed unit.</text>
+<text x="556" y="146" class="small b muted">dataset steps</text>
+<text x="585" y="162" class="small mid muted">0</text>
+<text x="649" y="162" class="small mid muted">20</text>
+<text x="713" y="162" class="small mid muted">40</text>
+<text x="777" y="162" class="small mid muted">60</text>
+<text x="841" y="162" class="small mid muted">80</text>
+<text x="905" y="162" class="small mid muted">100</text>
+<text x="548" y="186" class="small end muted">slice 0</text>
+<rect x="556" y="172" width="58" height="20" rx="8" class="track"/>
+<rect x="620" y="172" width="58" height="20" rx="8" class="track"/>
+<rect x="684" y="172" width="58" height="20" rx="8" class="track"/>
+<rect x="748" y="172" width="58" height="20" rx="8" class="track"/>
+<rect x="812" y="172" width="58" height="20" rx="8" class="track"/>
+<rect x="876" y="172" width="58" height="20" rx="8" class="track"/>
+<text x="548" y="214" class="small end muted">slice 1</text>
+<rect x="556" y="200" width="58" height="20" rx="8" class="track"/>
+<rect x="620" y="200" width="58" height="20" rx="8" class="track"/>
+<rect x="684" y="200" width="58" height="20" rx="8" class="track"/>
+<rect x="748" y="200" width="58" height="20" rx="8" class="track"/>
+<rect x="812" y="200" width="58" height="20" rx="8" class="track"/>
+<rect x="876" y="200" width="58" height="20" rx="8" class="track"/>
+<text x="548" y="242" class="small end muted">slice 2</text>
+<rect x="556" y="228" width="58" height="20" rx="8" class="track"/>
+<rect x="620" y="228" width="58" height="20" rx="8" class="track"/>
+<rect x="684" y="228" width="58" height="20" rx="8" class="track"/>
+<rect x="748" y="228" width="58" height="20" rx="8" class="track"/>
+<rect x="812" y="228" width="58" height="20" rx="8" class="track"/>
+<rect x="876" y="228" width="58" height="20" rx="8" class="track"/>
+<text x="548" y="270" class="small end muted">slice 3</text>
+<rect x="556" y="256" width="58" height="20" rx="8" class="track"/>
+<rect x="620" y="256" width="58" height="20" rx="8" class="track"/>
+<rect x="684" y="256" width="58" height="20" rx="8" class="track"/>
+<rect x="748" y="256" width="58" height="20" rx="8" class="track"/>
+<rect x="812" y="256" width="58" height="20" rx="8" class="track"/>
+<rect x="876" y="256" width="58" height="20" rx="8" class="track"/>
+<rect x="556" y="172" height="20" rx="8" class="sA" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.0588;0.0882;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="585" y="186" class="mid b on-learner">A<animate attributeName="opacity" values="0;1" keyTimes="0;0.0765" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="556" y="200" height="20" rx="8" class="sB" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.0588;0.1176;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="585" y="214" class="mid b on-learner">B<animate attributeName="opacity" values="0;1" keyTimes="0;0.0941" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="556" y="228" height="20" rx="8" class="sC" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.0588;0.1176;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="585" y="242" class="mid b on-learner">C<animate attributeName="opacity" values="0;1" keyTimes="0;0.0941" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="556" y="256" height="20" rx="8" class="sD" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.0588;0.1765;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="585" y="270" class="mid b on-learner">D<animate attributeName="opacity" values="0;1" keyTimes="0;0.1294" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="620" y="172" height="20" rx="8" class="sA" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.0882;0.1176;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="649" y="186" class="mid b on-learner">A<animate attributeName="opacity" values="0;1" keyTimes="0;0.1059" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="620" y="200" height="20" rx="8" class="sA" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.1176;0.1471;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="649" y="214" class="mid b on-learner">A<animate attributeName="opacity" values="0;1" keyTimes="0;0.1353" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="620" y="228" height="20" rx="8" class="sB" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.1176;0.1765;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="649" y="242" class="mid b on-learner">B<animate attributeName="opacity" values="0;1" keyTimes="0;0.1529" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="620" y="256" height="20" rx="8" class="sC" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.1176;0.1765;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="649" y="270" class="mid b on-learner">C<animate attributeName="opacity" values="0;1" keyTimes="0;0.1529" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="684" y="172" height="20" rx="8" class="sA" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.1471;0.1765;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="713" y="186" class="mid b on-learner">A<animate attributeName="opacity" values="0;1" keyTimes="0;0.1647" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="684" y="200" height="20" rx="8" class="sA" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.1765;0.2059;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="713" y="214" class="mid b on-learner">A<animate attributeName="opacity" values="0;1" keyTimes="0;0.1941" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="684" y="228" height="20" rx="8" class="sB" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.1765;0.2353;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="713" y="242" class="mid b on-learner">B<animate attributeName="opacity" values="0;1" keyTimes="0;0.2118" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="684" y="256" height="20" rx="8" class="sC" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.1765;0.2353;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="713" y="270" class="mid b on-learner">C<animate attributeName="opacity" values="0;1" keyTimes="0;0.2118" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="748" y="256" height="20" rx="8" class="sD" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.1765;0.2941;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="777" y="270" class="mid b on-learner">D<animate attributeName="opacity" values="0;1" keyTimes="0;0.2471" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="748" y="172" height="20" rx="8" class="sA" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.2059;0.2353;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="777" y="186" class="mid b on-learner">A<animate attributeName="opacity" values="0;1" keyTimes="0;0.2235" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="748" y="200" height="20" rx="8" class="sA" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.2353;0.2647;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="777" y="214" class="mid b on-learner">A<animate attributeName="opacity" values="0;1" keyTimes="0;0.2529" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="748" y="228" height="20" rx="8" class="sB" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.2353;0.2941;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="777" y="242" class="mid b on-learner">B<animate attributeName="opacity" values="0;1" keyTimes="0;0.2706" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="812" y="228" height="20" rx="8" class="sC" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.2353;0.2941;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="841" y="242" class="mid b on-learner">C<animate attributeName="opacity" values="0;1" keyTimes="0;0.2706" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="812" y="172" height="20" rx="8" class="sA" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.2647;0.2941;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="841" y="186" class="mid b on-learner">A<animate attributeName="opacity" values="0;1" keyTimes="0;0.2824" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="812" y="200" height="20" rx="8" class="sA" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.2941;0.3235;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="841" y="214" class="mid b on-learner">A<animate attributeName="opacity" values="0;1" keyTimes="0;0.3118" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="812" y="256" height="20" rx="8" class="sB" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.2941;0.3529;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="841" y="270" class="mid b on-learner">B<animate attributeName="opacity" values="0;1" keyTimes="0;0.3294" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="876" y="228" height="20" rx="8" class="sC" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.2941;0.3529;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="905" y="242" class="mid b on-learner">C<animate attributeName="opacity" values="0;1" keyTimes="0;0.3294" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="876" y="256" height="20" rx="8" class="sD" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.2941;0.4118;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="905" y="270" class="mid b on-learner">D<animate attributeName="opacity" values="0;1" keyTimes="0;0.3647" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="876" y="172" height="20" rx="8" class="sA" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.3235;0.3529;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="905" y="186" class="mid b on-learner">A<animate attributeName="opacity" values="0;1" keyTimes="0;0.3412" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<rect x="876" y="200" height="20" rx="8" class="sA" width="58"><animate attributeName="width" values="0;0;58;58" keyTimes="0;0.3529;0.3824;1" dur="17s" repeatCount="indefinite"/></rect>
+<text x="905" y="214" class="mid b on-learner">A<animate attributeName="opacity" values="0;1" keyTimes="0;0.3706" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<text x="504" y="304" class="small"><tspan class="b">all done at <tspan class="var">t</tspan> = 12</tspan><tspan class="muted">: A 11, B 5, C 5, D 3 units</tspan><animate attributeName="opacity" values="0;1" keyTimes="0;0.4118" calcMode="discrete" dur="17s" repeatCount="indefinite"/></text>
+<text x="24" y="332" class="small muted">Units are equal in size; loading and claiming them take no time here.</text>
+</svg>

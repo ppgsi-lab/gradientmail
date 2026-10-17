@@ -1,0 +1,180 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="400" viewBox="0 0 960 400" role="img" aria-label="Eight fragment rows over 200 local steps, with sync_every = 100 and fragments = 8. DiLoCo exchanges every fragment together at steps 100 and 200, a single column. Streaming DiLoCo exchanges one fragment at a time, at steps 12, 25, 37, 50, 62, 75, 87 and 100 and again 100 steps later, a staircase: each fragment is still exchanged once every 100 steps, but each exchange carries an eighth of the model.">
+<style>
+svg { --paper: #fefdfc; --wash: #f5f1ec; --rule: #dedad5; --hatch: #cfc8c0; --muted: #665f5a; --ink: #1c1714; --accent: #065f74; --accent-wash: #e4f1f5; --on-accent: #ffffff; --signal: #86262e; --signal-wash: #fbeae9; --learner-a: #556892; --learner-b: #ac853f; --learner-c: #598361; --learner-d: #825172; --serif: "Newsreader", Georgia, "Times New Roman", serif; --math: "Source Serif 4", "Noto Sans Math", Georgia, serif; --sans: "Source Sans 3", "Source Sans Pro", system-ui, -apple-system, "Segoe UI", sans-serif; --mono: "Source Code Pro", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+@media (prefers-color-scheme: dark) { svg { --paper: #191512; --wash: #241f1c; --rule: #413c38; --hatch: #544f4a; --muted: #b3ada6; --ink: #eeebe5; --accent: #6ebccb; --accent-wash: #192f35; --on-accent: #191512; --signal: #e38182; --signal-wash: #3d2323; --learner-a: #899ecb; --learner-b: #d6ad68; --learner-c: #80b38a; --learner-d: #bd88ab; } }
+@font-face { font-family: "Source Code Pro"; font-style: normal; font-weight: 400; src: url(data:font/woff2;base64,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) format("woff2"); }
+@font-face { font-family: "Source Sans 3"; font-style: normal; font-weight: 600; src: url(data:font/woff2;base64,d09GMgABAAAAAAcQABEAAAAADUQAAAawAAMNUAAAAAAAAAAAAAAAAAAAAAAAAAAAGUYaFhuDBBxwBmA/U1RBVEQAgQQRCAqKFIgpATYCJANECyQABCAFhQIHIAwHGw8Lo6KUbx5A8B8SqMow6YTdnVOUBDdAjIbg9trXW+6IMri/ojZv/fv1hlMYGGyeIYHxY5SmOfngKOjrx3Tf3YVRFUiVLUogGSFbF6MLzqMkX6EaF1Ua3+///1q765Im/V3MtTH2RuwzslbJxEIjciAK1nT28ipgI6lky5pQeARJwlf4WtK6uvrnHy/995ZCjooUpmYdBrP/AWAB53+hlYW3fmvyVyIh7zeOrNc7LYkTrwQA09Fj/X/u9+qPKK1E+Py/wIu+P3pRRR2eQNMBZljht+34wKfFOwMtIBsg7TGdLgsLWeZz7ZkI5EGosl8g/MoG3PWQ3D29foZwNQgcCHcB2RCepciDIA1ATF6Z2sSAQBkAGDFVIlC0brdbQZL6iMKeKPCQ7ZJQgJDPz4c8M9WAPzUVUV2kb8FZ6zdVzOlTdHflP7wr50BRe8t7h2GHpK8hPXa7XnnpTyeWF6F4Lj0EzCMM1gFdYZEnPg0g+jDTVgJQX1E4PKfIhZIM25ZEFgdOhlzI5p3gECR2hqIj70chHBYOS8fpSQzdur8/R/UITDmkyGeuOFLxsyC4W9SgvJGCfUATOH4hnWIxKFjP3cPNApBzo4Pdwzv8moga8D8G/8oM9p+pv2oHZqSI5Bloi4MF8XfdiGKScPUiOTESEupiAC2VN4ATyzYAAmDAQVuCQFvSGOirSsibcezaEwnRmbhA1ALMOEKI3PcrTRy1bdWEUSOGDejTW0zlM4paVIA0AJgDWqBPsCFQfVpCEgJ13pLhtUcZ91iyqyMWeJ2da5aPk5NHENJlPUmlkpJGo7GIQvTZC8wkk0EKhUU0+dgnszR9OQWMMswjKKeR0i7D7GXFui9tVBjOAwJz1Rm0uIuOySsdYh7PgEcdfQlcOI/EzuVu4h49pr1em8HMJGuPuYveTShA9/BtsqcuyhuZvO/OxIgR9O/m3UjIE7aJc+NrvIjFdqu8G4ed1LPJRVIexWyWOGqDD8A9AyNv5yZ6d5eyHRZ8IjZf7S0xN/QluAYu7Pjo4tHkLrNzkv+bBiksFYElGosuEz/AJgh1BAlckHMupivtGc0w7U4y2VNX16vxCjMvlanL3XdM8PXOSe09lIsHqSRzmxMA3HXAoimBGD9l0780HpLyqMs7+Cva9wF7t0oHx854Z6LQ1SuOMDQMUn5sYFlzAVV31VGKsbEjYt20teVMpOZ0zQvClICbpfAGK7um+Hjb1jrbEOMANVN/VaUoF2elCH8lUzXgJl2BMxRwwTxb5b2hnZQ/rKQ9gIo0n73rg/6/hJoqq2u7hiob60XLmevb/T4RRRWrYaFj9K83HHwgaaKsoeUVrQ6OQt5EBjaWd6t17+RgZIqWgs2Fjsg6DP+z4sQMnJXxQAvpoAxIxAZhCBDHp6NNGRyEICGJXCACi0R9o1RXZ5PUKANdMx89hWhzToJw9f6y8k9V1EHaylgXszaRRiVLmjAbAU8R8PWWnp+ItbyEOQSJdImLcjhCpaiZvLaGoxeuzutBWQ5/6MEPQVPFxg1R5+Sj77nJxael4OXjq22sbOSYQdjsC0TGSyiRYJhLSSLfUyYFW+flEzspZ8b79YmiEreUGQxsDmIwhR5ZE4pa/5kQOxUlR5uIAPV0xEAFExS74pWGGJhgivVexTATiMOBUHWyMuSnnSQryf7eC3DBIEbfJNXFtY7ArIGhTOnq0j8A1hKxUVFxmrVhGM8A6+6hPaEha1Wcp22CP2RVlVPsX5QC+M7kYRnq9MrS0w5i6wnuLfAreCUvLMPWtsHrjOsBm9PeApPCxMVDxSVcwdN1C4/0ggrIqfsC9oEd4L1ObRwdMeCDi5+ZxdFHRf8/7z4FPo8XtgFMFrE1ezBntBfIMgDCu8qeoHh7WyCV71ijhj37wzaxUCl4yg9PJWW0IFbz13gxshJ6djp2uChlF4WYSAYuEoNm6DmEtFcMNDxLqIsPRcgvK7mWoKYA3ILMLeu+3abq2e0u/bvDMKrujFHsXVlzGQ+TKOeNPyP+cK+r5kFptuXz5RezaN6iJcwBFScjzDhDVLN/2jQn7NXNkrBfzSwF55ozYRrTY4oYmEckRAJdRMWc4jwR5pbERdhEEDzhOgIKmgykcoyViPwQm+B5J/oiAck1kx5ig7G6+5F1SAJLZs1bsWjLgWOH7mx1vfqMlshivXPoBF4XXhUyl7ycTWyogYsoCLYb8hdgATd6i0tio7BLQ/oDsItcuDptYCroWjLj8RAw+XUXIhKHSfGGpu//hLjM7ZxDJeYSKtHSlVYMvk/6cQcAAAA=) format("woff2"); }
+@font-face { font-family: "Source Sans 3"; font-style: normal; font-weight: 400; src: url(data:font/woff2;base64,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) format("woff2"); }
+/* The classes figure sources draw with. build.py prepends the theme's colors and font families as
+   variables; a source sets no color or font of its own. */
+
+text { font-family: var(--sans); font-size: 12px; fill: var(--ink); }
+.m { font-family: var(--math); font-size: 16px; }
+.code { font-family: var(--mono); font-size: 12px; }
+.title { font-size: 15px; font-weight: 600; }
+.small { font-size: 11px; }
+.sub { font-size: 11px; }
+.big { font-size: 20px; }
+.b { font-weight: 600; }
+.i { font-style: italic; }
+.var { font-family: var(--math); font-style: italic; font-size: 1.2em; }
+.muted { fill: var(--muted); }
+.acc { fill: var(--accent); }
+.sig { fill: var(--signal); }
+.on-accent { fill: var(--on-accent); }
+.mid { text-anchor: middle; }
+.end { text-anchor: end; }
+.digit { font-size: 9.5px; font-weight: 600; fill: var(--paper); text-anchor: middle; }
+.halo { paint-order: stroke; stroke: var(--paper); stroke-width: 4px; stroke-linejoin: round; }
+
+.ground, .backing { fill: var(--paper); }
+.card { fill: var(--paper); stroke: var(--rule); stroke-width: 1.5; }
+.store { fill: var(--wash); }
+.store-card { fill: var(--wash); stroke: var(--rule); stroke-width: 1.5; }
+.elected { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.5; }
+.note { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.25; }
+.note-a { fill: var(--paper); stroke: var(--learner-a); stroke-width: 1.25; }
+.note-b { fill: var(--paper); stroke: var(--learner-b); stroke-width: 1.25; }
+.note-c { fill: var(--paper); stroke: var(--learner-c); stroke-width: 1.25; }
+.op { fill: var(--paper); stroke: var(--muted); stroke-width: 1.5; }
+.out { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.param { fill: var(--wash); stroke: var(--ink); stroke-width: 1.5; }
+.pill { fill: var(--paper); stroke: var(--rule); stroke-width: 1.25; }
+.chip { fill: var(--accent); }
+.tile, .layer, .slot-full { fill: var(--wash); stroke: var(--rule); stroke-width: 1; }
+.slot { fill: var(--paper); stroke: var(--rule); stroke-width: 1.25; }
+.tile-k { fill: var(--accent); }
+.picked { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.5; }
+.track { fill: var(--wash); }
+
+.sA { fill: var(--learner-a); }
+.sB { fill: var(--learner-b); }
+.sC { fill: var(--learner-c); }
+.sD { fill: var(--learner-d); }
+.wait { fill: url(#hatch); }
+.lost { fill: url(#lost); stroke: var(--signal); stroke-width: 1; }
+.xchg, .commit, .dot-acc, .badge-acc { fill: var(--accent); }
+.dot-ink, .badge, .close { fill: var(--ink); }
+.snap { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.round { fill: var(--paper); stroke: var(--accent); stroke-width: 1.25; }
+.miss { fill: none; stroke: var(--signal); stroke-width: 2.5; }
+.band { fill: var(--accent); }
+
+.rule { fill: none; stroke: var(--rule); stroke-width: 1; }
+.guide { fill: none; stroke: var(--rule); stroke-width: 1; stroke-dasharray: 4 4; }
+.axis, .tick { fill: none; stroke: var(--muted); stroke-width: 1; }
+.contour { fill: none; stroke: var(--hatch); stroke-width: 1; }
+.frame { fill: none; stroke: var(--rule); stroke-width: 1.5; }
+.valley { fill: none; stroke: var(--accent); stroke-width: 2; }
+.span { fill: none; stroke: var(--accent); stroke-width: 1; }
+.join { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+.batches { stroke: var(--accent); stroke-width: 0.75; stroke-opacity: 0.45; }
+.life-a { stroke: var(--learner-a); stroke-width: 2.5; }
+.life-b { stroke: var(--learner-b); stroke-width: 2.5; }
+.life-c { stroke: var(--learner-c); stroke-width: 2.5; }
+.life-s { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3; }
+
+.arrow { fill: none; stroke: var(--muted); stroke-width: 1.5; marker-end: url(#head-muted); }
+.arrow-ink { fill: none; stroke: var(--ink); stroke-width: 1.5; marker-end: url(#head-ink); }
+.arrow-acc { fill: none; stroke: var(--accent); stroke-width: 1.5; marker-end: url(#head-accent); }
+.arrow-sig { fill: none; stroke: var(--signal); stroke-width: 1.5; marker-end: url(#head-signal); }
+.arrow-a { fill: none; stroke: var(--learner-a); stroke-width: 1.5; marker-end: url(#head-a); }
+.arrow-b { fill: none; stroke: var(--learner-b); stroke-width: 1.5; marker-end: url(#head-b); }
+.arrow-c { fill: none; stroke: var(--learner-c); stroke-width: 1.5; marker-end: url(#head-c); }
+.reply { fill: none; stroke: var(--muted); stroke-width: 1.25; stroke-dasharray: 4 3; marker-end: url(#head-muted); }
+.strong { stroke-width: 2.5; }
+.loop { fill: none; stroke: var(--muted); stroke-width: 1.25; marker-end: url(#head-muted); }
+
+.hatch-bg { fill: var(--wash); }
+.hatch-line { stroke: var(--hatch); stroke-width: 2.5; }
+.lost-bg { fill: var(--signal-wash); }
+.lost-line { stroke: var(--signal); stroke-opacity: 0.4; stroke-width: 2.5; }
+.head-ink { fill: var(--ink); }
+.head-muted { fill: var(--muted); }
+.head-accent { fill: var(--accent); }
+.head-signal { fill: var(--signal); }
+.head-a { fill: var(--learner-a); }
+.head-b { fill: var(--learner-b); }
+.head-c { fill: var(--learner-c); }
+</style>
+<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="hatch-bg"/><path d="M 0 0 V 6" class="hatch-line"/></pattern><pattern id="lost" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="lost-bg"/><path d="M 0 0 V 6" class="lost-line"/></pattern><marker id="head-ink" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-ink"/></marker><marker id="head-muted" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-muted"/></marker><marker id="head-accent" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-accent"/></marker><marker id="head-signal" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-signal"/></marker><marker id="head-a" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-a"/></marker><marker id="head-b" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-b"/></marker><marker id="head-c" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-c"/></marker></defs>
+<rect width="960" height="400" rx="6" class="ground"/>
+<text x="24" y="40" class="code muted">gm.DiLoCo(sync_every=100, fragments=8)</text>
+
+<path d="M 540 70 V 334 M 880 70 V 334" class="guide"/>
+
+<text x="24" y="84" class="title">DiLoCo</text>
+<text x="24" y="102" class="small muted">The whole model, every</text>
+<text x="24" y="116" class="small muted">100 steps.</text>
+<text x="190" y="68" class="small end muted">parameters</text>
+<text x="190" y="84" class="small end muted">0</text>
+<text x="190" y="97" class="small end muted">1</text>
+<text x="190" y="110" class="small end muted">2</text>
+<text x="190" y="123" class="small end muted">3</text>
+<text x="190" y="136" class="small end muted">4</text>
+<text x="190" y="149" class="small end muted">5</text>
+<text x="190" y="162" class="small end muted">6</text>
+<text x="190" y="175" class="small end muted">7</text>
+<rect x="200" y="76" width="680" height="9" rx="4.5" class="track"/>
+<rect x="200" y="89" width="680" height="9" rx="4.5" class="track"/>
+<rect x="200" y="102" width="680" height="9" rx="4.5" class="track"/>
+<rect x="200" y="115" width="680" height="9" rx="4.5" class="track"/>
+<rect x="200" y="128" width="680" height="9" rx="4.5" class="track"/>
+<rect x="200" y="141" width="680" height="9" rx="4.5" class="track"/>
+<rect x="200" y="154" width="680" height="9" rx="4.5" class="track"/>
+<rect x="200" y="167" width="680" height="9" rx="4.5" class="track"/>
+<rect x="536" y="73" width="8" height="106" rx="4" class="xchg"/>
+<rect x="876" y="73" width="8" height="106" rx="4" class="xchg"/>
+
+<text x="24" y="236" class="title">Streaming DiLoCo</text>
+<text x="24" y="254" class="small muted">One fragment every 12 or 13</text>
+<text x="24" y="268" class="small muted">steps; each one still every</text>
+<text x="24" y="282" class="small muted">100 steps.</text>
+<path d="M 240.8 212 V 220 M 240.8 216 H 580.8 M 580.8 212 V 220" class="span"/>
+<text x="410.8" y="206" class="small mid acc">100 steps between two exchanges of fragment 0</text>
+<text x="190" y="220" class="small end muted">fragment</text>
+<text x="190" y="236" class="small end muted">0</text>
+<text x="190" y="249" class="small end muted">1</text>
+<text x="190" y="262" class="small end muted">2</text>
+<text x="190" y="275" class="small end muted">3</text>
+<text x="190" y="288" class="small end muted">4</text>
+<text x="190" y="301" class="small end muted">5</text>
+<text x="190" y="314" class="small end muted">6</text>
+<text x="190" y="327" class="small end muted">7</text>
+<rect x="200" y="228" width="680" height="9" rx="4.5" class="track"/>
+<rect x="200" y="241" width="680" height="9" rx="4.5" class="track"/>
+<rect x="200" y="254" width="680" height="9" rx="4.5" class="track"/>
+<rect x="200" y="267" width="680" height="9" rx="4.5" class="track"/>
+<rect x="200" y="280" width="680" height="9" rx="4.5" class="track"/>
+<rect x="200" y="293" width="680" height="9" rx="4.5" class="track"/>
+<rect x="200" y="306" width="680" height="9" rx="4.5" class="track"/>
+<rect x="200" y="319" width="680" height="9" rx="4.5" class="track"/>
+<rect x="236.8" y="226" width="8" height="13" rx="4" class="xchg"/>
+<rect x="576.8" y="226" width="8" height="13" rx="4" class="xchg"/>
+<rect x="281" y="239" width="8" height="13" rx="4" class="xchg"/>
+<rect x="621" y="239" width="8" height="13" rx="4" class="xchg"/>
+<rect x="321.8" y="252" width="8" height="13" rx="4" class="xchg"/>
+<rect x="661.8" y="252" width="8" height="13" rx="4" class="xchg"/>
+<rect x="366" y="265" width="8" height="13" rx="4" class="xchg"/>
+<rect x="706" y="265" width="8" height="13" rx="4" class="xchg"/>
+<rect x="406.8" y="278" width="8" height="13" rx="4" class="xchg"/>
+<rect x="746.8" y="278" width="8" height="13" rx="4" class="xchg"/>
+<rect x="451" y="291" width="8" height="13" rx="4" class="xchg"/>
+<rect x="791" y="291" width="8" height="13" rx="4" class="xchg"/>
+<rect x="491.8" y="304" width="8" height="13" rx="4" class="xchg"/>
+<rect x="831.8" y="304" width="8" height="13" rx="4" class="xchg"/>
+<rect x="536" y="317" width="8" height="13" rx="4" class="xchg"/>
+<rect x="876" y="317" width="8" height="13" rx="4" class="xchg"/>
+
+<path d="M 200 344 H 880 M 200 344 V 349 M 285 344 V 349 M 370 344 V 349 M 455 344 V 349 M 540 344 V 349 M 625 344 V 349 M 710 344 V 349 M 795 344 V 349 M 880 344 V 349" class="axis"/>
+<text x="200" y="363" class="small mid muted">0</text>
+<text x="285" y="363" class="small mid muted">25</text>
+<text x="370" y="363" class="small mid muted">50</text>
+<text x="455" y="363" class="small mid muted">75</text>
+<text x="540" y="363" class="small mid muted">100</text>
+<text x="625" y="363" class="small mid muted">125</text>
+<text x="710" y="363" class="small mid muted">150</text>
+<text x="795" y="363" class="small mid muted">175</text>
+<text x="880" y="363" class="small mid muted">200</text>
+<text x="540" y="386" class="small mid muted">local steps</text>
+</svg>

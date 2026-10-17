@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="320" viewBox="0 0 960 320" role="img" aria-label="Pythia-14M in fp32 is 56.3 MB, split into four fragments: each embedding is a 25.8 MB fragment and the six transformer blocks share the other two, about 2.4 MB each. Rounds rotate through the fragments every 12 or 13 steps with sync_every = 50, so a node uploads 25.8 MB, 25.8 MB, 2.4 MB and 2.4 MB in turn; keeping up takes about 1 MB/s.">
+<rect width="960" height="320" rx="6" class="ground"/>
+
+<text x="24" y="44" class="title">Pythia-14M in fp32, 56.3 MB, in four fragments</text>
+<text x="24" y="62" class="small muted">The plan packs tensors by size: each embedding is a fragment, and the six blocks share the other two.</text>
+<rect x="24" y="76" width="414.8" height="32" rx="6" class="xchg"/>
+<text x="231.4" y="96" class="small mid on-accent b">embedding (embed_in) · 25.8 MB</text>
+<rect x="440.8" y="76" width="414.8" height="32" rx="6" class="xchg"/>
+<text x="648.2" y="96" class="small mid on-accent b">embedding (embed_out) · 25.8 MB</text>
+<rect x="857.6" y="76" width="38.3" height="32" rx="6" class="picked"/>
+<rect x="897.9" y="76" width="38.1" height="32" rx="6" class="picked"/>
+<path d="M 857.6 114 V 118 H 936 V 114" class="span"/>
+<text x="936" y="132" class="small end">blocks · about 2.4 MB each</text>
+
+<text x="24" y="172" class="title">What a node uploads, round by round</text>
+<text x="24" y="190" class="small muted">With sync_every=50, a round every 12 or 13 steps; two in four carry an embedding. Keeping up takes about 1 MB/s.</text>
+<rect x="206" y="206" width="20" height="64" rx="4" class="xchg"/>
+<rect x="310" y="206" width="20" height="64" rx="4" class="xchg"/>
+<rect x="406" y="264" width="20" height="6" rx="2" class="picked"/>
+<rect x="510" y="264" width="20" height="6" rx="2" class="picked"/>
+<rect x="606" y="206" width="20" height="64" rx="4" class="xchg"/>
+<rect x="710" y="206" width="20" height="64" rx="4" class="xchg"/>
+<rect x="806" y="264" width="20" height="6" rx="2" class="picked"/>
+<rect x="910" y="264" width="20" height="6" rx="2" class="picked"/>
+<text x="416" y="257" class="small mid muted">2.4</text>
+<text x="520" y="257" class="small mid muted">2.4</text>
+<text x="816" y="257" class="small mid muted">2.4</text>
+<text x="920" y="257" class="small mid muted">2.4</text>
+<text x="196" y="216" class="small end muted">25.8 MB</text>
+
+<path d="M 120 270 H 936 M 120 270 V 275 M 320 270 V 275 M 520 270 V 275 M 720 270 V 275 M 920 270 V 275" class="axis"/>
+<text x="120" y="288" class="small mid muted">0</text>
+<text x="320" y="288" class="small mid muted">25</text>
+<text x="520" y="288" class="small mid muted">50</text>
+<text x="720" y="288" class="small mid muted">75</text>
+<text x="920" y="288" class="small mid muted">100</text>
+<text x="520" y="308" class="small mid muted">local steps</text>
+</svg>

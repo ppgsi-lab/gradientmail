@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="420" viewBox="0 0 960 420" role="img" aria-label="Two deltas of length 1, each 40 degrees from their mean direction, merged two ways with equal weights. The weighted mean cancels their sideways parts and has length 0.77, shorter than either delta. RDA averages the lengths and the directions separately and gives the mean direction the mean length, 1.">
+<style>
+svg { --paper: #fefdfc; --wash: #f5f1ec; --rule: #dedad5; --hatch: #cfc8c0; --muted: #665f5a; --ink: #1c1714; --accent: #065f74; --accent-wash: #e4f1f5; --on-accent: #ffffff; --signal: #86262e; --signal-wash: #fbeae9; --learner-a: #556892; --learner-b: #ac853f; --learner-c: #598361; --learner-d: #825172; --serif: "Newsreader", Georgia, "Times New Roman", serif; --math: "Source Serif 4", "Noto Sans Math", Georgia, serif; --sans: "Source Sans 3", "Source Sans Pro", system-ui, -apple-system, "Segoe UI", sans-serif; --mono: "Source Code Pro", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+@media (prefers-color-scheme: dark) { svg { --paper: #191512; --wash: #241f1c; --rule: #413c38; --hatch: #544f4a; --muted: #b3ada6; --ink: #eeebe5; --accent: #6ebccb; --accent-wash: #192f35; --on-accent: #191512; --signal: #e38182; --signal-wash: #3d2323; --learner-a: #899ecb; --learner-b: #d6ad68; --learner-c: #80b38a; --learner-d: #bd88ab; } }
+@font-face { font-family: "Source Sans 3"; font-style: normal; font-weight: 600; src: url(data:font/woff2;base64,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) format("woff2"); }
+@font-face { font-family: "Source Serif 4"; font-style: normal; font-weight: 400; src: url(data:font/woff2;base64,d09GMgABAAAAAAXMABAAAAAAC2QAAAVwAAQBBgAAAAAAAAAAAAAAAAAAAAAAAAAAGUYbgh4cgjoGYD9TVEFUXgBUEQgKhSCENAE2AiQDRAskAAQgBYVqByAMBxu6CQiuB2xjONYfYrbhwbRI8WRnN8suc+Vp/DI8GlS0ltUze/sUAnJAlkC4qKi4WFAyLCQ6EpZIifzP61XvZzLCrjOnrDDgQhoclCGSv6wOriCVrsDqOrkEQBCtldWz988hUsgaCRyDy0cSKlak4uKQbBwpnHW3fd/++Xc4SIAJn7F5VhxJUNIpwWdGR2VXgZn/77a5vUzplet8tZyWUh3nsLUKh0cjFBrPLPSlqlYVg2sKBRLh+ngG45Dg4D2tjo/ERcclQlchbFRMzVlkB+gUuTT+vPZKBNIgKGJ/gfDJZePRGJDDR/baQL1sko2AehXrDYN6PYNjoCYAICatgPI8CAhkjagHMEjPL0dn3Qo2BiKqEmSkuQIVpkMM1FB2D30PC2BEylKS5G8132c6kGCAGSEBWQtAkWIlkIEUA00ESR7jNoziyVQIWMv57CcJkeuSrJ2wkOG/JuPLN8ajkL6SZdyg3jgaZSEfIAIOjAOBqEgDo3bHPRGQNKkgkpIoovm3aUPpC1WNwBVgoyUeXTYdQhwQpaeXme9Sd2kZhZypoIasAIQrYhSBrTd6synginR078nKcePn/2jaxSE1oPUS2PE0G7BI/1UtZIwZAFYS8PgknyBIgEMAAMD88OYBuKylOFSq/X8b/j2GAwTQ+3QWtOARSXNQgQcGEJs2c1PIDfZXBTDioDXbmQjCCFGZXAigtVQAJxb2WA97CJyxGAWAABiioCghzWHBdcwLWugYi83FpXxIWYbn8tf88v3bXyCLh4pyVgykFABtgBw4AZ9gADABAADLmYhRXoDknMCoXFVOCoT5pJSkpMhZYyc5ty9QYQtnRxssebkkKbr0uuF5PGvfK8nxJ/mTbNsvR5G4qftUK+ZOvLzLwYs7W9fvdnFrkNveIZ2YBwNQrBkhTDy4Px2C9lh4WWpoB01d1UPD2uDg1qmdXgZSW33DVVK0qGYBycIaer4EySEX88wNub3aMWH5csycY7PNAvnkWVLbZM025ci64p6veIqhro0rinrfqiuJi89KDE0RweQI3NudYm6eM2uoqL6loyaraC3T3O5UxhplbF2wqaplTq6l0Vms6bNo8oftrp5W/f1Sd41aagPeuYaHfIPKv0TTzTaXtJKR5h52ThAWrcv7csbYTcsip2JzW6poe6HqTv421DlFqetuGjRVNjfVa2Ye3ZVzhssVT0ZZ04q63QHV59O2MR/t43jhVceeUg2Gvjlq0J+OE7/6jzyjuwMLT/VeOIZmr37Djg1Hbdnyzk4X6kV3hXIIv8UKiPiXs1OiiDxmankBFKDkFxgE+pBOWwAahHbKBRNiHy/EPOIQL8SbT8ezvBiX9vYWLyEQQiD8Ujq8qEHtt8qC9xLw0efRIgCft59uq5Taim5AZACETylme61o+kAWH7c0LbHmDawC1pIQBpMMxmMIGZOaY5KGlu3PZuMtsCWoZJkBgVLliKTzy08BFDrmVBIDPEEmkwY3ZabIn8xt+SgLBqJVltiJhDQaiztxZEc4UplbdhLIQkRppowjS4V0zDZSGyVJ9XBCCyM9AzOapiZGhl018Yhz8aKNmMTBvKI4tC4xbnGsBEHGZjkPWrEADEuopqMzvsprMVDUAvzRvFKiHF2bBmEBtOFmjhdrLBe1i4vV0voxopxibbLr5+JGsdy8bSjQyoEzgFoE+dDM6Pf2GxXBYJlp6emZ1WjSqtmAmsFbQeXkO4kRo8G58ukHNGtj0Y2u0WGlygmKi7Xxqg+Iw9wW/rGaafBradXAqoZROsxrrezjNcHLZ6RbiJVl3HqGQ1UGJOC03o0RQfNMT/HGB4t5Tl5BfgFYF5yDlxecxrOwld+Y2qvIh27hKQA=) format("woff2"); }
+@font-face { font-family: "Source Serif 4"; font-style: italic; font-weight: 400; src: url(data:font/woff2;base64,d09GMgABAAAAAARkABEAAAAACJQAAAQGAAQBBgAAAAAAAAAAAAAAAAAAAAAAAAAAGUYaFhuBEBx2BmA/U1RBVFoAPBEICoJ8glYBNgIkAxALCgAEIAWFUgcgDAcbOAcjESZ08hnBXx3YxtKH/hSKYzjLbJJLszAm+bRQP6efGzKmh77/ktjYNCz0X+2eUOPh+TV+nXvn/cFMqqolqCSSdhKJToXsyWR3k+oMjNPJvq0GukKVTvGMAZfguCBt9ME6h1QuvpFm5wcY2/q/ER53AzOftxu6nP5YOv1byyCMcA8bY4NlJxJQBMv2Ag80jsLEc0jdlE6o7KuEMOoIUmSHx36kAq1RdJRH9h84dfbUiZPK/IXL1+u7bzh7XN9D5YFj+h43zp/UVw1Caq29aLYJBNoDQkghBNqabKa2UeAn0jl24OxJrVVD0UZrk90u0Vrqr2CkqVIFWkHzl1AJCWgkCebPWvqr7USHo8PJ0bARUM3ZumCwnvOe6y96/XOZX23D46f2HecDf/0V40sOjZtayBu5ubllOMzS2GlqDCBLS1VG1cyCIDxkzvy5q1x3xKXS/v+HVD/FfATE65zH4K3p1ip3dzh8vDx1+tzV2MelQ4fPxzlx5Pye47FBqnU1VEQf1dnkp2VcjJvkI4QkNgiQLHAH0sVouI6ErJhrYM/V3GmGBCBE0+iEUEBrVLiKe6jRHpCiaZKwMVFxHQvsJGUsP04aPzkLaB9DD13olbuPt6jB87TBbWDHBXpoC9B+GtPxHtbhTU+jBnc1qpMX9NAZd+7tLZqmv/n4iEMvvYWUkMY+YK36iRm6QDQ+YRak1qhjY3dp9lCz+xoEZwtt/j0iQnPoNTWWIBPeu9RNgWiERG6blT7hvlkozCjy8NeLB2JZzAlfSKT/MVgyJgP+JGAV4AgpgqXCojx1z1gcNdfeysSWwDhYJagb4FMC7b2aXXrY/mYKOBecDy5CmP/j/DWB8aU7LtgXeYQJKY1mYWlmiQ5DmMiNB+gCHcI8w32765igeHASKB2IkqKJMcfbIpZUvqhrQWeY2PwSU/Ob3QIl6gerf9rf1Wn6b62r6jt4M/nsI7x9OHZfpykq/wnLk6ThcVDB/CsF/W98Pe2r5jEASl6zK6aZmDThawLFOmmUFMJiIdDeLZUobfAEJgv9PZGl9j7JKut9LyvGxlxZi/1xXFqbGk/DsUFhMdk+vTNlR7XOvrJz2ufQxS7qmGt1/gCHwRIAstMc9lYLtozJAV4GlZojUQEHKUumlIPbyIy2AYSvVstp6AHtkhRD6qYEhyZoKALoBGo+8OSoOEqtibYy6WfAlSHhgMZLplGyOGWiuKmyWfS9ARcQHNQMsYBFQGEwBLqFtaUbXWL3Xg6S1NIGv1naVAChu7+ZaCXYDYRS3b5MzUo424aykykslkSXMESctKrL0XNgDhZpidhvBrtT9SZXE9ODG2pGRs56c8L5Y6KAx4efb+ZpxAylOY7hhM6FnsMSAAA=) format("woff2"); }
+@font-face { font-family: "Source Sans 3"; font-style: normal; font-weight: 400; src: url(data:font/woff2;base64,d09GMgABAAAAAA7gABEAAAAAHxgAAA6AAAMNUAAAAAAAAAAAAAAAAAAAAAAAAAAAGUYaFhuLRhyDRAZgP1NUQVRIAIE0EQgKoDyYfwE2AiQDgWwLeAAEIAWEZgcgDAcbuxmzAzFsHIgR0GaS/yLBNkStD3oYYSRMhNIjNxxSYrG4swy5+IrFgj4ihr9ZyY7mb8tvYYTn4vnv9+O39rnvC2KaGap7JIlLZgiFUEgklelkMh4a+R3RXFU9M0FmkmAhmyAxJCbgCRLBLGJolg2qJ7ZicMKdr5odZ/accWLrv2zNWU3eddJPGDpfQFA8yifCj4J2nVQYNokkyP9E24ACVQR/fs60/6V3NwZXGJAR6ezkhNsZkXt5SfvyD5KeGgCl5oCSAYBQm6scMVli1Vl0M4KEmXWTk7isaYKzm7owDVGoBveN9bznXZoCDAMdJuwfIHyX7evu7AJi4+ZSO0Qdeb6vA6JO9PnbIeqsb6ALogQABCYIHeqdISDAaAAKgomFIGAkjWyXCmG+C3Vy5lhfFwSFgxDckxTuticYX32nofsOaw8RoJvZDeBiUa1gN5kfpvq7iD9c8MzTol+5jzsm9MX/NNXA/brCT+UdSvzxHZnYLkG2R4guux9jJ/N9lCKXkz4yP+rM/Dnm+vf9lGgkBDmN5AdUxF39K0+C8hHXpe+3JP968RlL68k0Uad0QX4afYPr6dpeaEHhRcTdMX5zGHjEdZ2pyb21ML4c10w+Xa2Wjssdt+8jPonf0/6+dg6Td1L8K0Afy/Seupzmb1l1DlV/rqZMpM2ohqfq/5BDwTKe7mz19B9TK1+7Vx0X+W8B9/tuC97oihPwT8GWfYculr2jm8F07o+l6hpNd3xNvSrvuXj+/na9VIiIgDEwNJgoYLZYXHxC0RKJ8cjICSAYGQIuVJBwYQIgdKRAHBFogmFoaBAEjMFEAUwTAkxHQfuDyVgAU7Cdn28g0ABGwhAQBKEwEYIQARVvyxAsQIRwdGCUaDROyLswXhhMOgJYzQRh7bwu6//7mQYSDQP86J08W5w+0JOHRS+FrdtbWQi8bRX9nV0hkI0OZNIsXKQ8er67EwR/3+O4IPFsa7MPVGe7Gzsg+fxgZx9kkpNBQXAJAQUZ+d4ChYqnU+ygH+ApWj+CiEp6DF6WJZQkSddhETEo3tCpFMMFhJeOAQJ01NE6KWA+Tal+oYGCtt0GwxKVV0egfZaXSRPqGBMkcyAaVFBSjdTQws6rQ8ByaRDrmv1jHWsGOhlfZbw4vFBsQjgGLj4MgwCmN0DQ3okKQmNooB6VG9ghNwnZT5c4UKNw9YoEjmHEa6AJrsu6jaYKOAmC+bEEPLsI2tMIgADyr94D5o8UgoJgMsy9GHbjRMsAXf8NqoUoTOCAiyqVMVAfwYy2wpIMACIS6BJV7wlhJbCYAIEgoKCilSyNkUWBMlZ2rYY9b+f82KkpAMTomkY+HSLGhfo98fAd9HPsd6ec0CokYjqV4voxmwGibnagfgpCgNADXAc2gu4bGFwC7AP2AmClcYykUyFxVxKdA1g0JHGiH8bvbkp54IIpYYSnyDEJiooTMIKJIB4VGcJjMeNDaSnMsMiwuMjQ0EYt2kWEnBPJFMUQYWG0MG5YPi49lBEWQo9MhjHpwQxG7baE0ulUPVVLenejiFwJGrcLMUCgUaPsHoC7pJMapXE0Ez8mSd8Ifoxm0vi4weWS5m5GcgTuAnaPGt3kiEQUthUoGuVZxmKpFcSvpggS71A0mrS7Sa+TXGQ8N2S9O4nhqRblyDNt9bo8FI1EDOAJxwieRjPJtTg6To6ARLdhG293oRApIg+Cc3TTo7twlMM3gpmkgKRRIB+hq0axXle+3n6IAcyFNUWqdbRxIzhGDPovUie69hCRG60k1Iis7OaRnjHsyaIjRkI4ORJam6Il4sau0kjNen6kgXmRi4JLa3F7a7MerffQzF6MNt+QmEQBD6o7C0VHssT3DFBSmO5Bc+9ovSf+FUXfIDzkGaUTgLOSpvXZG50Eo/xVTlwGiMRnTuTIbsAcI9VuRKOI127U6GOa8D2FwikHteM4308snWqFMmbma+Dx1zubdEtxzUGjhNRka+EKmOmAasMSBigXH3JtRM1pX5niU4R3UmMMd6tG2j/QyBHQYI4RzM7ZdE3u0czucuL+LYAOLEPHkg0wDyXsY6eejIt2VDiJXC4KBOCx10ZqVJ+mXZtgkoKcV04tNekkjwLl3Y7TuAEPdpikdznyyKUQ43aMaOyk91Vq9MfntwgsEtElarbCXQqnsLWG8USCZvBLDbDFz/0gFk3zZwBi+QbI9Mde5kI4aVapvWBGDaHdS1unh3P0tw4ocJZP7xaFKJxEB0hMERRI+EyKJj9yOHYGiKi5mcdVOy46YgAcut0x0qGZPTXagsahqonnNL6nkCPVRdQ471a10SaoRFkMcNOHuhSlbVSTa89IWNK2gQtUZWAN75pGtQgjPRP1HjAKuUi7nQIRuSiMjWMmIzlEZE2YqzAcPL1HImUP0pX2elrY85U4eTkFBtd+MXvL6Htk7mM0C/3wL9+qy4u6+7rY/I6HxE/pI8Pu7+JfMKlN4B1b619Ykj/W0pL/3vyyRru5pMyfre23W7X9/syyEqimXHMqSz5sr1C8XOnuVBotNdrjd543CXUmX27yoNWmG24w5sf9K9wymjfO+qZFBt6x1hfrdrKMa4m1EcaV9V22jJW3xuIFRL6C0C17wZoltXKc0OP5zU5sa4vfs2vmZlFmpcWU6WiWmV+I9HSVVWXn5lYll3WxSjfLc+UXXPBd0fmCbwrOF8EpSpIrqFFY37ItCWUE7hLLininH9QdzQsX64s1Ik+WzNKKKyokbHP8H6rZVcF1vGUCSThIBFGBgI77TBetp5GLXp4oyXEY5F0ltszB+iyLRfJbnNOQwq18ScXLFQimnkxAuGBs1ut7K625vW36bI2Fv2BWGMGXW1RiW3pags2sUooWmbWTZSJ4QNV0zHm+IrOvPitdfvUxbj1iu2hpwY+USDgW0a6bzz7/gCf+PcGa7sqbDmzB2GbI6qmqyOltjO1s5+E/xp/HCJTXGTn5huIM4b+SKku2zFYkU8Sdee3ef+XR0JCkjS2c0LI33o++GCXiqZMWrc4uIfaZ4b+v9V6eVMZ304joeTF8ZQzRKDbLU3RlVqmWlXp2U46f4HcLk9XFFRJduDvwsDRyWpm2zmFPzVLqS7pUxTtjJvfEpR6Wyw+nxu2ZFA+rLNGdXJFUbWfi/6xujRQXK8F60XoaaxSUqnRl+Q21yVZp3lZtwjpLA2wM4rtD42ZY21hfkURD5bFZM8A6YQnIw/8qVivSv/3FU6ZTlBakrqOq2LWRDbXR6jRTcYPx/EVllosyBX2TPru30lpo1e56g1+vbq0U/jM2y54JbWnpQvszmex3kT09TWT7Haqu7rE041SFWJa9mDVLra+YJjTHcpF97RBtUdP5UzMVfR7mXt2Gu64Ui2UL9gZlubFPsJdNe67TlgoH+ty48JcLUmSh/fvC8laLQvgm7RvpcJNKqYuH+keWaKXmKZ8LAaXBKJoj0bvLK5RlvAN1b9uEqk0x7KX/+7TWIlqvkEhyy8XwS1BZlqeQLMwuIYKX5C2dY55DKZCMsfdjruQJfE1NhduyVZOwXurp/dBK8MBSNRzZ/j9HdcRqduFq4p1phe/UD71qy/9gxbz/OfM5PQyjkxhiGnsKON5CzmtJfOimNccbHj58lbP+156L9zJNLxBtTPNruTh4boae28OfFR4kK55cc3rCMZ1+fFrBKmIVK/8tJ71yPyNEXWqWg3XCOgENiUmCIlNiEucnDuP+/8Lje7XxV3bgAN7Ha5mx2F+/gPh4+g1osXSq3OApZBRSPsJE8HzLgjnmOUxFmIwxvvf/qY+fELMD/s4Id/WQaujYunJVx4aG+o6NK1fqu6gzJgzzBmvreP0DCYkDFbuu9vIrGYYKyzsfD6RsMLJX5GTOsYDG5uKFQcT+xePvfdppOpsa+mHNK7AF93A+UMyxvKIx5hQsSUovKJ4jmx/xIV4LL1EcXXSsjsMNj40OB9OmnNXq3MCgotEFBXSOMjq6nCPUqXLzfDC8mxci16e4DUMuj5wyvvNRIJ0VzIn6Ehzb/e4iOWmctQCsEfno0KbxmApDqhMOUEqTJr7G1FjVZjYXTqNJf+Q1p8Wq8vIKVYk4UVNSUa4ph63JDhltd3byPPjiC7yD0FYafN+rEoVrnhbOg9m4KapLs4CbBi+lhcX/quti9+Fm7iHWk0j2IlbEInbkItBc+ffzaTzb4byAoLBXLPaBCO7eeIUuD9Y9E73JTRRz3xKJXpWKE6WvxAqXxSUsE14qJMQtg+Lpv3GyXUDAUjxgUMYdIHSQ8JBM7HIJSBVpfPASVICMzFRmqjLVmRpFewsAHoJlawA2As9rv4zsSUedkJMd6asj4jxLWS3lCgmT2BhZUANVgg7M9588GMyLj9AHxuJbM/UqN74OHALamMori4JyD4QY/gfh+E+AH8XuQQB+qsV7ppZegE+vu8AgDCDgxx1fIIhLy4Gow11Rb/C4CFDz4NXMW62SazzkjOJ0OGLyUFJJWXORquTU+ZMy8ThYfWUJduM+iymwtizWihOSR5VW+pFWs2aNmFhxSqA0d9DrBk7V8UCwEcvBndYNd/+LooAKCAsqPGIENWQEc7JZRjAn3eLABbKgzi7ymROG714JKegvmQcEWMEOJ4PNB0H7G+kVONQFA3gM9FaIxuutMExHW+FaXG5FiIquFY07pZEAoqztBCGg5zwIMm9f/WRkvrKJgI6GThIBoxm6TecnINFiwIAemdTUhu99VXw0TefGhDvxL4OUgsCwVgNaCFj59fPrM8RvBoF83boMECjn08lPMJ8DNt0G9Wnkn88FahCwrxP0I7u95XnOgD4+pVo1p9gTN4fcgXzq9kmiopFCR8/IwqSC3u2MlYLO2a1gkiedo9Z02TreaQWsuOXMAwmiPJSCVmoppfU6+bTzp9xUlc85Z51UUj29xpKRSZSsK4BQOkUG+HRo1cjFP0sxUiFOdau/Tsf9NlNzA+INAA==) format("woff2"); }
+/* The classes figure sources draw with. build.py prepends the theme's colors and font families as
+   variables; a source sets no color or font of its own. */
+
+text { font-family: var(--sans); font-size: 12px; fill: var(--ink); }
+.m { font-family: var(--math); font-size: 16px; }
+.code { font-family: var(--mono); font-size: 12px; }
+.title { font-size: 15px; font-weight: 600; }
+.small { font-size: 11px; }
+.sub { font-size: 11px; }
+.big { font-size: 20px; }
+.b { font-weight: 600; }
+.i { font-style: italic; }
+.var { font-family: var(--math); font-style: italic; font-size: 1.2em; }
+.muted { fill: var(--muted); }
+.acc { fill: var(--accent); }
+.sig { fill: var(--signal); }
+.on-accent { fill: var(--on-accent); }
+.mid { text-anchor: middle; }
+.end { text-anchor: end; }
+.digit { font-size: 9.5px; font-weight: 600; fill: var(--paper); text-anchor: middle; }
+.halo { paint-order: stroke; stroke: var(--paper); stroke-width: 4px; stroke-linejoin: round; }
+
+.ground, .backing { fill: var(--paper); }
+.card { fill: var(--paper); stroke: var(--rule); stroke-width: 1.5; }
+.store { fill: var(--wash); }
+.store-card { fill: var(--wash); stroke: var(--rule); stroke-width: 1.5; }
+.elected { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.5; }
+.note { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.25; }
+.note-a { fill: var(--paper); stroke: var(--learner-a); stroke-width: 1.25; }
+.note-b { fill: var(--paper); stroke: var(--learner-b); stroke-width: 1.25; }
+.note-c { fill: var(--paper); stroke: var(--learner-c); stroke-width: 1.25; }
+.op { fill: var(--paper); stroke: var(--muted); stroke-width: 1.5; }
+.out { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.param { fill: var(--wash); stroke: var(--ink); stroke-width: 1.5; }
+.pill { fill: var(--paper); stroke: var(--rule); stroke-width: 1.25; }
+.chip { fill: var(--accent); }
+.tile, .layer, .slot-full { fill: var(--wash); stroke: var(--rule); stroke-width: 1; }
+.slot { fill: var(--paper); stroke: var(--rule); stroke-width: 1.25; }
+.tile-k { fill: var(--accent); }
+.picked { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.5; }
+.track { fill: var(--wash); }
+
+.sA { fill: var(--learner-a); }
+.sB { fill: var(--learner-b); }
+.sC { fill: var(--learner-c); }
+.sD { fill: var(--learner-d); }
+.wait { fill: url(#hatch); }
+.lost { fill: url(#lost); stroke: var(--signal); stroke-width: 1; }
+.xchg, .commit, .dot-acc, .badge-acc { fill: var(--accent); }
+.dot-ink, .badge, .close { fill: var(--ink); }
+.snap { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.round { fill: var(--paper); stroke: var(--accent); stroke-width: 1.25; }
+.miss { fill: none; stroke: var(--signal); stroke-width: 2.5; }
+.band { fill: var(--accent); }
+
+.rule { fill: none; stroke: var(--rule); stroke-width: 1; }
+.guide { fill: none; stroke: var(--rule); stroke-width: 1; stroke-dasharray: 4 4; }
+.axis, .tick { fill: none; stroke: var(--muted); stroke-width: 1; }
+.contour { fill: none; stroke: var(--hatch); stroke-width: 1; }
+.frame { fill: none; stroke: var(--rule); stroke-width: 1.5; }
+.valley { fill: none; stroke: var(--accent); stroke-width: 2; }
+.span { fill: none; stroke: var(--accent); stroke-width: 1; }
+.join { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+.batches { stroke: var(--accent); stroke-width: 0.75; stroke-opacity: 0.45; }
+.life-a { stroke: var(--learner-a); stroke-width: 2.5; }
+.life-b { stroke: var(--learner-b); stroke-width: 2.5; }
+.life-c { stroke: var(--learner-c); stroke-width: 2.5; }
+.life-s { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3; }
+
+.arrow { fill: none; stroke: var(--muted); stroke-width: 1.5; marker-end: url(#head-muted); }
+.arrow-ink { fill: none; stroke: var(--ink); stroke-width: 1.5; marker-end: url(#head-ink); }
+.arrow-acc { fill: none; stroke: var(--accent); stroke-width: 1.5; marker-end: url(#head-accent); }
+.arrow-sig { fill: none; stroke: var(--signal); stroke-width: 1.5; marker-end: url(#head-signal); }
+.arrow-a { fill: none; stroke: var(--learner-a); stroke-width: 1.5; marker-end: url(#head-a); }
+.arrow-b { fill: none; stroke: var(--learner-b); stroke-width: 1.5; marker-end: url(#head-b); }
+.arrow-c { fill: none; stroke: var(--learner-c); stroke-width: 1.5; marker-end: url(#head-c); }
+.reply { fill: none; stroke: var(--muted); stroke-width: 1.25; stroke-dasharray: 4 3; marker-end: url(#head-muted); }
+.strong { stroke-width: 2.5; }
+.loop { fill: none; stroke: var(--muted); stroke-width: 1.25; marker-end: url(#head-muted); }
+
+.hatch-bg { fill: var(--wash); }
+.hatch-line { stroke: var(--hatch); stroke-width: 2.5; }
+.lost-bg { fill: var(--signal-wash); }
+.lost-line { stroke: var(--signal); stroke-opacity: 0.4; stroke-width: 2.5; }
+.head-ink { fill: var(--ink); }
+.head-muted { fill: var(--muted); }
+.head-accent { fill: var(--accent); }
+.head-signal { fill: var(--signal); }
+.head-a { fill: var(--learner-a); }
+.head-b { fill: var(--learner-b); }
+.head-c { fill: var(--learner-c); }
+</style>
+<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="hatch-bg"/><path d="M 0 0 V 6" class="hatch-line"/></pattern><pattern id="lost" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="lost-bg"/><path d="M 0 0 V 6" class="lost-line"/></pattern><marker id="head-ink" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-ink"/></marker><marker id="head-muted" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-muted"/></marker><marker id="head-accent" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-accent"/></marker><marker id="head-signal" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-signal"/></marker><marker id="head-a" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-a"/></marker><marker id="head-b" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-b"/></marker><marker id="head-c" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-c"/></marker></defs>
+<rect width="960" height="420" rx="6" class="ground"/>
+
+<text x="48" y="48" class="title">Weighted mean</text>
+<text x="48" y="68" class="small muted"><tspan class="m">Σ <tspan class="i">w</tspan><tspan class="sub i" dy="3">i</tspan><tspan dy="-3">Δ</tspan><tspan class="sub i" dy="3">i</tspan><tspan dy="-3"> / Σ </tspan><tspan class="i">w</tspan><tspan class="sub i" dy="3">i</tspan></tspan><tspan dy="-3">. The parts of the deltas that disagree cancel,</tspan></text>
+<text x="48" y="84" class="small muted">so the merged step is shorter than either of them.</text>
+<path d="M 90.4 204.4 A 220 220 0 0 1 401.6 204.4" class="guide"/>
+<text x="408" y="226" class="small muted">length 1</text>
+<path d="M 246 360 L 104.6 191.5" class="arrow-a strong"/>
+<path d="M 246 360 L 387.4 191.5" class="arrow-b strong"/>
+<path d="M 246 360 V 191.5" class="arrow-ink strong"/>
+<circle cx="246" cy="360" r="3.5" class="dot-ink"/>
+<text x="96" y="186" class="m end">Δ<tspan class="sub" dy="4">1</tspan></text>
+<text x="396" y="186" class="m">Δ<tspan class="sub" dy="4">2</tspan></text>
+<text x="246" y="178" class="small mid b">mean · length 0.77</text>
+
+<path d="M 480 32 V 388" class="rule"/>
+
+<text x="516" y="48" class="title">RDA, radial-directional averaging</text>
+<text x="516" y="68" class="small muted">Average the lengths and the directions separately, then give</text>
+<text x="516" y="84" class="small muted">the mean direction the mean length.</text>
+<path d="M 558.4 204.4 A 220 220 0 0 1 869.6 204.4" class="guide"/>
+<text x="876" y="226" class="small muted">length 1</text>
+<path d="M 714 360 L 572.6 191.5" class="arrow-a strong"/>
+<path d="M 714 360 L 855.4 191.5" class="arrow-b strong"/>
+<path d="M 714 360 V 140" class="arrow-acc strong"/>
+<path d="M 704 191.5 H 724" class="axis"/>
+<circle cx="714" cy="360" r="3.5" class="dot-ink"/>
+<text x="564" y="186" class="m end">Δ<tspan class="sub" dy="4">1</tspan></text>
+<text x="864" y="186" class="m">Δ<tspan class="sub" dy="4">2</tspan></text>
+<text x="714" y="126" class="small mid b acc">RDA · length 1.00</text>
+<text x="730" y="195" class="small muted">weighted mean, 0.77</text>
+
+<text x="24" y="404" class="small muted">Two deltas of length 1, 40° either side of their mean direction, equal weights. GradientMail merges most tensors with RDA and names containing “embed” with the weighted mean.</text>
+</svg>

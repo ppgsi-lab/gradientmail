@@ -1,0 +1,153 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="360" viewBox="0 0 960 360" role="img" aria-label="A 64-step smoke test on four nodes with quorum_size = 3. Nodes 0, 1 and 2 publish their snapshots in seconds, and every round closes with the three of them. Node 3 uploads at 60 KB/s: its first 26 MB snapshot takes about seven minutes, and lands after its round has closed and the round's objects have been cleaned up. Node 3 is in no round.">
+<style>
+svg { --paper: #fefdfc; --wash: #f5f1ec; --rule: #dedad5; --hatch: #cfc8c0; --muted: #665f5a; --ink: #1c1714; --accent: #065f74; --accent-wash: #e4f1f5; --on-accent: #ffffff; --signal: #86262e; --signal-wash: #fbeae9; --learner-a: #556892; --learner-b: #ac853f; --learner-c: #598361; --learner-d: #825172; --serif: "Newsreader", Georgia, "Times New Roman", serif; --math: "Source Serif 4", "Noto Sans Math", Georgia, serif; --sans: "Source Sans 3", "Source Sans Pro", system-ui, -apple-system, "Segoe UI", sans-serif; --mono: "Source Code Pro", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+@media (prefers-color-scheme: dark) { svg { --paper: #191512; --wash: #241f1c; --rule: #413c38; --hatch: #544f4a; --muted: #b3ada6; --ink: #eeebe5; --accent: #6ebccb; --accent-wash: #192f35; --on-accent: #191512; --signal: #e38182; --signal-wash: #3d2323; --learner-a: #899ecb; --learner-b: #d6ad68; --learner-c: #80b38a; --learner-d: #bd88ab; } }
+@font-face { font-family: "Source Sans 3"; font-style: normal; font-weight: 600; src: url(data:font/woff2;base64,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) format("woff2"); }
+@font-face { font-family: "Source Sans 3"; font-style: normal; font-weight: 400; src: url(data:font/woff2;base64,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) format("woff2"); }
+/* The classes figure sources draw with. build.py prepends the theme's colors and font families as
+   variables; a source sets no color or font of its own. */
+
+text { font-family: var(--sans); font-size: 12px; fill: var(--ink); }
+.m { font-family: var(--math); font-size: 16px; }
+.code { font-family: var(--mono); font-size: 12px; }
+.title { font-size: 15px; font-weight: 600; }
+.small { font-size: 11px; }
+.sub { font-size: 11px; }
+.big { font-size: 20px; }
+.b { font-weight: 600; }
+.i { font-style: italic; }
+.var { font-family: var(--math); font-style: italic; font-size: 1.2em; }
+.muted { fill: var(--muted); }
+.acc { fill: var(--accent); }
+.sig { fill: var(--signal); }
+.on-accent { fill: var(--on-accent); }
+.mid { text-anchor: middle; }
+.end { text-anchor: end; }
+.digit { font-size: 9.5px; font-weight: 600; fill: var(--paper); text-anchor: middle; }
+.halo { paint-order: stroke; stroke: var(--paper); stroke-width: 4px; stroke-linejoin: round; }
+
+.ground, .backing { fill: var(--paper); }
+.card { fill: var(--paper); stroke: var(--rule); stroke-width: 1.5; }
+.store { fill: var(--wash); }
+.store-card { fill: var(--wash); stroke: var(--rule); stroke-width: 1.5; }
+.elected { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.5; }
+.note { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.25; }
+.note-a { fill: var(--paper); stroke: var(--learner-a); stroke-width: 1.25; }
+.note-b { fill: var(--paper); stroke: var(--learner-b); stroke-width: 1.25; }
+.note-c { fill: var(--paper); stroke: var(--learner-c); stroke-width: 1.25; }
+.op { fill: var(--paper); stroke: var(--muted); stroke-width: 1.5; }
+.out { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.param { fill: var(--wash); stroke: var(--ink); stroke-width: 1.5; }
+.pill { fill: var(--paper); stroke: var(--rule); stroke-width: 1.25; }
+.chip { fill: var(--accent); }
+.tile, .layer, .slot-full { fill: var(--wash); stroke: var(--rule); stroke-width: 1; }
+.slot { fill: var(--paper); stroke: var(--rule); stroke-width: 1.25; }
+.tile-k { fill: var(--accent); }
+.picked { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.5; }
+.track { fill: var(--wash); }
+
+.sA { fill: var(--learner-a); }
+.sB { fill: var(--learner-b); }
+.sC { fill: var(--learner-c); }
+.sD { fill: var(--learner-d); }
+.wait { fill: url(#hatch); }
+.lost { fill: url(#lost); stroke: var(--signal); stroke-width: 1; }
+.xchg, .commit, .dot-acc, .badge-acc { fill: var(--accent); }
+.dot-ink, .badge, .close { fill: var(--ink); }
+.snap { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.round { fill: var(--paper); stroke: var(--accent); stroke-width: 1.25; }
+.miss { fill: none; stroke: var(--signal); stroke-width: 2.5; }
+.band { fill: var(--accent); }
+
+.rule { fill: none; stroke: var(--rule); stroke-width: 1; }
+.guide { fill: none; stroke: var(--rule); stroke-width: 1; stroke-dasharray: 4 4; }
+.axis, .tick { fill: none; stroke: var(--muted); stroke-width: 1; }
+.contour { fill: none; stroke: var(--hatch); stroke-width: 1; }
+.frame { fill: none; stroke: var(--rule); stroke-width: 1.5; }
+.valley { fill: none; stroke: var(--accent); stroke-width: 2; }
+.span { fill: none; stroke: var(--accent); stroke-width: 1; }
+.join { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+.batches { stroke: var(--accent); stroke-width: 0.75; stroke-opacity: 0.45; }
+.life-a { stroke: var(--learner-a); stroke-width: 2.5; }
+.life-b { stroke: var(--learner-b); stroke-width: 2.5; }
+.life-c { stroke: var(--learner-c); stroke-width: 2.5; }
+.life-s { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3; }
+
+.arrow { fill: none; stroke: var(--muted); stroke-width: 1.5; marker-end: url(#head-muted); }
+.arrow-ink { fill: none; stroke: var(--ink); stroke-width: 1.5; marker-end: url(#head-ink); }
+.arrow-acc { fill: none; stroke: var(--accent); stroke-width: 1.5; marker-end: url(#head-accent); }
+.arrow-sig { fill: none; stroke: var(--signal); stroke-width: 1.5; marker-end: url(#head-signal); }
+.arrow-a { fill: none; stroke: var(--learner-a); stroke-width: 1.5; marker-end: url(#head-a); }
+.arrow-b { fill: none; stroke: var(--learner-b); stroke-width: 1.5; marker-end: url(#head-b); }
+.arrow-c { fill: none; stroke: var(--learner-c); stroke-width: 1.5; marker-end: url(#head-c); }
+.reply { fill: none; stroke: var(--muted); stroke-width: 1.25; stroke-dasharray: 4 3; marker-end: url(#head-muted); }
+.strong { stroke-width: 2.5; }
+.loop { fill: none; stroke: var(--muted); stroke-width: 1.25; marker-end: url(#head-muted); }
+
+.hatch-bg { fill: var(--wash); }
+.hatch-line { stroke: var(--hatch); stroke-width: 2.5; }
+.lost-bg { fill: var(--signal-wash); }
+.lost-line { stroke: var(--signal); stroke-opacity: 0.4; stroke-width: 2.5; }
+.head-ink { fill: var(--ink); }
+.head-muted { fill: var(--muted); }
+.head-accent { fill: var(--accent); }
+.head-signal { fill: var(--signal); }
+.head-a { fill: var(--learner-a); }
+.head-b { fill: var(--learner-b); }
+.head-c { fill: var(--learner-c); }
+</style>
+<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="hatch-bg"/><path d="M 0 0 V 6" class="hatch-line"/></pattern><pattern id="lost" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="lost-bg"/><path d="M 0 0 V 6" class="lost-line"/></pattern><marker id="head-ink" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-ink"/></marker><marker id="head-muted" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-muted"/></marker><marker id="head-accent" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-accent"/></marker><marker id="head-signal" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-signal"/></marker><marker id="head-a" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-a"/></marker><marker id="head-b" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-b"/></marker><marker id="head-c" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-c"/></marker></defs>
+<rect width="960" height="360" rx="6" class="ground"/>
+
+<text x="24" y="40" class="title">A node at 60 KB/s is in no round</text>
+<text x="24" y="58" class="small muted">The other three close every round at quorum_size=3; node 3's first snapshot lands after its round is gone.</text>
+
+<text x="190" y="96" class="small end muted">rounds</text>
+<rect x="225.5" y="84" width="30" height="16" rx="8" class="round"/>
+<circle cx="233.5" cy="92" r="2.5" class="sA"/><circle cx="240.5" cy="92" r="2.5" class="sB"/><circle cx="247.5" cy="92" r="2.5" class="sC"/>
+<rect x="261.5" y="84" width="30" height="16" rx="8" class="round"/>
+<circle cx="269.5" cy="92" r="2.5" class="sA"/><circle cx="276.5" cy="92" r="2.5" class="sB"/><circle cx="283.5" cy="92" r="2.5" class="sC"/>
+<rect x="297.5" y="84" width="30" height="16" rx="8" class="round"/>
+<circle cx="305.5" cy="92" r="2.5" class="sA"/><circle cx="312.5" cy="92" r="2.5" class="sB"/><circle cx="319.5" cy="92" r="2.5" class="sC"/>
+<rect x="333.5" y="84" width="30" height="16" rx="8" class="round"/>
+<circle cx="341.5" cy="92" r="2.5" class="sA"/><circle cx="348.5" cy="92" r="2.5" class="sB"/><circle cx="355.5" cy="92" r="2.5" class="sC"/>
+<rect x="369.5" y="84" width="30" height="16" rx="8" class="round"/>
+<circle cx="377.5" cy="92" r="2.5" class="sA"/><circle cx="384.5" cy="92" r="2.5" class="sB"/><circle cx="391.5" cy="92" r="2.5" class="sC"/>
+<text x="420" y="96" class="small muted">every round closes with nodes 0, 1 and 2</text>
+
+<text x="190" y="123" class="small end b">node 0</text>
+<rect x="200" y="112" width="189" height="14" rx="7" class="track"/>
+<rect x="236" y="112" width="4" height="14" rx="2" class="sA"/><rect x="272" y="112" width="4" height="14" rx="2" class="sA"/><rect x="308" y="112" width="4" height="14" rx="2" class="sA"/><rect x="344" y="112" width="4" height="14" rx="2" class="sA"/><rect x="380" y="112" width="4" height="14" rx="2" class="sA"/>
+<text x="400" y="123" class="small muted">64 steps; each mark is a snapshot, uploaded in seconds</text>
+
+<text x="190" y="149" class="small end b">node 1</text>
+<rect x="200" y="138" width="189" height="14" rx="7" class="track"/>
+<rect x="236" y="138" width="4" height="14" rx="2" class="sB"/><rect x="272" y="138" width="4" height="14" rx="2" class="sB"/><rect x="308" y="138" width="4" height="14" rx="2" class="sB"/><rect x="344" y="138" width="4" height="14" rx="2" class="sB"/><rect x="380" y="138" width="4" height="14" rx="2" class="sB"/>
+
+<text x="190" y="175" class="small end b">node 2</text>
+<rect x="200" y="164" width="189" height="14" rx="7" class="track"/>
+<rect x="236" y="164" width="4" height="14" rx="2" class="sC"/><rect x="272" y="164" width="4" height="14" rx="2" class="sC"/><rect x="308" y="164" width="4" height="14" rx="2" class="sC"/><rect x="344" y="164" width="4" height="14" rx="2" class="sC"/><rect x="380" y="164" width="4" height="14" rx="2" class="sC"/>
+
+<text x="190" y="201" class="small end b">node 3</text>
+<text x="190" y="216" class="small end muted">60 KB/s</text>
+<rect x="200" y="190" width="189" height="14" rx="7" class="track"/>
+<rect x="236" y="190" width="4" height="14" rx="2" class="sD"/>
+<rect x="236" y="208" width="648" height="10" rx="5" class="lost"/>
+<path d="M 879 208 L 889 218 M 889 208 L 879 218" class="miss"/>
+<text x="560" y="236" class="small mid">first snapshot: 26 MB at 60 KB/s, about 7 minutes</text>
+<text x="920" y="254" class="small end sig">lands after its round closed and the round's objects were cleaned up</text>
+
+<path d="M 200 276 H 920 M 200 276 V 281 M 290 276 V 281 M 380 276 V 281 M 470 276 V 281 M 560 276 V 281 M 650 276 V 281 M 740 276 V 281 M 830 276 V 281 M 920 276 V 281" class="axis"/>
+<text x="200" y="294" class="small mid muted">0</text>
+<text x="290" y="294" class="small mid muted">1</text>
+<text x="380" y="294" class="small mid muted">2</text>
+<text x="470" y="294" class="small mid muted">3</text>
+<text x="560" y="294" class="small mid muted">4</text>
+<text x="650" y="294" class="small mid muted">5</text>
+<text x="740" y="294" class="small mid muted">6</text>
+<text x="830" y="294" class="small mid muted">7</text>
+<text x="920" y="294" class="small mid muted">8</text>
+<text x="560" y="312" class="small mid muted">minutes (the upload to scale; the rest schematic)</text>
+
+<text x="24" y="340">The loss still fell: a quarter of every batch never reached the model. Since then, each node times a 26 MB PUT and refuses to join under 2 MB/s.</text>
+</svg>

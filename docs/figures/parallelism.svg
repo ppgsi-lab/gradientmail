@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="360" viewBox="0 0 960 360" role="img" aria-label="Two panels. Data parallelism: three workers each hold all four layers of the model and train on a different batch; what they learn is then combined. Model parallelism: one batch enters worker 1, which holds layers 1 and 2; activations go down to worker 2, which holds layers 3 and 4, and gradients come back up.">
+<rect width="960" height="360" rx="6" class="ground"/>
+
+<text x="48" y="56" class="title">Data parallelism</text>
+<text x="48" y="76" class="small muted">Each worker trains a full replica on its own batch.</text>
+
+<rect x="80" y="96" width="72" height="20" rx="10" class="pill"/>
+<text x="116" y="110" class="small mid">batch 1</text>
+<rect x="210" y="96" width="72" height="20" rx="10" class="pill"/>
+<text x="246" y="110" class="small mid">batch 2</text>
+<rect x="340" y="96" width="72" height="20" rx="10" class="pill"/>
+<text x="376" y="110" class="small mid">batch 3</text>
+<path d="M 116 116 V 139" class="arrow"/>
+<path d="M 246 116 V 139" class="arrow"/>
+<path d="M 376 116 V 139" class="arrow"/>
+
+<rect x="64" y="140" width="104" height="122" rx="6" class="card"/>
+<text x="116" y="159" class="mid b">Worker 1</text>
+<rect x="76" y="168" width="80" height="14" rx="3" class="layer"/>
+<rect x="76" y="186" width="80" height="14" rx="3" class="layer"/>
+<rect x="76" y="204" width="80" height="14" rx="3" class="layer"/>
+<rect x="76" y="222" width="80" height="14" rx="3" class="layer"/>
+<text x="116" y="252" class="small mid muted">layers 1–4</text>
+
+<rect x="194" y="140" width="104" height="122" rx="6" class="card"/>
+<text x="246" y="159" class="mid b">Worker 2</text>
+<rect x="206" y="168" width="80" height="14" rx="3" class="layer"/>
+<rect x="206" y="186" width="80" height="14" rx="3" class="layer"/>
+<rect x="206" y="204" width="80" height="14" rx="3" class="layer"/>
+<rect x="206" y="222" width="80" height="14" rx="3" class="layer"/>
+<text x="246" y="252" class="small mid muted">layers 1–4</text>
+
+<rect x="324" y="140" width="104" height="122" rx="6" class="card"/>
+<text x="376" y="159" class="mid b">Worker 3</text>
+<rect x="336" y="168" width="80" height="14" rx="3" class="layer"/>
+<rect x="336" y="186" width="80" height="14" rx="3" class="layer"/>
+<rect x="336" y="204" width="80" height="14" rx="3" class="layer"/>
+<rect x="336" y="222" width="80" height="14" rx="3" class="layer"/>
+<text x="376" y="252" class="small mid muted">layers 1–4</text>
+
+<path d="M 116 262 V 280 H 376 M 246 262 V 280 M 376 262 V 280" class="join"/>
+<path d="M 246 280 V 293" class="arrow-acc"/>
+<rect x="136" y="294" width="220" height="24" rx="12" class="note"/>
+<text x="246" y="310" class="mid acc b">combine what they learned</text>
+
+<path d="M 480 32 V 328" class="rule"/>
+<text x="516" y="56" class="title">Model parallelism</text>
+<text x="516" y="76" class="small muted">Workers hold different layers; one batch passes through them.</text>
+
+<rect x="678" y="96" width="72" height="20" rx="10" class="pill"/>
+<text x="714" y="110" class="small mid">one batch</text>
+<path d="M 714 116 V 135" class="arrow"/>
+
+<rect x="634" y="136" width="160" height="64" rx="6" class="card"/>
+<text x="714" y="154" class="mid b">Worker 1</text>
+<rect x="654" y="160" width="120" height="14" rx="3" class="layer"/>
+<text x="714" y="171" class="small mid muted">layer 1</text>
+<rect x="654" y="178" width="120" height="14" rx="3" class="layer"/>
+<text x="714" y="189" class="small mid muted">layer 2</text>
+
+<path d="M 704 200 V 231" class="arrow"/>
+<path d="M 724 232 V 201" class="arrow-acc"/>
+<text x="696" y="220" class="small end muted">activations</text>
+<text x="732" y="220" class="small acc">gradients</text>
+
+<rect x="634" y="232" width="160" height="64" rx="6" class="card"/>
+<text x="714" y="250" class="mid b">Worker 2</text>
+<rect x="654" y="256" width="120" height="14" rx="3" class="layer"/>
+<text x="714" y="267" class="small mid muted">layer 3</text>
+<rect x="654" y="274" width="120" height="14" rx="3" class="layer"/>
+<text x="714" y="285" class="small mid muted">layer 4</text>
+</svg>

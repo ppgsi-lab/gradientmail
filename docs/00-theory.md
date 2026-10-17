@@ -73,6 +73,12 @@ $w$ becomes $2.6$ and $b$ becomes $0.8$. The new prediction is $6$, giving zero
 loss on this example. Larger models rarely fit a batch in one step; a learning
 rate that is too large can even increase the loss.
 
+![Contour lines of the loss L = (2w + b − 6)² over the parameters w and b. The
+lines are parallel, and the loss is zero along the line 2w + b = 6. From the
+start (1, 0), where L = 16, the step −η times the gradient crosses the lines
+at a right angle. With η = 0.1 it lands at (2.6, 0.8) on the zero-loss line;
+with η = 0.25 it continues past the valley to (5, 2), where L = 36.](assets/gradient-step.svg)
+
 ### Automatic differentiation
 
 Writing a derivative by hand for every parameter would be impractical.
@@ -98,6 +104,14 @@ $$
 = 2(2-6)\cdot2
 = -16
 $$
+
+![Computation graph of the guide's example. Data x = 2 and parameter w = 1 enter
+a multiplication giving wx = 2; adding parameter b = 0 gives the prediction ŷ
+= 2; subtracting the target y = 6 gives −4; squaring gives the loss L = 16.
+The backward pass runs right to left: the derivative of L is 1 at the loss,
+2(ŷ − y) = −8 after the square, −8 through the subtraction and the addition,
+so ∂L/∂b = −8, and multiplied by x = 2 at the multiplication, so ∂L/∂w = −16.
+The gradient is (−16, −8).](assets/autodiff.svg)
 
 Autodiff produces gradients. An optimizer uses them to change the parameters.
 PyTorch exposes this separation through `loss.backward()` and `optimizer.step()`.
@@ -135,6 +149,12 @@ In **data parallelism**, each worker trains a replica of the model on different
 data. In **model parallelism**, workers hold different parts of the model.
 This guide follows data parallelism. A worker can itself be a group of devices
 using model parallelism internally.
+
+![Two panels. Data parallelism: three workers each hold all four layers of the
+model and train on a different batch; what they learn is then combined. Model
+parallelism: one batch enters worker 1, which holds layers 1 and 2;
+activations go down to worker 2, which holds layers 3 and 4, and gradients
+come back up.](assets/parallelism.svg)
 
 ### Why is it difficult?
 
@@ -201,6 +221,13 @@ Their outer gradients are $2$ and $4$. Plain outer SGD with learning rate $1$
 would produce $10-3=7$, the average of their parameters. Momentum changes this
 update using previous rounds.
 
+![Two number lines for the guide's example: the shared parameter Θ is 10 and two
+workers end at 8 and 6, so their outer gradients are 2 and 4, with mean 3.
+With plain outer SGD at learning rate 1, Θ moves by 3 to 7, the average of the
+workers. With Nesterov momentum at learning rate 0.7 and momentum 0.9, and a
+momentum of 3 left by an earlier round, the momentum becomes 5.7 and Θ moves
+by 5.69 to 4.31, past both workers.](assets/outer-step.svg)
+
 Exchanging updates every $H$ steps reduces communication frequency. The workers
 still meet at synchronization rounds, and increasing $H$ allows more divergence.
 See the [DiLoCo paper](https://arxiv.org/html/2311.08105v3).
@@ -243,6 +270,16 @@ This is a different optimization process from DDP; comparable quality must be
 established experimentally.
 See the [Decoupled DiLoCo paper](https://arxiv.org/html/2604.21428v1).
 
+![Four timelines of three workers, A, B and C, where a step of C takes 1.6 times
+as long as one of A. DDP: after every step the gradients are all-reduced, and
+A and B wait for C each time. DiLoCo: four local steps, then the whole model
+is averaged; A and B wait for C, and everyone waits during the exchange.
+Streaming DiLoCo: a fragment is exchanged every two steps while training
+continues, but the workers stay in lockstep, so A and B still wait for C.
+Decoupled DiLoCo: no worker waits; each publishes fragments as it goes, and
+the syncer closes a round as soon as two of the three have contributed,
+sometimes all three.](assets/sync-patterns.svg)
+
 ## GradientMail
 
 GradientMail implements this exchange around existing training loops. PyTorch
@@ -274,12 +311,27 @@ central synchronizer described in the paper.
 5. Learners fetch the result in the background and align with it between
    local training steps.
 
+![Sequence of one round of a fragment, in five phases. Train: nodes A, B and C
+train from the anchor, version 3. Publish: A and C put their delta, anchor
+minus parameters, in the mailbox. Collect: the syncer elected for this round
+runs on node C; it lists and gets the deltas and checks their versions,
+reaches the quorum of two, and opens a grace window, inside which B's delta
+arrives and is fetched. Merge and commit: the syncer merges the deltas with
+RDA, applies the Nesterov outer step, puts version 4 with its outer state, and
+commits the round by creating its record once. Align: each node polls, gets
+version 4 and aligns with it between its steps, A first, then C, then B.](assets/round.svg)
+
 The default merge weights each contribution by `samples² / steps` since the
 learner last aligned with that fragment. It uses **radial-directional averaging
 (RDA)** for most tensors: average the delta lengths and directions separately,
 then rescale the mean direction to the mean length. Parameters whose names
 contain `embed` use a weighted mean instead.
 The outer optimizer uses Nesterov momentum.
+
+![Two deltas of length 1, each 40 degrees from their mean direction, merged two
+ways with equal weights. The weighted mean cancels their sideways parts and
+has length 0.77, shorter than either delta. RDA averages the lengths and the
+directions separately and gives the mean direction the mean length, 1.](assets/merge.svg)
 
 Tensor payloads use Safetensors, with JSON records for metadata. Version checks
 prevent applying a delta against the wrong anchor. Committed outer state
@@ -315,6 +367,13 @@ eight fragments staggered across that interval. It does not mean that all eight
 fragments are exchanged together every 100 steps. Actual contributions depend
 on learner progress and round readiness.
 
+![Eight fragment rows over 200 local steps, with sync_every = 100 and fragments
+= 8. DiLoCo exchanges every fragment together at steps 100 and 200, a single
+column. Streaming DiLoCo exchanges one fragment at a time, at steps 12, 25,
+37, 50, 62, 75, 87 and 100 and again 100 steps later, a staircase: each
+fragment is still exchanged once every 100 steps, but each exchange carries an
+eighth of the model.](assets/fragments.svg)
+
 Call `session.step` after each local optimizer update. Report the number of
 examples for example-based training, or tokens for token-based training;
 `len(batch)` is appropriate only when it measures that count. Learners in the
@@ -326,6 +385,23 @@ By default, training continues during exchange. Aligning with a committed
 fragment replaces that fragment's local parameters, including updates made while
 its contribution was in flight. `gm.DiLoCo(..., synchronous=True)` makes every
 learner wait when its configured in-flight limit is reached.
+
+Closing the session waits for the learner's rounds in flight to commit and sets
+the model to the newest committed parameters. Steps trained since a fragment's
+last contribution are dropped, as in the DiLoCo papers. With
+`gm.DiLoCo(..., flush_on_close=True)`, the learner publishes them instead, and
+a round made only of these final contributions commits them without the outer
+momentum.
+
+![One learner's fragment over time. While training with the default, the learner
+publishes its delta for a round and keeps training; when the commit arrives it
+aligns with it, which replaces the steps trained while the round was in
+flight. With synchronous = True it waits for the commit instead, and nothing
+is replaced. At close, by default, it waits for its rounds in flight and the
+model is set to the newest committed parameters, so the steps trained since
+the last snapshot are dropped. With flush_on_close = True those steps go out
+as a final snapshot, and the round made of final snapshots commits Θ − Δ
+without the outer momentum.](assets/in-flight.svg)
 
 `quorum_size` defaults to `1`, allowing a round to proceed with one contribution.
 A larger quorum seeks more contributions before merging, at the cost of more
