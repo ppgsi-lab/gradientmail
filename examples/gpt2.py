@@ -7,7 +7,7 @@ pre-norm blocks, GELU MLPs, tied embeddings, GPT-2's initialisation) with AdamW,
 autocast and a cosine schedule, one ``gm.Session`` around the loop. The nodes never talk to
 each other. The run lives in a Storage Bucket reached through the Hub's S3 gateway, and the
 sessions settle among themselves who closes each round. ``evaluate`` loads the newest
-committed parameters with ``gm.install`` and measures validation loss, so the merged model is
+committed parameters with ``gm.align`` and measures validation loss, so the merged model is
 judged, not a node's local copy. ``train --solo`` is the baseline: the same loop without a
 session, for one node's share of the tokens.
 
@@ -238,7 +238,7 @@ def train(
     )
 
     def progress(step: int) -> float:
-        """How far the run is, in [0, 1]: by rounds installed, or by this node's steps alone."""
+        """How far the run is, in [0, 1]: by rounds aligned with, or by this node's steps alone."""
         return step / steps if session is None else (session.rounds_seen + 1) / rounds
 
     target = f"{steps} steps" if session is None else f"{rounds} rounds"
@@ -306,7 +306,7 @@ def evaluate(
     nano = nanogpt()
     device = nano.pick_device()
     model = nano.model(Config(layers, dim, heads)).to(device)
-    newest = gm.install(model, mailbox=mailbox(bucket, prefix))
+    newest = gm.align(model, mailbox=mailbox(bucket, prefix))
     return {"round": newest, "val_loss": nano.validation(model, micro_batch, batches, device)}
 
 
@@ -339,7 +339,7 @@ def compare(
 
     def run() -> dict[str, float]:
         model = nano.model(Config()).to(device)
-        newest = gm.install(model, mailbox=mailbox(bucket, prefix))
+        newest = gm.align(model, mailbox=mailbox(bucket, prefix))
         return {"round": newest, **scored(prefix, model)}
 
     nano = nanogpt()

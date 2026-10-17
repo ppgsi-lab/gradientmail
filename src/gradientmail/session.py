@@ -22,15 +22,15 @@ from gradientmail.clock import MonotonicClock
 from gradientmail.compression import Compression
 from gradientmail.events import Callback, SyncerStopped, combined, log_events
 from gradientmail.learner import Learner
-from gradientmail.learner import install as install_newest
+from gradientmail.learner import align as align_newest
 from gradientmail.mailbox import Mailbox
 from gradientmail.protocol import Exchange, ProtocolError
 from gradientmail.syncer import Syncer
 
-__all__ = ["Session", "install"]
+__all__ = ["Session", "align"]
 
 
-def install(model: object, *, mailbox: Mailbox) -> int:
+def align(model: object, *, mailbox: Mailbox) -> int:
     """Load the run's newest committed parameters into ``model`` without joining the run.
 
     For evaluation or inference: nothing is published and no claim is made. Returns the newest
@@ -43,7 +43,7 @@ def install(model: object, *, mailbox: Mailbox) -> int:
         manifest = await exchange.manifest()
         if manifest is None:
             raise ProtocolError("the mailbox holds no run")
-        records = (await install_newest(adapter_for(model), exchange, manifest)).records
+        records = (await align_newest(adapter_for(model), exchange, manifest)).records
         return records[-1].round if records else -1
 
     return asyncio.run(read())

@@ -7,7 +7,7 @@ documents the MinIO setup; there is no syncer to run:
 
     uv run python examples/mlx_learner.py --rounds 6
 
-The learner prints every round it installs and stops once it holds round ``rounds - 1``.
+The learner prints every round it aligns with and stops once it holds round ``rounds - 1``.
 """
 
 import argparse
@@ -79,7 +79,7 @@ def main() -> None:
             step += 1
             if session.rounds_seen != seen:
                 seen = session.rounds_seen
-                print(f"step {step}  round {seen} installed  loss {value.item():.4f}")
+                print(f"step {step}  round {seen} aligned  loss {value.item():.4f}")
 
 
 if __name__ == "__main__":

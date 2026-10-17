@@ -61,7 +61,7 @@ class FragmentState:
 @dataclass(frozen=True)
 class Contribution:
     """One learner's accepted delta of a fragment for one round: ``anchor - θ`` as the learner
-    computed it against the version it had installed, in the algorithm's delta schema.
+    computed it against the version it had aligned with, in the algorithm's delta schema.
     ``final`` when the learner published it while closing: it trains no further."""
 
     learner: str
@@ -160,7 +160,7 @@ class Algorithm(Protocol):
     @property
     def synchronous(self) -> bool:
         """Whether a learner's ``step()`` waits, once ``in_flight`` of its rounds are
-        outstanding, for the oldest to be committed and installed."""
+        outstanding, for the model to align with the oldest one's commit."""
         ...
 
     @property

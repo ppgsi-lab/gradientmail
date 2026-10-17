@@ -4,7 +4,7 @@ the outer step on ``mx.array``.
 Parameter names are the dotted paths of ``model.trainable_parameters()`` (``fc1.weight``,
 ``layers.0.bias``), the names ``mlx.utils.tree_flatten`` and ``load_weights`` use, so a
 torch model with the same attribute structure produces the same schema. ``apply`` hands
-the payload to MLX's own safetensors reader and installs the arrays with ``Module.update``;
+the payload to MLX's own safetensors reader and sets the arrays with ``Module.update``;
 MLX optimizer state is keyed by path rather than by array identity, so it survives. bf16 and
 f16 are native, so ``MlxValue`` converts with ``astype``; MLX flushes subnormals to zero on the
 way, where NumPy and torch round them.

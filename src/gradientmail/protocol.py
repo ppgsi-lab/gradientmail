@@ -73,7 +73,7 @@ read was swept meanwhile and is skipped. A snapshot that lands after its round c
 in the round record and is swept with the round; its learner's local progress on that fragment
 is overwritten by the committed version. ``fetch`` returns None for a payload the sweeper has
 removed (the syncer records the snapshot as ``missing``; a learner skips that fragment and
-installs the newer version its next poll lists) and raises ``PayloadCorrupt`` when the bytes
+aligns with the newer version its next poll lists) and raises ``PayloadCorrupt`` when the bytes
 do not hash to the record (the syncer records ``corrupt``; a learner fails, since a committed
 payload that does not match its record is a store fault). Two processes publishing under one
 learner id write one snapshot record per round, and the other's contribution is lost without

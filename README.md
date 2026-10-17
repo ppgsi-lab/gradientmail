@@ -6,11 +6,11 @@ The cluster is heterogeneous and elastic: nodes with different GPUs and framewor
 
 ## How it works
 
-Each learner keeps a local copy of the model and runs its own optimizer. Parameters are split into fragments, synchronized on a staggered schedule. For each fragment, a learner publishes its update: the difference between the parameters it installed and the ones it trained.
+Each learner keeps a local copy of the model and runs its own optimizer. Parameters are split into fragments, synchronized on a staggered schedule. For each fragment, a learner publishes its update: the difference between the committed parameters it last aligned with and the ones it trained.
 
 ![Learners publish updates to a shared mailbox and poll it for commits; the elected learner also merges the round's updates and commits the result.](docs/assets/training-flow.svg)
 
-An elected learner reads the updates for a round, merges them and applies the outer optimizer. It commits the updated fragment through the mailbox; learners poll for new commits and load them into their local models. All training and merge arithmetic runs on the learners.
+An elected learner reads the updates for a round, merges them and applies the outer optimizer. It commits the updated fragment through the mailbox; learners poll for new commits and align their local models with them. All training and merge arithmetic runs on the learners.
 
 ## Install
 
@@ -43,7 +43,7 @@ Run this on each node with the same bucket, prefix, algorithm configuration and 
 
 `sync_every=100, fragments=8` splits the model into up to eight parameter groups, each synchronized every 100 local steps. `step(samples=...)` reports the tokens or samples processed by that optimizer step. Leaving the context waits for the node's rounds in flight to commit, stopping the wait if the run stalls, and sets the model to the newest committed parameters. Steps trained since a fragment's last round are dropped, as in the DiLoCo papers; `flush_on_close=True` publishes them instead, and a round made only of those final contributions commits them without the outer momentum.
 
-Training continues during synchronization. Installing a committed fragment replaces local updates made while it was in flight. Pass `synchronous=True` to `gm.DiLoCo` to make every node wait when its in-flight limit is reached.
+Training continues during synchronization. Aligning a fragment with its commit replaces local updates made while it was in flight. Pass `synchronous=True` to `gm.DiLoCo` to make every node wait when its in-flight limit is reached.
 
 The defaults follow Decoupled DiLoCo. `fragments=1, in_flight=1, synchronous=True, merge=gm.WeightedMean()` with `quorum_size` equal to the number of nodes is standard DiLoCo.
 
@@ -55,7 +55,7 @@ The defaults follow Decoupled DiLoCo. `fragments=1, in_flight=1, synchronous=Tru
 
 `S3Mailbox` uses boto3 credentials. For other S3-compatible services, pass `endpoint_url=`; Hugging Face Storage Buckets also need `request_checksums="when_required"`.
 
-For evaluation, `gm.install(model, mailbox=...)` loads the committed model without joining the run. GradientMail does not save your inner optimizer state; checkpoint it separately.
+For evaluation, `gm.align(model, mailbox=...)` loads the committed model without joining the run. GradientMail does not save your inner optimizer state; checkpoint it separately.
 
 ## Examples
 

@@ -2,8 +2,8 @@
 
 One ``Session`` over a ``MemoryAdapter`` model trains on a worker thread; the session's own
 syncer closes the rounds, so nothing else runs. What is observed is what a user would: the round
-records in the store, the learner they name and the parameters the model holds once it has
-installed the newest commit.
+records in the store, the learner they name and the parameters the model holds once it is
+aligned with the newest commit.
 """
 
 import asyncio
@@ -51,7 +51,7 @@ def describe_session():
         model = gm.MemoryAdapter(MODEL)
 
         def dataloader() -> Iterator[Sequence[int]]:
-            """INTRO's loop, run until the model has installed round 1."""
+            """INTRO's loop, run until the model is aligned with round 1."""
             deadline = time.monotonic() + 20.0
             while session.rounds_seen < 1:
                 assert time.monotonic() < deadline, "the model never received round 1"
@@ -73,7 +73,7 @@ def describe_session():
         (learner_id,) = {p.learner for record in records for p in record.participants}
         assert re.fullmatch(r"[a-z0-9-]{1,64}", learner_id)
         assert learner_id.endswith(f"-{os.getpid()}")
-        # The last installed round is the newest version of its fragment: the model holds it.
+        # The last round aligned with is the newest version of its fragment: the model holds it.
         assert rounds_seen >= 1
         theta = asyncio.run(exchange.fetch(records[rounds_seen].theta))
         assert theta is not None
@@ -129,8 +129,8 @@ def describe_session():
             def when_earlier_rounds_built_up_momentum():
                 def it_commits_the_parameters_it_trained_without_an_outer_step():
                     mailbox = gm.MemoryMailbox()
-                    # One round in flight, synchronous: every round a step publishes is
-                    # installed before the step returns, so close() starts with nothing
+                    # One round in flight, synchronous: the model is aligned with every round a
+                    # step publishes before the step returns, so close() starts with nothing
                     # outstanding.
                     algorithm = gm.DiLoCo(
                         sync_every=4,
@@ -158,7 +158,7 @@ def describe_session():
                     }
 
     def when_synchronous():
-        def it_installs_a_published_round_before_the_next_step():
+        def it_aligns_with_a_published_round_before_the_next_step():
             mailbox = gm.MemoryMailbox()
             algorithm = gm.DiLoCo(sync_every=4, fragments=2, in_flight=1, synchronous=True)
             model = gm.MemoryAdapter({"a": f32(1.0, 2.0), "b": f32(3.0, 4.0)})
@@ -172,7 +172,7 @@ def describe_session():
                     seen.append(session.rounds_seen)
 
             # A round goes out every two steps and, with one round in flight, the step that
-            # publishes it returns only once it is committed and installed.
+            # publishes it returns only once it is committed and the model aligned with it.
             assert seen == [-1, 0, 0, 1, 1, 2]
 
     def when_a_callback_raises():
@@ -207,14 +207,14 @@ def describe_session():
                 events.RoundClaimed,
                 events.RoundCommitted,
                 events.RoundRecorded,
-                events.FragmentInstalled,
+                events.FragmentAligned,
                 events.Closed,
                 events.LeaseReleased,
             } <= kinds
             assert {event.learner for event in seen} == {"node"}
 
     def when_compression_is_zstd():
-        def it_stores_every_payload_compressed_and_installs_the_commits():
+        def it_stores_every_payload_compressed_and_aligns_with_the_commits():
             mailbox = gm.MemoryMailbox()
             algorithm = gm.DiLoCo(sync_every=4, fragments=2)
             model = gm.MemoryAdapter({"a": f32(1.0, 2.0), "b": f32(3.0, 4.0)})
@@ -306,7 +306,7 @@ def describe_session():
             assert participants[-1] == ["stays"]
 
 
-def describe_install():
+def describe_align():
     def it_loads_the_newest_commit_of_every_fragment_without_joining():
         mailbox = gm.MemoryMailbox()
         algorithm = gm.DiLoCo(sync_every=4, fragments=2, quorum_size=1)
@@ -330,11 +330,11 @@ def describe_install():
         reader = gm.MemoryAdapter({"a": f32(0.0, 0.0), "b": f32(0.0, 0.0)})
         keys_before = asyncio.run(mailbox.list(""))
 
-        assert gm.install(reader, mailbox=mailbox) == records[-1].round
+        assert gm.align(reader, mailbox=mailbox) == records[-1].round
         assert dict(reader.tensors) == expected
         # Reading is not joining: no snapshot, no claim, nothing written.
         assert asyncio.run(mailbox.list("")) == keys_before
 
     def it_refuses_a_mailbox_without_a_run():
         with pytest.raises(ProtocolError):
-            gm.install(gm.MemoryAdapter({"a": f32(1.0)}), mailbox=gm.MemoryMailbox())
+            gm.align(gm.MemoryAdapter({"a": f32(1.0)}), mailbox=gm.MemoryMailbox())

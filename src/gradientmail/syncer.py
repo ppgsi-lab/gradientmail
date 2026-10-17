@@ -36,9 +36,9 @@ version, its payload is present and hashes to the record and its tensors match t
 delta schema (the parameters' shapes in the algorithm's delta dtype); otherwise it stays in
 the round record as rejected (``zero_steps``, ``schema``,
 ``stale``, ``missing``, ``corrupt``) with weight 0, the paper's treatment of learners outside
-the round. A live learner is never ``stale``: it advances ``rounds_seen`` only after installing
-every fragment it fetched, and ``in_flight ≤ P``; a ``stale`` snapshot comes from a learner
-that skipped a swept payload and published before its next poll installed the current version.
+the round. A live learner is never ``stale``: it advances ``rounds_seen`` only after aligning
+with every fragment it fetched, and ``in_flight ≤ P``; a ``stale`` snapshot comes from a learner
+that skipped a swept payload and published before aligning with the version its next poll listed.
 Liveness is the lease every learner renews while it runs (``lease`` module): a learner whose
 lease has not changed for ``lease_timeout`` seconds on this node's clock, or whose lease is
 gone, is not waited for. Learners therefore join and leave at will, and a quorum above the

@@ -23,7 +23,7 @@ from gradientmail.algorithms.diloco import DiLoCo
 from gradientmail.events import (
     Callback,
     Event,
-    FragmentInstalled,
+    FragmentAligned,
     PollFailed,
     PublishCancelled,
     PublishFailed,
@@ -316,13 +316,13 @@ def describe_learner():
 
             assert taken < 4
 
-    def it_publishes_the_delta_against_the_installed_anchor(clock: FakeClock):
+    def it_publishes_the_delta_against_its_anchor(clock: FakeClock):
         mailbox = MemoryMailbox()
         exchange = Exchange(mailbox, clock=clock)
         algorithm = DiLoCo(sync_every=4, fragments=2, in_flight=2, delta_dtype="BF16")
         trained, adapter = started(mailbox, clock, algorithm=algorithm)
         try:
-            # Local training moved "a" away from the (1, 2) that join() installed as its anchor.
+            # Local training moved "a" away from the (1, 2) that join() set as its anchor.
             adapter.apply({"a": f32(3.0, 5.0)})
             step_until(trained, 1, lambda: len(asyncio.run(exchange.snapshots(0))) == 1)
         finally:
@@ -446,7 +446,7 @@ def describe_learner():
             assert dict(adapter.tensors) == {**A2, **B1}
             assert trained.rounds_seen == 2
 
-        def it_reports_every_record_and_installs_only_the_newest(clock: FakeClock):
+        def it_reports_every_record_and_aligns_only_with_the_newest(clock: FakeClock):
             mailbox = MemoryMailbox()
             exchange = Exchange(mailbox, clock=clock)
             seen: list[Event] = []
@@ -459,7 +459,7 @@ def describe_learner():
             trained.step(samples=1)
 
             assert [e.record.round for e in seen if isinstance(e, RoundRecorded)] == [0, 1, 2]
-            assert sorted(e.round for e in seen if isinstance(e, FragmentInstalled)) == [1, 2]
+            assert sorted(e.round for e in seen if isinstance(e, FragmentAligned)) == [1, 2]
 
     def when_a_payload_was_garbage_collected():
         def it_applies_the_next_version_instead(clock: FakeClock):

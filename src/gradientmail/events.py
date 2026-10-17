@@ -3,7 +3,7 @@
 Every report the learner and the syncer make is an ``Event``: one frozen dataclass per kind,
 each naming the ``learner`` it happened on, since one process may host several nodes. A
 ``Callback`` receives every event of its session on the thread that produced it: the caller's
-for the join, the training thread for installs and closing, the communication thread for
+for the join, the training thread for aligning and closing, the communication thread for
 publishing, polling and the lease, the syncer thread for rounds. One callback may therefore run
 on several threads at once, and one that keeps state guards it. The last two threads run event
 loops, so a callback that blocks stalls the node's polling or its rounds, as a slow logging
@@ -26,7 +26,7 @@ __all__ = [
     "CreatingRun",
     "Event",
     "FollowingRound",
-    "FragmentInstalled",
+    "FragmentAligned",
     "GaveUp",
     "Joined",
     "LearnerEvent",
@@ -92,7 +92,7 @@ class Joined:
 
 
 @dataclass(frozen=True)
-class FragmentInstalled:
+class FragmentAligned:
     """``fragment`` now holds ``version``, committed by ``round``, applied at ``local_step``."""
 
     learner: str
@@ -137,7 +137,7 @@ class PollFailed:
 @dataclass(frozen=True)
 class RoundRecorded:
     """The receive loop listed ``record``, whichever node committed it. Every node reports every
-    round committed after it joined, whether or not it installs that version: a newer one of
+    round committed after it joined, whether or not it aligns with that version: a newer one of
     the same fragment in the same listing replaces it."""
 
     learner: str
@@ -155,7 +155,8 @@ class Closing:
 
 @dataclass(frozen=True)
 class Closed:
-    """Every round this learner published, up to ``round``, is committed and installed."""
+    """Every round this learner published, up to ``round``, is committed and the model is
+    aligned with it."""
 
     learner: str
     round: int
@@ -164,12 +165,12 @@ class Closed:
 @dataclass(frozen=True)
 class GaveUp:
     """``close()`` stopped waiting for ``round`` after nothing landed for ``waited`` seconds;
-    the newest installed round is ``installed``."""
+    the model is aligned up to round ``aligned``."""
 
     learner: str
     round: int
     waited: float
-    installed: int
+    aligned: int
 
 
 @dataclass(frozen=True)
@@ -294,7 +295,7 @@ type LearnerEvent = (
     | AwaitingCreator
     | TookOverCreation
     | Joined
-    | FragmentInstalled
+    | FragmentAligned
     | SnapshotPublished
     | PublishFailed
     | PollFailed
@@ -342,7 +343,7 @@ def combined(*callbacks: Callback) -> Callback:
 def log_events(event: Event) -> None:
     """One line per event on the ``gradientmail.events`` logger: failures at ERROR with their
     traceback, takeovers and give-ups at WARNING, the rest at INFO. ``RoundRecorded`` is not
-    logged; the install or the commit it leads to is."""
+    logged; the alignment or the commit it leads to is."""
     match event:
         case CreatingRun(learner, fragments):
             log.info("%s: creating the run: uploading Θ⁰ of %d fragments", learner, fragments)
@@ -358,13 +359,13 @@ def log_events(event: Event) -> None:
                 fragments,
                 round,
             )
-        case FragmentInstalled(learner, round, fragment, version, local_step):
+        case FragmentAligned(learner, round, fragment, version, local_step):
             log.info(
-                "%s: round %d installed: fragment %d version %d, at local step %d",
+                "%s: fragment %d aligned with version %d (round %d), at local step %d",
                 learner,
-                round,
                 fragment,
                 version,
+                round,
                 local_step,
             )
         case SnapshotPublished(learner, round, fragment, steps, tokens, size, seconds):
@@ -398,14 +399,14 @@ def log_events(event: Event) -> None:
                 else "waiting for the rounds in flight",
             )
         case Closed(learner, round):
-            log.info("%s: closed: every round up to %d is installed", learner, round)
-        case GaveUp(learner, round, waited, installed):
+            log.info("%s: closed: aligned with every round up to %d", learner, round)
+        case GaveUp(learner, round, waited, aligned):
             log.warning(
-                "%s: giving up on round %d: nothing landed for %.0f s; newest installed is %d",
+                "%s: giving up on round %d: nothing landed for %.0f s; aligned up to round %d",
                 learner,
                 round,
                 waited,
-                installed,
+                aligned,
             )
         case PublishCancelled(learner, waited):
             log.warning(

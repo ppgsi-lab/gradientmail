@@ -1,7 +1,7 @@
 """Phase 2 end to end: two sessions on MemoryAdapters through a real mailbox, no separate syncer.
 
 Training is synthetic: every step adds a learner-specific constant to every parameter, so the
-fragment a learner publishes is the anchor it installed plus ``steps * constant``, and the value
+fragment a learner publishes is its anchor plus ``steps * constant``, and the value
 every commit must hold follows from the round record alone (its participants' steps and
 weights). Each ``Session`` hosts a learner and a syncer; which node closes a round is settled
 through the mailbox. The sessions run on their own threads at different paces and batch sizes,

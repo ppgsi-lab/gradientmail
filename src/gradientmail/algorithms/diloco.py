@@ -61,8 +61,8 @@ class DiLoCo(Algorithm):
     learners; Local SGD is ``outer_lr=1, outer_momentum=0, merge=WeightedMean()``.
 
     ``synchronous`` makes every learner's ``step()`` wait, once ``in_flight`` of its rounds are
-    outstanding, until the oldest is committed and installed: standard DiLoCo's barrier.
-    Otherwise training goes on and the commit overwrites the steps taken meanwhile.
+    outstanding, until the model is aligned with the oldest one's commit: standard DiLoCo's
+    barrier. Otherwise training goes on and the commit overwrites the steps taken meanwhile.
 
     ``global_batch_size`` fixes the batch the live learners share: each trains on its share,
     so a learner joining shrinks the others' batches instead of growing the global batch.

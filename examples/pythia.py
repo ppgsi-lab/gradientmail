@@ -49,7 +49,7 @@ runs one Salad node uploaded at about 60 KB/s and never got a snapshot in. So be
 each node times a PUT the size of that fragment and refuses to train under ``--min-upload``
 MB/s (default 2, twice the round's need): such a node fails fast, and the run is restarted on
 another compute instead of comparing three nodes' data against the official four. The library
-logs every upload, install and commit at INFO on each node's console.
+logs every upload, alignment and commit at INFO on each node's console.
 
 Once: S3 credentials for the Hub (Settings → Access Tokens → the token's menu → Generate S3
 credentials) as the ``hf`` profile in ``~/.aws/credentials``, ``GRADIENTMAIL_HF_NAMESPACE`` set
@@ -320,7 +320,7 @@ def evaluate(
     nano = pythia()
     device = nano.pick_device()
     model = nano.model().to(device)
-    newest = gm.install(model, mailbox=mailbox(bucket, prefix))
+    newest = gm.align(model, mailbox=mailbox(bucket, prefix))
     return {
         "round": newest,
         "val_loss": nano.validation(model, nano.held_out(), micro_batch, device),
@@ -367,7 +367,7 @@ def compare(
         return losses | {f"{MODEL}-seed{n}": loss for n, loss in enumerate(spread, start=1)}
 
     def run() -> dict[str, float]:
-        newest = gm.install(model, mailbox=mailbox(bucket, prefix))
+        newest = gm.align(model, mailbox=mailbox(bucket, prefix))
         return {"round": newest, prefix: scored(f"{prefix} round {newest}")}
 
     nano = pythia()

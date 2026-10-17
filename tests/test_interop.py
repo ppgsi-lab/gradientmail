@@ -199,8 +199,8 @@ def describe_two_frameworks_one_syncer():
 
         torch_session, mlx_session = session(torch_model, "torch"), session(mlx_model, "mlx")
         asyncio.run(three_rounds())
-        # Between syncs each model drifts by its own training, by design; joining again installs
-        # the newest committed version of every fragment, which is what the two must share.
+        # Between syncs each model drifts by its own training, by design; joining again aligns
+        # with the newest committed version of every fragment, which is what the two must share.
         rejoin(TorchAdapter(torch_model), "torch")
         rejoin(MlxAdapter(mlx_model), "mlx")
 

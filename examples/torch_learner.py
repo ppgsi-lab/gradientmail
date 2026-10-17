@@ -2,7 +2,7 @@
 
 Training is a synthetic regression (predict the first four inputs) on random batches. The loop is
 plain PyTorch; ``session.step`` after every optimizer step is the only addition. Joining creates
-the run from this model's parameters when it is first, or installs the run's global parameters
+the run from this model's parameters when it is first, or aligns with the run's global parameters
 when it is not, so the two learners always start from one set of weights. There is no syncer to
 run: each session closes rounds as elected through the mailbox. Both scripts share one algorithm
 configuration (``ALGORITHM``) and must address the same bucket and prefix; with quorum 2 every
@@ -23,7 +23,7 @@ Then, in two terminals, in any order:
     uv run python examples/torch_learner.py --rounds 6 [--device cuda]
     uv run python examples/mlx_learner.py --rounds 6
 
-Each learner prints every round it installs and stops once it holds round ``rounds - 1``. A
+Each learner prints every round it aligns with and stops once it holds round ``rounds - 1``. A
 prefix holds one run; start a new run under a new prefix. Against AWS, omit the endpoint.
 """
 
@@ -92,7 +92,7 @@ def main() -> None:
             step += 1
             if session.rounds_seen != seen:
                 seen = session.rounds_seen
-                print(f"step {step}  round {seen} installed  loss {loss.item():.4f}")
+                print(f"step {step}  round {seen} aligned  loss {loss.item():.4f}")
 
 
 if __name__ == "__main__":

@@ -6,8 +6,8 @@ anchor it was trained from, to the publish loop when a round is due; the publish
 computes their difference in the backend and publishes that delta. A daemon thread runs the
 receive and publish loops on its own event loop; the two sides meet only through two
 ``queue.SimpleQueue``s, so ``step()`` never awaits and never does I/O. It blocks only when
-the algorithm is synchronous, waiting in ``step()`` for its published rounds to be
-installed, and ``close()`` waits for the last ones.
+the algorithm is synchronous, waiting in ``step()`` for the model to align with its published
+rounds, and ``close()`` waits for the last ones.
 
 A fetched batch is queued only once every payload in it is in hand, so ``rounds_seen`` never
 runs ahead of a fragment that is not yet applied: that is what keeps a live learner's
@@ -37,7 +37,7 @@ from gradientmail.events import (
     Closed,
     Closing,
     CreatingRun,
-    FragmentInstalled,
+    FragmentAligned,
     GaveUp,
     Joined,
     LeaseReleased,
@@ -65,14 +65,14 @@ from gradientmail.protocol import (
 from gradientmail.serialization import DType, Schema, SchemaMismatch, TensorBytes, validate
 
 __all__ = [
-    "Installed",
+    "Aligned",
     "Learner",
     "LearnerState",
     "Publishers",
     "advanced",
+    "align",
     "applied",
     "due_round",
-    "install",
     "publishable",
 ]
 
@@ -83,8 +83,8 @@ log = logging.getLogger(__name__)
 class LearnerState:
     """Everything the training thread tracks; one value per fragment where it says so.
 
-    ``rounds_seen`` is the newest round whose fragment has been installed, ``last_published``
-    the newest round this learner has a snapshot queued for.
+    ``rounds_seen`` is the newest round whose fragment the model is aligned with,
+    ``last_published`` the newest round this learner has a snapshot queued for.
     """
 
     local_step: int
@@ -177,14 +177,14 @@ class Learner:
     then starts the communication thread. An operation that fails on that thread is reported
     (``PollFailed``, ``PublishFailed``) and its loop goes on (``communicate``); only the thread's
     own death is raised from the next ``step()``. When the algorithm is ``synchronous``,
-    ``step()`` waits for a published round to be committed and installed before training on, as
+    ``step()`` waits for the model to align with a published round's commit before training on, as
     standard DiLoCo does; otherwise training goes on and the commit overwrites the steps taken
     meanwhile. The
     lease is renewed every ``lease_every`` seconds and the other learners' leases are presumed lost
     after ``lease_timeout`` seconds without a change.
 
     What goes out is ``anchor - θ``, computed in ``backend`` (the installed one by default)
-    against the version of the fragment this learner installed last, of which it keeps one host
+    against the version of the fragment this learner aligned with last, of which it keeps one host
     copy. ``compression`` is the codec its payloads are stored with. ``on_event`` receives every
     event the learner reports (``events`` module), on the thread that produced it.
     """
@@ -309,12 +309,12 @@ class Learner:
         self._state = state
 
     def close(self) -> None:
-        """Wait for this learner's rounds in flight to be committed and installed, then stop.
+        """Wait for the commits of this learner's rounds in flight and align with them, then stop.
 
         The steps trained since a fragment's last round are dropped: the model is set back to
-        the newest version of every fragment it installed. With the algorithm's
+        the newest version of every fragment it aligned with. With the algorithm's
         ``flush_on_close`` they are published instead, as final snapshots, round after round,
-        each waited for and installed, so the run's parameters end with them and the model holds
+        each awaited and aligned with, so the run's parameters end with them and the model holds
         them. The wait gives up once nothing has landed for the lease timeout plus the takeover
         timeout the last record predicts (at least thirty polls): time for crashed learners to
         be presumed lost, then for a round without them to be presumed not to commit, as when
@@ -355,10 +355,10 @@ class Learner:
             raise RunConfigMismatch(expected=algorithm, found=manifest.algorithm)
 
         fragments = range(len(manifest.plan))
-        installed = await install(self._adapter, self._exchange, manifest)
-        records = installed.records
+        aligned = await align(self._adapter, self._exchange, manifest)
+        records = aligned.records
         newest = _newest_per_fragment(records)
-        self._anchors = list(installed.fragments)
+        self._anchors = list(aligned.fragments)
         self._run = _Run(
             schema=schema,
             plan=manifest.plan,
@@ -574,19 +574,19 @@ class Learner:
             for name, tensor in outgoing.snapshot.items()
         }
 
-    def _install(self, run: "_Run", state: LearnerState, update: "_Update") -> LearnerState:
+    def _align(self, run: "_Run", state: LearnerState, update: "_Update") -> LearnerState:
         validate(run.schema, update.tensors, run.plan[update.fragment])
         self._adapter.apply(update.tensors)
         self._anchors[update.fragment] = update.tensors
         self._on_event(
-            FragmentInstalled(
+            FragmentAligned(
                 self._learner_id, update.round, update.fragment, update.version, state.local_step
             )
         )
         return applied(state, update.round, update.fragment, update.version)
 
     def _drained(self, run: "_Run", state: LearnerState) -> LearnerState:
-        """Install every fragment version the receive loop has queued, without waiting."""
+        """Align with every fragment version the receive loop has queued, without waiting."""
 
         def queued() -> Iterator[_Update]:
             while True:
@@ -597,7 +597,7 @@ class Learner:
                 yield from batch
 
         for update in queued():
-            state = self._install(run, state, update)
+            state = self._align(run, state, update)
         return state
 
     def _settled(
@@ -608,10 +608,10 @@ class Learner:
         *,
         patience: float | None,
     ) -> LearnerState:
-        """Install fragment versions as they arrive until ``done(state)`` holds.
+        """Align with fragment versions as they arrive until ``done(state)`` holds.
 
         Blocks the calling thread. With ``patience``, returns once nothing has happened for that
-        long: no version installed and no new snapshot in the round this learner publishes
+        long: no version aligned with and no new snapshot in the round this learner publishes
         next. Raises what the communication thread died of.
         """
         progress = (state.rounds_seen, self._publishers)
@@ -624,7 +624,7 @@ class Learner:
             if self._failure is not None:
                 raise self._failure
             for update in batch:
-                state = self._install(run, state, update)
+                state = self._align(run, state, update)
             now = self._clock.now()
             if (state.rounds_seen, self._publishers) != progress:
                 progress, since = (state.rounds_seen, self._publishers), now
@@ -665,15 +665,15 @@ class Learner:
 
 
 @dataclass(frozen=True)
-class Installed:
-    """What ``install`` loaded: the round records read, in round order, and the tensors the
+class Aligned:
+    """What ``align`` loaded: the round records read, in round order, and the tensors the
     adapter now holds, one mapping per fragment."""
 
     records: Sequence[RoundRecord]
     fragments: tuple[Mapping[str, TensorBytes], ...]
 
 
-async def install(adapter: Adapter, exchange: Exchange, manifest: Manifest) -> Installed:
+async def align(adapter: Adapter, exchange: Exchange, manifest: Manifest) -> Aligned:
     """Load the newest committed version of every fragment of ``manifest``'s run into ``adapter``.
 
     A fragment no round has committed yet is loaded from the manifest's initial parameters.
@@ -696,7 +696,7 @@ async def install(adapter: Adapter, exchange: Exchange, manifest: Manifest) -> I
         validate(schema, tensors, manifest.plan[fragment])
         adapter.apply(tensors)
         loaded.append(tensors)
-    return Installed(records, tuple(loaded))
+    return Aligned(records, tuple(loaded))
 
 
 @dataclass(frozen=True)

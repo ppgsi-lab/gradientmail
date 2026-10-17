@@ -18,7 +18,7 @@ from gradientmail.mailbox import Mailbox, MailboxUnavailable
 from gradientmail.mailbox.memory import MemoryMailbox
 from gradientmail.protocol import RunConfigMismatch
 from gradientmail.serialization import Schema, SchemaMismatch, TensorBytes
-from gradientmail.session import Session, install
+from gradientmail.session import Session, align
 
 if TYPE_CHECKING:
     from gradientmail.mailbox.s3 import S3Mailbox as S3Mailbox
@@ -42,7 +42,7 @@ __all__ = [
     "Session",
     "TensorBytes",
     "WeightedMean",
-    "install",
+    "align",
     "log_events",
 ]
 

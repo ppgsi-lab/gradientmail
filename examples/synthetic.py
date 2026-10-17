@@ -4,10 +4,10 @@ Each learner is a MemoryAdapter over two small tensors. Its "training" adds a co
 own to every parameter per step, at its own pace and batch size, so the value every committed
 fragment must hold is known from the round record alone: with quorum 2, lr 1, no momentum and
 the weighted mean, a commit is the weighted average of the fragments the learners published,
-each being the anchor it installed plus ``steps * constant``. Which session closes a round is
+each being the learner's anchor plus ``steps * constant``. Which session closes a round is
 settled through the mailbox; the outer step runs on the installed backend (torch or MLX). The
 script prints every commit next to that expectation, then rejoins each learner to show it
-installs the newest commit.
+aligns with the newest commit.
 
     uv run python examples/synthetic.py --rounds 6
 """
@@ -197,7 +197,7 @@ def main() -> None:
         for session in sessions.values():
             session.close()
 
-    # A learner's parameters drift by its own training between syncs; (re)joining installs the
+    # A learner's parameters drift by its own training between syncs; (re)joining aligns with the
     # newest committed version of every fragment at that moment.
     for profile, adapter in adapters.items():
         committed = newest(exchange)

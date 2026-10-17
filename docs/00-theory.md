@@ -233,11 +233,11 @@ can include additional contributions after quorum is reached.
 
 Learners report how many local steps and tokens they processed. This lets the
 syncer weight contributions from learners that performed different amounts of
-work. Learners install updated fragments as they receive them, so their replicas
-can hold different versions at the same moment.
+work. Learners align with updated fragments as they receive them, so their
+replicas can hold different versions at the same moment.
 
 A slow or failed learner can be left out of a round. The tradeoff is that
-learners train on increasingly different states, and installing a shared
+learners train on increasingly different states, and aligning with a shared
 fragment can overwrite local work done while communication was in progress.
 This is a different optimization process from DDP; comparable quality must be
 established experimentally.
@@ -261,7 +261,7 @@ central synchronizer described in the paper.
 
 ### What happens in one round
 
-1. A learner trains locally from an installed fragment, its **anchor**.
+1. A learner trains locally from a committed fragment, its **anchor**.
 2. When a contribution is due, it publishes `anchor - local_parameters` for that
    fragment, together with the anchor version and its step and sample counts.
 3. The elected syncer accepts contributions based on the current fragment
@@ -271,14 +271,14 @@ central synchronizer described in the paper.
 4. It merges the accepted deltas, applies the outer optimizer, and publishes
    the new fragment and outer optimizer state. A create-once round record
    commits the result.
-5. Learners fetch the result in the background and install it between local
-   training steps.
+5. Learners fetch the result in the background and align with it between
+   local training steps.
 
-The default merge weights each contribution by `samples² / steps` since that
-fragment was installed. It uses **radial-directional averaging (RDA)** for most
-tensors: average the delta lengths and directions separately, then rescale the
-mean direction to the mean length. Parameters whose names contain `embed` use a
-weighted mean instead.
+The default merge weights each contribution by `samples² / steps` since the
+learner last aligned with that fragment. It uses **radial-directional averaging
+(RDA)** for most tensors: average the delta lengths and directions separately,
+then rescale the mean direction to the mean length. Parameters whose names
+contain `embed` use a weighted mean instead.
 The outer optimizer uses Nesterov momentum.
 
 Tensor payloads use Safetensors, with JSON records for metadata. Version checks
@@ -322,9 +322,9 @@ same run must use the same unit.
 
 ### Choosing the tradeoff
 
-By default, training continues during exchange. Installing a committed fragment
-replaces that fragment's local parameters, including updates made while its
-contribution was in flight. `gm.DiLoCo(..., synchronous=True)` makes every
+By default, training continues during exchange. Aligning with a committed
+fragment replaces that fragment's local parameters, including updates made while
+its contribution was in flight. `gm.DiLoCo(..., synchronous=True)` makes every
 learner wait when its configured in-flight limit is reached.
 
 `quorum_size` defaults to `1`, allowing a round to proceed with one contribution.
