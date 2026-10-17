@@ -9,17 +9,18 @@ process to operate.
 """
 
 import asyncio
-import logging
 import os
 import re
 import socket
 import threading
+from collections.abc import Sequence
 from typing import Self
 
 from gradientmail.adapters import Adapter, Backend, adapter_for, backend_for, default_backend
 from gradientmail.algorithms import Algorithm
 from gradientmail.clock import MonotonicClock
 from gradientmail.compression import Compression
+from gradientmail.events import Callback, SyncerStopped, combined, log_events
 from gradientmail.learner import Learner
 from gradientmail.learner import install as install_newest
 from gradientmail.mailbox import Mailbox
@@ -27,8 +28,6 @@ from gradientmail.protocol import Exchange, ProtocolError
 from gradientmail.syncer import Syncer
 
 __all__ = ["Session", "install"]
-
-log = logging.getLogger(__name__)
 
 
 def install(model: object, *, mailbox: Mailbox) -> int:
@@ -86,6 +85,10 @@ class Session:
         which the other nodes stop waiting for it. A round closes at ``quorum_size`` snapshots
         or once every live node has reported, and a closing node releases its lease at once, so
         nodes join and leave without stalling the run.
+    callbacks
+        What receives the node's events (``events`` module), each in turn, on the thread that
+        produced the event; one that raises is logged and does not affect the run or the other
+        callbacks. The default logs them; leaving ``log_events`` out silences the node's log.
     """
 
     def __init__(
@@ -100,6 +103,7 @@ class Session:
         compression: Compression = "off",
         lease_every: float = 60.0,
         lease_timeout: float = 120.0,
+        callbacks: Sequence[Callback] = (log_events,),
     ) -> None:
         def default_learner_id() -> str:
             pid = f"-{os.getpid()}"
@@ -112,7 +116,7 @@ class Session:
             except asyncio.CancelledError:
                 pass
             except BaseException as exc:
-                log.exception("%s: the syncer stopped; the next step() raises", learner_id)
+                on_event(SyncerStopped(learner_id, exc))
                 self._failure = exc
 
         if backend is None:
@@ -120,6 +124,7 @@ class Session:
         adapter = model if isinstance(model, Adapter) else backend.adapter(model)
         if learner_id is None:
             learner_id = default_learner_id()
+        on_event = combined(*callbacks)
         self._learner = Learner(
             adapter=adapter,
             algorithm=algorithm,
@@ -130,6 +135,7 @@ class Session:
             lease_every=lease_every,
             lease_timeout=lease_timeout,
             compression=compression,
+            on_event=on_event,
         )
         self._syncer = Syncer(
             algorithm=algorithm,
@@ -139,6 +145,7 @@ class Session:
             poll_interval=poll_interval,
             lease_timeout=lease_timeout,
             compression=compression,
+            on_event=on_event,
         )
         self._failure: BaseException | None = None
         self._learner.start()

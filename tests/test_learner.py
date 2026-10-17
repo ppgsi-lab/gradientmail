@@ -8,7 +8,6 @@ the communication thread.
 """
 
 import asyncio
-import logging
 import struct
 import time
 from array import array
@@ -21,6 +20,17 @@ from fakes import FakeClock, SlowMailbox, TrippedMailbox
 from gradientmail.adapters import MemoryAdapter
 from gradientmail.algorithms import Algorithm, Estimates, RoundSchedule
 from gradientmail.algorithms.diloco import DiLoCo
+from gradientmail.events import (
+    Callback,
+    Event,
+    FragmentInstalled,
+    PollFailed,
+    PublishCancelled,
+    PublishFailed,
+    RoundRecorded,
+    SnapshotPublished,
+    log_events,
+)
 from gradientmail.learner import (
     Learner,
     LearnerState,
@@ -92,6 +102,7 @@ def learner(
     *,
     algorithm: Algorithm = ALGORITHM,
     learner_id: str = "learner-a",
+    on_event: Callback = log_events,
 ) -> tuple[Learner, MemoryAdapter]:
     adapter = MemoryAdapter(tensors)
     return (
@@ -104,6 +115,7 @@ def learner(
             poll_interval=0.01,
             lease_every=0.05,
             lease_timeout=0.1,
+            on_event=on_event,
         ),
         adapter,
     )
@@ -119,9 +131,13 @@ async def spin(until: Callable[[], bool]) -> None:
 
 
 def joined(
-    mailbox: MemoryMailbox, clock: FakeClock, tensors: Mapping[str, TensorBytes] = TENSORS
+    mailbox: MemoryMailbox,
+    clock: FakeClock,
+    tensors: Mapping[str, TensorBytes] = TENSORS,
+    *,
+    on_event: Callback = log_events,
 ) -> tuple[Learner, MemoryAdapter]:
-    created, adapter = learner(mailbox, clock, tensors)
+    created, adapter = learner(mailbox, clock, tensors, on_event=on_event)
     asyncio.run(created.join())
     return created, adapter
 
@@ -132,8 +148,9 @@ def started(
     tensors: Mapping[str, TensorBytes] = TENSORS,
     *,
     algorithm: Algorithm = ALGORITHM,
+    on_event: Callback = log_events,
 ) -> tuple[Learner, MemoryAdapter]:
-    created, adapter = learner(mailbox, clock, tensors, algorithm=algorithm)
+    created, adapter = learner(mailbox, clock, tensors, algorithm=algorithm, on_event=on_event)
     created.start()
     return created, adapter
 
@@ -327,9 +344,7 @@ def describe_learner():
         assert dict(asyncio.run(exchange.leases())) == {}
 
     def when_a_poll_raises():
-        def it_logs_the_failure_and_keeps_renewing_the_lease(
-            clock: FakeClock, caplog: pytest.LogCaptureFixture
-        ):
+        def it_reports_the_failure_and_keeps_renewing_the_lease(clock: FakeClock):
             inner = MemoryMailbox()
             exchange = Exchange(inner, clock=clock)
             # The first lease listing is the first beat's: the renewal itself fails.
@@ -338,21 +353,18 @@ def describe_learner():
                 lambda operation, key: operation == "list" and key.startswith("leases/"),
                 RuntimeError("boom"),
             )
-            caplog.set_level(logging.INFO, logger="gradientmail")
-            trained, _ = started(mailbox, clock)
+            seen: list[Event] = []
+            trained, _ = started(mailbox, clock, on_event=seen.append)
             try:
                 step_until(trained, 1, lambda: "learner-a" in asyncio.run(exchange.leases()))
             finally:
                 trained.close()
 
-            [failure] = [r for r in caplog.records if r.levelno == logging.ERROR]
-            assert failure.exc_info is not None
-            assert isinstance(failure.exc_info[1], RuntimeError)
+            [failure] = [e for e in seen if isinstance(e, PollFailed)]
+            assert isinstance(failure.error, RuntimeError)
 
     def when_publishing_a_snapshot_raises():
-        def it_logs_the_failure_and_publishes_the_next_round(
-            clock: FakeClock, caplog: pytest.LogCaptureFixture
-        ):
+        def it_reports_the_failure_and_publishes_the_next_round(clock: FakeClock):
             inner = MemoryMailbox()
             exchange = Exchange(inner, clock=clock)
             mailbox = TrippedMailbox(
@@ -362,34 +374,34 @@ def describe_learner():
                 ),
                 RuntimeError("boom"),
             )
-            caplog.set_level(logging.INFO, logger="gradientmail")
-            trained, _ = started(mailbox, clock)
+            seen: list[Event] = []
+            trained, _ = started(mailbox, clock, on_event=seen.append)
             try:
                 step_until(trained, 1, lambda: len(asyncio.run(exchange.snapshots(1))) == 1)
             finally:
                 trained.close()
 
             assert list(asyncio.run(exchange.snapshots(0))) == []
-            assert "learner-a: round 0: publishing failed" in caplog.text
-            assert "learner-a: round 1 published" in caplog.text
+            assert [e.round for e in seen if isinstance(e, PublishFailed)] == [0]
+            assert 1 in {e.round for e in seen if isinstance(e, SnapshotPublished)}
 
     def when_close_is_cut_short_by_a_slow_upload():
-        def it_still_releases_the_lease(
-            clock: FakeClock, caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
-        ):
+        def it_still_releases_the_lease(clock: FakeClock, monkeypatch: pytest.MonkeyPatch):
             inner = MemoryMailbox()
             exchange = Exchange(inner, clock=clock)
             mailbox = SlowMailbox(inner, lambda key: key.startswith("blobs/snapshots/"), 0.5)
             monkeypatch.setattr("gradientmail.learner._CLOSE_TIMEOUT", 0.05)
-            caplog.set_level(logging.INFO, logger="gradientmail")
-            trained, _ = started(mailbox, clock)
+            seen: list[Event] = []
+            trained, _ = started(mailbox, clock, on_event=seen.append)
             step_until(trained, 1, lambda: "learner-a" in asyncio.run(exchange.leases()))
-            # Round 0 is due by the second step; its upload outlasts the close timeout.
+            # Round 0 is due by the second step, however many the lease took; its upload
+            # outlasts the close timeout.
+            trained.step(samples=1)
             trained.step(samples=1)
 
             trained.close()
 
-            assert "cancelling" in caplog.text
+            assert PublishCancelled("learner-a", 0.05) in seen
             assert dict(asyncio.run(exchange.leases())) == {}
 
     def when_closed_with_steps_no_round_has_taken():
@@ -433,6 +445,21 @@ def describe_learner():
 
             assert dict(adapter.tensors) == {**A2, **B1}
             assert trained.rounds_seen == 2
+
+        def it_reports_every_record_and_installs_only_the_newest(clock: FakeClock):
+            mailbox = MemoryMailbox()
+            exchange = Exchange(mailbox, clock=clock)
+            seen: list[Event] = []
+            trained, _ = joined(mailbox, clock, on_event=seen.append)
+            commit(exchange, 0, A1)
+            commit(exchange, 1, B1)
+            commit(exchange, 2, A2)
+
+            asyncio.run(trained.poll())
+            trained.step(samples=1)
+
+            assert [e.record.round for e in seen if isinstance(e, RoundRecorded)] == [0, 1, 2]
+            assert sorted(e.round for e in seen if isinstance(e, FragmentInstalled)) == [1, 2]
 
     def when_a_payload_was_garbage_collected():
         def it_applies_the_next_version_instead(clock: FakeClock):

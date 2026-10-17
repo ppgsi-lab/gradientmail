@@ -31,6 +31,25 @@ from gradientmail.adapters import Adapter, Backend, default_backend
 from gradientmail.algorithms import Algorithm, Estimates, RoundSchedule
 from gradientmail.clock import Clock, MonotonicClock
 from gradientmail.compression import Compression
+from gradientmail.events import (
+    AwaitingCreator,
+    Callback,
+    Closed,
+    Closing,
+    CreatingRun,
+    FragmentInstalled,
+    GaveUp,
+    Joined,
+    LeaseReleased,
+    PollFailed,
+    PublishCancelled,
+    PublishFailed,
+    ReleaseFailed,
+    RoundRecorded,
+    SnapshotPublished,
+    TookOverCreation,
+    log_events,
+)
 from gradientmail.lease import Liveness
 from gradientmail.mailbox import Mailbox
 from gradientmail.protocol import (
@@ -155,17 +174,19 @@ class Learner:
     """Wraps a training loop: ``start()`` once, ``step()`` after every optimizer step, ``close()``.
 
     ``start`` blocks until the model holds the newest committed version of every fragment,
-    then starts the communication thread. An operation that fails on that thread is logged and
-    its loop goes on (``communicate``); only the thread's own death is raised from the next
-    ``step()``. When the algorithm is ``synchronous``, ``step()`` waits for
-    a published round to be committed and installed before training on, as standard DiLoCo
-    does; otherwise training goes on and the commit overwrites the steps taken meanwhile. The
+    then starts the communication thread. An operation that fails on that thread is reported
+    (``PollFailed``, ``PublishFailed``) and its loop goes on (``communicate``); only the thread's
+    own death is raised from the next ``step()``. When the algorithm is ``synchronous``,
+    ``step()`` waits for a published round to be committed and installed before training on, as
+    standard DiLoCo does; otherwise training goes on and the commit overwrites the steps taken
+    meanwhile. The
     lease is renewed every ``lease_every`` seconds and the other learners' leases are presumed lost
     after ``lease_timeout`` seconds without a change.
 
     What goes out is ``anchor - θ``, computed in ``backend`` (the installed one by default)
     against the version of the fragment this learner installed last, of which it keeps one host
-    copy. ``compression`` is the codec its payloads are stored with.
+    copy. ``compression`` is the codec its payloads are stored with. ``on_event`` receives every
+    event the learner reports (``events`` module), on the thread that produced it.
     """
 
     def __init__(
@@ -181,6 +202,7 @@ class Learner:
         lease_every: float = 60.0,
         lease_timeout: float = 120.0,
         compression: Compression = "off",
+        on_event: Callback = log_events,
     ) -> None:
         if lease_timeout <= lease_every:
             raise ValueError(
@@ -195,6 +217,7 @@ class Learner:
         self._lease_every = lease_every
         self._lease_timeout = lease_timeout
         self._exchange = Exchange(mailbox, clock=self._clock, compression=compression)
+        self._on_event = on_event
         self._inbox: queue.SimpleQueue[tuple[_Update, ...]] = queue.SimpleQueue()
         self._outbox: queue.SimpleQueue[_Outgoing | None] = queue.SimpleQueue()
         self._run: _Run | None = None
@@ -311,11 +334,7 @@ class Learner:
             self._outbox.put(None)
             self._thread.join(_CLOSE_TIMEOUT)
             if self._thread.is_alive() and self._main is not None:
-                log.warning(
-                    "%s: still publishing %.0f s after the last rounds; cancelling",
-                    self._learner_id,
-                    _CLOSE_TIMEOUT,
-                )
+                self._on_event(PublishCancelled(self._learner_id, _CLOSE_TIMEOUT))
                 self._main.get_loop().call_soon_threadsafe(self._main.cancel)
                 self._thread.join()
             self._thread = None
@@ -363,12 +382,10 @@ class Learner:
         self._cursor = self._state.rounds_seen
         if records:
             self._estimates = records[-1].estimates
-        log.info(
-            "%s: joined the run created by %s: %d fragments, newest round %d",
-            self._learner_id,
-            manifest.created_by,
-            len(manifest.plan),
-            self._state.rounds_seen,
+        self._on_event(
+            Joined(
+                self._learner_id, manifest.created_by, len(manifest.plan), self._state.rounds_seen
+            )
         )
 
     async def create(self, schema: Schema) -> Manifest:
@@ -402,13 +419,11 @@ class Learner:
         if self._learner_id in claimants or (
             not claimants and await self._exchange.claim_creation(1, self._learner_id)
         ):
-            log.info(
-                "%s: creating the run: uploading Θ⁰ of %d fragments", self._learner_id, len(plan)
-            )
+            self._on_event(CreatingRun(self._learner_id, len(plan)))
             return await upload()
         claimants = await self._exchange.creation_claims()
         attempts = len(claimants)
-        log.info("%s: waiting for %s to create the run", self._learner_id, ", ".join(claimants))
+        self._on_event(AwaitingCreator(self._learner_id, tuple(claimants)))
         uploaded = await self._exchange.init_uploaded()
         seen_at = self._clock.now()
         while True:
@@ -421,11 +436,7 @@ class Learner:
                 uploaded, seen_at = count, self._clock.now()
             elif self._clock.now() - seen_at >= stall:
                 if await self._exchange.claim_creation(attempts + 1, self._learner_id):
-                    log.warning(
-                        "%s: no init payload landed for %.0f s; creating the run",
-                        self._learner_id,
-                        stall,
-                    )
+                    self._on_event(TookOverCreation(self._learner_id, stall))
                     return await upload()
                 attempts = len(await self._exchange.creation_claims())
                 seen_at = self._clock.now()
@@ -434,7 +445,7 @@ class Learner:
         """Receive, publish and renew the lease until ``close()``, then release the lease; what
         the communication thread runs.
 
-        Neither loop dies of a failed operation: the failure is logged and the loop goes on,
+        Neither loop dies of a failed operation: the failure is reported and the loop goes on,
         the receive loop with its next poll (so the lease keeps being renewed), the publish loop
         with the next snapshot (the failed round's steps stay counted and go out with the
         fragment's next round). Only cancellation ends them, and the lease is released either
@@ -450,8 +461,8 @@ class Learner:
                         renew_at = self._clock.now() + self._lease_every
                         log.debug("%s: lease renewed", self._learner_id)
                     await self.poll()
-                except Exception:
-                    log.exception("%s: poll failed; retrying", self._learner_id)
+                except Exception as exc:
+                    self._on_event(PollFailed(self._learner_id, exc))
                 await self._clock.sleep(self._poll_interval)
 
         async def publish() -> None:
@@ -461,24 +472,19 @@ class Learner:
                     delta = await asyncio.to_thread(self._delta, run, outgoing)
                     started = time.perf_counter()
                     published = await self._exchange.publish_snapshot(draft, delta)
-                    log.info(
-                        "%s: round %d published: fragment %d, %d steps, %d tokens, %d bytes, "
-                        "%.1f s",
-                        self._learner_id,
-                        draft.round,
-                        run.schedule.fragment_of(draft.round),
-                        draft.steps,
-                        draft.tokens,
-                        published.payload.size,
-                        time.perf_counter() - started,
+                    self._on_event(
+                        SnapshotPublished(
+                            self._learner_id,
+                            draft.round,
+                            run.schedule.fragment_of(draft.round),
+                            draft.steps,
+                            draft.tokens,
+                            published.payload.size,
+                            time.perf_counter() - started,
+                        )
                     )
-                except Exception:
-                    log.exception(
-                        "%s: round %d: publishing failed; its steps go out with the fragment's "
-                        "next round",
-                        self._learner_id,
-                        draft.round,
-                    )
+                except Exception as exc:
+                    self._on_event(PublishFailed(self._learner_id, draft.round, exc))
 
         if self._run is None:
             raise RuntimeError("Learner.communicate() before join()")
@@ -495,9 +501,9 @@ class Learner:
             self._outbox.put(None)
             try:
                 await self._exchange.release(self._learner_id)
-                log.info("%s: lease released", self._learner_id)
-            except Exception:
-                log.exception("%s: releasing the lease failed", self._learner_id)
+                self._on_event(LeaseReleased(self._learner_id))
+            except Exception as exc:
+                self._on_event(ReleaseFailed(self._learner_id, exc))
 
     async def poll(self) -> None:
         """One receive iteration: queue the newest version of each fragment committed meanwhile,
@@ -519,6 +525,8 @@ class Learner:
                 self._inbox.put(updates)
             self._cursor = records[-1].round
             self._estimates = records[-1].estimates
+            for record in records:
+                self._on_event(RoundRecorded(self._learner_id, record))
         now = self._clock.now()
         self._liveness = self._liveness.observed(await self._exchange.leases(), now)
         self._live = self._liveness.live(now)
@@ -570,13 +578,10 @@ class Learner:
         validate(run.schema, update.tensors, run.plan[update.fragment])
         self._adapter.apply(update.tensors)
         self._anchors[update.fragment] = update.tensors
-        log.info(
-            "%s: round %d installed: fragment %d version %d, at local step %d",
-            self._learner_id,
-            update.round,
-            update.fragment,
-            update.version,
-            state.local_step,
+        self._on_event(
+            FragmentInstalled(
+                self._learner_id, update.round, update.fragment, update.version, state.local_step
+            )
         )
         return applied(state, update.round, update.fragment, update.version)
 
@@ -642,33 +647,19 @@ class Learner:
         def settled(state: LearnerState) -> bool:
             return flushable(state) is not None or state.rounds_seen >= state.last_published
 
-        log.info(
-            "%s: closing: %s",
-            self._learner_id,
-            "publishing the steps since the last rounds"
-            if self._algorithm.flush_on_close
-            else "waiting for the rounds in flight",
-        )
+        self._on_event(Closing(self._learner_id, self._algorithm.flush_on_close))
         patience = self._lease_timeout + self._estimates.timeout(self._poll_interval)
         state = self._drained(run, state)
         while True:
             while (round := flushable(state)) is not None:
                 state = self._publish(run, state, round, final=True)
             if state.rounds_seen >= state.last_published:
-                log.info(
-                    "%s: closed: every round up to %d is installed",
-                    self._learner_id,
-                    state.last_published,
-                )
+                self._on_event(Closed(self._learner_id, state.last_published))
                 return state
             state = self._settled(run, state, settled, patience=patience)
             if not settled(state):
-                log.warning(
-                    "%s: giving up on round %d: nothing landed for %.0f s; newest installed is %d",
-                    self._learner_id,
-                    state.last_published,
-                    patience,
-                    state.rounds_seen,
+                self._on_event(
+                    GaveUp(self._learner_id, state.last_published, patience, state.rounds_seen)
                 )
                 return state
 

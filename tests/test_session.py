@@ -17,6 +17,7 @@ from collections.abc import Iterator, Sequence
 import pytest
 
 import gradientmail as gm
+from gradientmail import events
 from gradientmail.clock import MonotonicClock
 from gradientmail.protocol import Exchange, ProtocolError
 
@@ -173,6 +174,44 @@ def describe_session():
             # A round goes out every two steps and, with one round in flight, the step that
             # publishes it returns only once it is committed and installed.
             assert seen == [-1, 0, 0, 1, 1, 2]
+
+    def when_a_callback_raises():
+        def it_still_hands_the_learners_and_the_syncers_events_to_the_others():
+            mailbox = gm.MemoryMailbox()
+            algorithm = gm.DiLoCo(sync_every=4, fragments=2)
+            model = gm.MemoryAdapter({"a": f32(1.0, 2.0), "b": f32(3.0, 4.0)})
+
+            def failing(event: gm.Event) -> None:
+                raise RuntimeError("sink down")
+
+            seen: list[gm.Event] = []
+            with gm.Session(
+                model,
+                algorithm=algorithm,
+                mailbox=mailbox,
+                learner_id="node",
+                poll_interval=0.01,
+                callbacks=(failing, seen.append),
+            ) as session:
+                deadline = time.monotonic() + 20.0
+                while session.rounds_seen < 1:
+                    assert time.monotonic() < deadline, "round 1 never arrived"
+                    train_step(model, (1,))
+                    session.step(samples=1)
+                    time.sleep(0.001)
+
+            kinds = {type(event) for event in seen}
+            assert {
+                events.Joined,
+                events.SnapshotPublished,
+                events.RoundClaimed,
+                events.RoundCommitted,
+                events.RoundRecorded,
+                events.FragmentInstalled,
+                events.Closed,
+                events.LeaseReleased,
+            } <= kinds
+            assert {event.learner for event in seen} == {"node"}
 
     def when_compression_is_zstd():
         def it_stores_every_payload_compressed_and_installs_the_commits():

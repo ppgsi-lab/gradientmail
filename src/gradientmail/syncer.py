@@ -75,11 +75,11 @@ Nothing else is persisted, so a crash
 before the record write recomputes the round from the snapshots still in the store and a crash
 after it continues with the next round; the commit sequence is the same either way, except
 that a snapshot which landed in between may now be included. A round that fails for any other
-reason is logged and retried the same way, from the store, one poll later. ``run`` raises
-``RunConfigMismatch`` when the manifest was created with another algorithm configuration. A
-``MailboxUnavailable`` is retried indefinitely with backoff. No ``asyncio.timeout`` wraps a
-store call, because a cancelled ``to_thread`` would leak its thread; botocore's own timeouts
-bound them.
+reason is reported (``RoundFailed``) and retried the same way, from the store, one poll
+later. ``run`` raises ``RunConfigMismatch`` when the manifest was created with another
+algorithm configuration. A ``MailboxUnavailable`` is retried indefinitely with backoff. No
+``asyncio.timeout`` wraps a store call, because a cancelled ``to_thread`` would leak its
+thread; botocore's own timeouts bound them.
 
 Garbage collection
 ------------------
@@ -94,7 +94,6 @@ deleted; ``rounds/`` is the tape of the run.
 """
 
 import asyncio
-import logging
 import math
 import time
 from collections.abc import Mapping
@@ -113,6 +112,19 @@ from gradientmail.algorithms import (
 from gradientmail.algorithms.diloco import grace_window
 from gradientmail.clock import Clock, MonotonicClock
 from gradientmail.compression import Compression
+from gradientmail.events import (
+    Callback,
+    FollowingRound,
+    Recovered,
+    RecoveryFailed,
+    RoundClaimed,
+    RoundClosed,
+    RoundCommitted,
+    RoundFailed,
+    RoundSuperseded,
+    TookOverRound,
+    log_events,
+)
 from gradientmail.lease import Liveness
 from gradientmail.mailbox import Mailbox
 from gradientmail.protocol import (
@@ -131,8 +143,6 @@ from gradientmail.protocol import (
 from gradientmail.serialization import Schema, SchemaMismatch, TensorBytes, validate
 
 __all__ = ["Following", "Progress", "Syncer", "SyncerState"]
-
-log = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -168,7 +178,8 @@ class Syncer:
     by default the installed one (torch, then MLX); constructing a syncer with neither installed
     raises ``MissingExtra``. Round records are byte-identical across restarts on one backend;
     another backend may differ in the last bit. ``compression`` is the codec this node's
-    commits are stored with.
+    commits are stored with. ``on_event`` receives every event the syncer reports (``events``
+    module), on the thread running ``run``.
     """
 
     def __init__(
@@ -182,6 +193,7 @@ class Syncer:
         poll_interval: float = 0.5,
         lease_timeout: float = 120.0,
         compression: Compression = "off",
+        on_event: Callback = log_events,
     ) -> None:
         self._algorithm = algorithm
         self._learner_id = learner_id
@@ -189,6 +201,7 @@ class Syncer:
         self._clock = clock if clock is not None else MonotonicClock()
         self._exchange = Exchange(mailbox, clock=self._clock, compression=compression)
         self._poll_interval = poll_interval
+        self._on_event = on_event
         self._liveness = Liveness(lease_timeout)
         self._run: _Run | None = None
         self._main: asyncio.Task[None] | None = None
@@ -199,7 +212,7 @@ class Syncer:
 
         Returns once round ``until_round`` is committed; with ``None`` it runs until cancelled
         or ``stop()``. Raises ``RunConfigMismatch`` when the run was created with another
-        algorithm configuration. A round that fails is logged and retried as after a restart:
+        algorithm configuration. A round that fails is reported and retried as after a restart:
         the claim this node holds, if any, is found again and the round recomputed.
         """
         self._main = asyncio.current_task()
@@ -218,12 +231,11 @@ class Syncer:
                 if until_round is not None and progress.round > until_round:
                     return
                 progress = await self.run_round(progress)
-            except Exception:
-                log.exception(
-                    "%s: %s failed; retrying in %.1f s",
-                    self._learner_id,
-                    "recovery" if progress is None else f"round {progress.round}",
-                    self._poll_interval,
+            except Exception as exc:
+                self._on_event(
+                    RecoveryFailed(self._learner_id, exc, self._poll_interval)
+                    if progress is None
+                    else RoundFailed(self._learner_id, progress.round, exc, self._poll_interval)
                 )
                 await self._clock.sleep(self._poll_interval)
                 if progress is not None:
@@ -279,7 +291,7 @@ class Syncer:
             fragments=tuple(load.result() for load in loads),
             estimates=Estimates() if last is None else last.estimates,
         )
-        log.info("%s: recovered: next round %d", self._learner_id, state.round)
+        self._on_event(Recovered(self._learner_id, state.round))
         return state
 
     async def run_round(self, progress: Progress) -> Progress:
@@ -303,7 +315,7 @@ class Syncer:
             return self._learner_id in claimants
         claimed = await self._exchange.claim(round, 1, self._learner_id)
         if claimed:
-            log.info("%s: claimed round %d", self._learner_id, round)
+            self._on_event(RoundClaimed(self._learner_id, round))
         return claimed
 
     async def follow(self, progress: Progress) -> Progress:
@@ -312,13 +324,7 @@ class Syncer:
         round = progress.round
         timeout = self._timeout_of(progress)
         claimants = await self._exchange.claims(round)
-        log.info(
-            "%s: following round %d claimed by %s; takeover after %.0f s without a record",
-            self._learner_id,
-            round,
-            ", ".join(claimants),
-            timeout,
-        )
+        self._on_event(FollowingRound(self._learner_id, round, tuple(claimants), timeout))
         seen_at = self._clock.now()
         while True:
             records = await self._exchange.rounds_after(round - 1)
@@ -330,12 +336,15 @@ class Syncer:
             gone = bool(claimants) and claimants[-1] not in self._liveness.live(now)
             if gone or now - seen_at >= timeout:
                 if await self._exchange.claim(round, len(claimants) + 1, self._learner_id):
-                    why = (
-                        f"{claimants[-1]}'s lease is gone"
-                        if gone
-                        else f"no record after {timeout:.0f} s"
+                    self._on_event(
+                        TookOverRound(
+                            self._learner_id,
+                            round,
+                            tuple(claimants),
+                            "lease_gone" if gone else "no_record",
+                            timeout,
+                        )
                     )
-                    log.warning("%s: taking over round %d: %s", self._learner_id, round, why)
                     state = await self.recover()
                     return state if state.round != round else await self.close(state)
                 claimants = await self._exchange.claims(round)
@@ -440,30 +449,15 @@ class Syncer:
             grace_seconds=grace_ended - quorum_at,
             estimates=estimates,
         )
-        log.info(
-            "%s: round %d closed: fragment %d, participants %s, rejected %s, quorum %.1f s, "
-            "grace %.1f s",
-            self._learner_id,
-            round,
-            fragment,
-            [c.learner for c in contributions],
-            [f"{learner} ({why})" for learner, why in draft.rejected],
-            draft.quorum_seconds,
-            draft.grace_seconds,
-        )
+        self._on_event(RoundClosed(self._learner_id, draft))
         committing = time.perf_counter()
         outcome = await self._exchange.commit(draft, updated.theta, updated.outer)
         if isinstance(outcome, Superseded):
-            log.info("%s: round %d was committed by another node", self._learner_id, round)
+            self._on_event(RoundSuperseded(self._learner_id, outcome.record))
             return Following(outcome.record.round + 1, self._timeout(outcome.record))
         sync_seconds = self._clock.now() - grace_ended
-        log.info(
-            "%s: round %d committed: version %d, %d bytes, %.1f s",
-            self._learner_id,
-            round,
-            updated.version,
-            outcome.record.theta.size + outcome.record.outer.size,
-            time.perf_counter() - committing,
+        self._on_event(
+            RoundCommitted(self._learner_id, outcome.record, time.perf_counter() - committing)
         )
 
         await self._exchange.claim(round + 1, 1, self._learner_id)
