@@ -105,7 +105,7 @@ The intermediate evaluations show how the runs reached those values. They were p
 | ~3880 | | 3.623 (332) |
 | 4000 | 3.781 | 3.618 (346), 3.634 (347) |
 
-![Training loss of the four nodes against the official checkpoints and this run's committed rounds on the held-out batch.](../assets/pythia-14m-loss.png)
+![Loss against the dataset step, from 0 to 4,000. The training loss of the four nodes, smoothed, falls from 11.0 together, to about 3.65 at step 4,000. The official Pythia-14M checkpoints, scored on a held-out batch, go from 11.006 at step 0 to 6.184 at step 512, 5.151 at 1,000, 4.115 at 2,000, 3.878 at 3,000 and 3.781 at 4,000. This run's committed rounds, on the same batch, score 10.303 at step 64, 6.346 at about 480, then below the official curve from about step 1,200, down to 3.618 at step 4,000. Nine PolyPythia seeds score 3.732 to 3.762 at step 4,000.](../assets/pythia-14m-loss.svg)
 
 At step 64, the nine reference seeds span 10.277 to 10.354, around the official loss of 10.324. This run's 10.303 falls within that range. The next comparison has the distributed run at about step 480 and the reference at step 512, with losses of 6.346 and 6.184 respectively.
 

@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="400" viewBox="0 0 480 400" role="img" aria-label="Four learners, A to D, each put a delta in a shared mailbox. Learner B, the elected syncer, gets the deltas, merges them and commits the fragment, and every learner aligns with the commit.">
+<path id="route-a" d="M136 56H196Q204 56 204 64V149" class="line-a"/>
+<path id="route-b" d="M344 56H284Q276 56 276 64V149" class="line-b"/>
+<path id="route-c" d="M136 344H196Q204 344 204 336V251" class="line-c"/>
+<path id="route-d" d="M344 344H284Q276 344 276 336V251" class="line-d"/>
+<rect x="140" y="150" width="200" height="100" rx="8" class="store-card"/>
+<text x="240.0" y="176" class="title mid">Mailbox</text>
+<text x="154" y="212" class="small muted">updates</text>
+<text x="154" y="232" class="small muted">commit</text>
+<rect x="210" y="202" width="22" height="12" rx="6" class="slot"/>
+<rect x="210" y="202" width="22" height="12" rx="6" class="sA"><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.1800;0.9200" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/></rect>
+<rect x="238" y="202" width="22" height="12" rx="6" class="slot"/>
+<rect x="238" y="202" width="22" height="12" rx="6" class="sB"><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.1950;0.9200" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/></rect>
+<rect x="266" y="202" width="22" height="12" rx="6" class="slot"/>
+<rect x="266" y="202" width="22" height="12" rx="6" class="sC"><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.2100;0.9200" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/></rect>
+<rect x="294" y="202" width="22" height="12" rx="6" class="slot"/>
+<rect x="294" y="202" width="22" height="12" rx="6" class="sD"><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.2250;0.9200" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/></rect>
+<rect x="210" y="222" width="106" height="12" rx="6" class="slot"/>
+<rect x="210" y="222" width="106" height="12" rx="6" class="commit"><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.5600;0.9200" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/></rect>
+<rect x="16" y="24" width="120" height="64" rx="8" class="card"/>
+<circle cx="38" cy="46" r="10" class="sA"/>
+<text x="38" y="49.5" class="digit">A</text>
+<text x="56" y="50" class="small muted">learner</text>
+<rect x="30" y="64" width="18" height="10" rx="2" class="tile"/>
+<rect x="54" y="64" width="18" height="10" rx="2" class="tile"/>
+<rect x="54" y="64" width="18" height="10" rx="2" class="tile-k"><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.7200;0.9200" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/></rect>
+<rect x="78" y="64" width="18" height="10" rx="2" class="tile"/>
+<rect x="102" y="64" width="18" height="10" rx="2" class="tile"/>
+<circle cx="136" cy="56" r="3.5" class="snap"/>
+<rect x="344" y="24" width="120" height="64" rx="8" class="elected"/>
+<circle cx="366" cy="46" r="10" class="sB"/>
+<text x="366" y="49.5" class="digit">B</text>
+<text x="384" y="50" class="small muted">learner<tspan class="acc"> · syncer</tspan></text>
+<rect x="358" y="64" width="18" height="10" rx="2" class="tile"/>
+<rect x="382" y="64" width="18" height="10" rx="2" class="tile"/>
+<rect x="382" y="64" width="18" height="10" rx="2" class="tile-k"><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.5600;0.9200" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/></rect>
+<rect x="406" y="64" width="18" height="10" rx="2" class="tile"/>
+<rect x="430" y="64" width="18" height="10" rx="2" class="tile"/>
+<circle cx="344" cy="56" r="3.5" class="snap"/>
+<rect x="16" y="312" width="120" height="64" rx="8" class="card"/>
+<circle cx="38" cy="334" r="10" class="sC"/>
+<text x="38" y="337.5" class="digit">C</text>
+<text x="56" y="338" class="small muted">learner</text>
+<rect x="30" y="352" width="18" height="10" rx="2" class="tile"/>
+<rect x="54" y="352" width="18" height="10" rx="2" class="tile"/>
+<rect x="54" y="352" width="18" height="10" rx="2" class="tile-k"><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.7200;0.9200" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/></rect>
+<rect x="78" y="352" width="18" height="10" rx="2" class="tile"/>
+<rect x="102" y="352" width="18" height="10" rx="2" class="tile"/>
+<circle cx="136" cy="344" r="3.5" class="snap"/>
+<rect x="344" y="312" width="120" height="64" rx="8" class="card"/>
+<circle cx="366" cy="334" r="10" class="sD"/>
+<text x="366" y="337.5" class="digit">D</text>
+<text x="384" y="338" class="small muted">learner</text>
+<rect x="358" y="352" width="18" height="10" rx="2" class="tile"/>
+<rect x="382" y="352" width="18" height="10" rx="2" class="tile"/>
+<rect x="382" y="352" width="18" height="10" rx="2" class="tile-k"><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.7200;0.9200" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/></rect>
+<rect x="406" y="352" width="18" height="10" rx="2" class="tile"/>
+<rect x="430" y="352" width="18" height="10" rx="2" class="tile"/>
+<circle cx="344" cy="344" r="3.5" class="snap"/>
+<g opacity="0"><rect x="-9" y="-5" width="18" height="10" rx="5" class="sA"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.0600;0.1800" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/><animateMotion dur="10.0s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;0.0600;0.1800;1"><mpath href="#route-a"/></animateMotion></g>
+<g opacity="0"><rect x="-9" y="-5" width="18" height="10" rx="5" class="sB"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.0750;0.1950" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/><animateMotion dur="10.0s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;0.0750;0.1950;1"><mpath href="#route-b"/></animateMotion></g>
+<g opacity="0"><rect x="-9" y="-5" width="18" height="10" rx="5" class="sC"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.0900;0.2100" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/><animateMotion dur="10.0s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;0.0900;0.2100;1"><mpath href="#route-c"/></animateMotion></g>
+<g opacity="0"><rect x="-9" y="-5" width="18" height="10" rx="5" class="sD"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.1050;0.2250" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/><animateMotion dur="10.0s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;0.1050;0.2250;1"><mpath href="#route-d"/></animateMotion></g>
+<g opacity="0"><circle r="4.5" class="dot-acc"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.2800;0.4000" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/><animateMotion dur="10.0s" repeatCount="indefinite" calcMode="linear" keyPoints="1;1;0;0" keyTimes="0;0.2800;0.4000;1"><mpath href="#route-b"/></animateMotion></g>
+<g opacity="0"><rect x="-4.5" y="-4.5" width="9" height="9" transform="rotate(45)" class="commit"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.4400;0.5600" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/><animateMotion dur="10.0s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;0.4400;0.5600;1"><mpath href="#route-b"/></animateMotion></g>
+<g opacity="0"><rect x="-4.5" y="-4.5" width="9" height="9" transform="rotate(45)" class="commit"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.6000;0.7200" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/><animateMotion dur="10.0s" repeatCount="indefinite" calcMode="linear" keyPoints="1;1;0;0" keyTimes="0;0.6000;0.7200;1"><mpath href="#route-a"/></animateMotion></g>
+<g opacity="0"><rect x="-4.5" y="-4.5" width="9" height="9" transform="rotate(45)" class="commit"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.6000;0.7200" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/><animateMotion dur="10.0s" repeatCount="indefinite" calcMode="linear" keyPoints="1;1;0;0" keyTimes="0;0.6000;0.7200;1"><mpath href="#route-c"/></animateMotion></g>
+<g opacity="0"><rect x="-4.5" y="-4.5" width="9" height="9" transform="rotate(45)" class="commit"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.6000;0.7200" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/><animateMotion dur="10.0s" repeatCount="indefinite" calcMode="linear" keyPoints="1;1;0;0" keyTimes="0;0.6000;0.7200;1"><mpath href="#route-d"/></animateMotion></g>
+</svg>

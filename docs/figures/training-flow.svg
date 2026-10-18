@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="492" viewBox="0 0 960 492" role="img" aria-label="Three nodes and a mailbox. Node A (MLX on Apple silicon), node B (PyTorch on an H100) and node C (PyTorch on an RTX 4090) each run a learner and a syncer. Each learner trains fragment k, puts its delta, the anchor minus its parameters, in the mailbox, polls for commits and aligns with them between its steps. Node B's syncer is elected for the round: it lists and gets the round's deltas, merges them with RDA, applies the Nesterov outer step and commits fragment k with the outer state. The other syncers follow it and take over if node B stalls. The mailbox, an S3, R2, MinIO or Hugging Face bucket, holds the deltas and the commits; every arrow is a request to it.">
+<rect width="960" height="492" rx="6" class="ground"/>
+
+<rect x="300" y="24" width="360" height="112" rx="6" class="store-card"/>
+<text x="480" y="50" class="title mid">Mailbox</text>
+<text x="480" y="68" class="small mid muted">S3 · R2 · MinIO · HF Storage Buckets</text>
+<text x="412" y="93" class="small end muted">updates</text>
+<rect x="420" y="80" width="40" height="18" rx="9" class="note-a"/><text x="440" y="93" class="small mid">ΔA</text>
+<rect x="466" y="80" width="40" height="18" rx="9" class="note-b"/><text x="486" y="93" class="small mid">ΔB</text>
+<rect x="512" y="80" width="40" height="18" rx="9" class="note-c"/><text x="532" y="93" class="small mid">ΔC</text>
+<text x="412" y="117" class="small end b acc">commits</text>
+<rect x="420" y="104" width="170" height="18" rx="9" class="note"/><text x="505" y="117" class="small mid acc">fragment k + outer state</text>
+
+<path d="M 154 196 V 72 H 299" class="arrow-a"/>
+<text x="164" y="150" class="small">put Δ · poll</text>
+<path d="M 806 196 V 72 H 661" class="arrow-c"/>
+<text x="796" y="150" class="small end">put Δ · poll</text>
+<path d="M 450 196 V 137" class="arrow-b"/>
+<text x="442" y="172" class="small end">put Δ · poll</text>
+<path d="M 510 196 V 137" class="arrow-acc"/>
+<text x="518" y="172" class="small acc">get Δs · commit</text>
+
+<rect x="24" y="196" width="260" height="192" rx="6" class="card"/>
+<circle cx="44" cy="217" r="4" class="sA"/>
+<text x="54" y="222" class="title">Node A</text>
+<text x="40" y="240" class="small muted">MLX · Apple silicon</text>
+<rect x="40" y="252" width="14" height="10" rx="2" class="tile"/><rect x="57" y="252" width="14" height="10" rx="2" class="tile"/><rect x="74" y="252" width="14" height="10" rx="2" class="tile"/><rect x="91" y="252" width="14" height="10" rx="2" class="tile"/><rect x="108" y="252" width="14" height="10" rx="2" class="tile-k"/><rect x="125" y="252" width="14" height="10" rx="2" class="tile"/><rect x="142" y="252" width="14" height="10" rx="2" class="tile"/><rect x="159" y="252" width="14" height="10" rx="2" class="tile"/>
+<text x="182" y="261" class="small muted">fragment k</text>
+<text x="40" y="288" class="small b">learner</text>
+<text x="40" y="304" class="small">puts Δ = anchor − <tspan class="var">θ</tspan> for fragment k</text>
+<text x="40" y="320" class="small">polls for commits, aligns between steps</text>
+<path d="M 40 336 H 268" class="rule"/>
+<text x="40" y="356" class="small b">syncer</text>
+<text x="40" y="372" class="small muted">follows; takes over if node B stalls</text>
+
+<rect x="350" y="196" width="260" height="224" rx="6" class="elected"/>
+<circle cx="370" cy="217" r="4" class="sB"/>
+<text x="380" y="222" class="title">Node B</text>
+<rect x="502" y="207" width="92" height="18" rx="9" class="chip"/>
+<text x="548" y="220" class="small b mid on-accent">elected syncer</text>
+<text x="366" y="240" class="small muted">PyTorch · H100</text>
+<rect x="366" y="252" width="14" height="10" rx="2" class="tile"/><rect x="383" y="252" width="14" height="10" rx="2" class="tile"/><rect x="400" y="252" width="14" height="10" rx="2" class="tile"/><rect x="417" y="252" width="14" height="10" rx="2" class="tile"/><rect x="434" y="252" width="14" height="10" rx="2" class="tile-k"/><rect x="451" y="252" width="14" height="10" rx="2" class="tile"/><rect x="468" y="252" width="14" height="10" rx="2" class="tile"/><rect x="485" y="252" width="14" height="10" rx="2" class="tile"/>
+<text x="508" y="261" class="small muted">fragment k</text>
+<text x="366" y="288" class="small b">learner</text>
+<text x="366" y="304" class="small">puts Δ = anchor − <tspan class="var">θ</tspan> for fragment k</text>
+<text x="366" y="320" class="small">polls for commits, aligns between steps</text>
+<path d="M 366 336 H 594" class="rule"/>
+<text x="366" y="356" class="small b acc">syncer</text>
+<text x="366" y="372" class="small">lists and gets the round's Δs</text>
+<text x="366" y="388" class="small">merges them (RDA), Nesterov outer step</text>
+<text x="366" y="404" class="small">commits fragment k and the outer state</text>
+
+<rect x="676" y="196" width="260" height="192" rx="6" class="card"/>
+<circle cx="696" cy="217" r="4" class="sC"/>
+<text x="706" y="222" class="title">Node C</text>
+<text x="692" y="240" class="small muted">PyTorch · RTX 4090</text>
+<rect x="692" y="252" width="14" height="10" rx="2" class="tile"/><rect x="709" y="252" width="14" height="10" rx="2" class="tile"/><rect x="726" y="252" width="14" height="10" rx="2" class="tile"/><rect x="743" y="252" width="14" height="10" rx="2" class="tile"/><rect x="760" y="252" width="14" height="10" rx="2" class="tile-k"/><rect x="777" y="252" width="14" height="10" rx="2" class="tile"/><rect x="794" y="252" width="14" height="10" rx="2" class="tile"/><rect x="811" y="252" width="14" height="10" rx="2" class="tile"/>
+<text x="834" y="261" class="small muted">fragment k</text>
+<text x="692" y="288" class="small b">learner</text>
+<text x="692" y="304" class="small">puts Δ = anchor − <tspan class="var">θ</tspan> for fragment k</text>
+<text x="692" y="320" class="small">polls for commits, aligns between steps</text>
+<path d="M 692 336 H 920" class="rule"/>
+<text x="692" y="356" class="small b">syncer</text>
+<text x="692" y="372" class="small muted">follows; takes over if node B stalls</text>
+
+<text x="24" y="452" class="small muted">Every node runs a learner and a syncer; the syncer elected for the round runs on node B, and the others follow it.</text>
+<text x="24" y="468" class="small muted">Arrows are requests to the mailbox, in the color of what sends them: a node's learner in its color, the elected syncer in petrol.</text>
+</svg>

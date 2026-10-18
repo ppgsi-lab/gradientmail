@@ -1,145 +1,173 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="546" viewBox="0 0 960 546" role="img" aria-labelledby="title desc">
-  <title id="title">GradientMail: one synchronization round of a fragment</title>
-  <desc id="desc">A small mailbox (S3-compatible object storage) holds the round's updates, one per learner, and its commit: the updated fragment and outer state. Learners A, B and C sit below it and every arrow points at the mailbox: the mailbox never calls a learner. Learner B has two arrows, one for its own requests as a learner and one for the merge. Each learner (1) puts its update for fragment k, the difference between the committed parameters it last aligned with and the ones it trained, and (4) polls for commits and aligns with the committed fragment while it keeps training. Learner B, elected for this round, also runs the merge: (2) lists and gets the updates, merges them, applies the Nesterov outer step and (3) puts the commit: the updated fragment with its outer state. If B stalls another learner is elected.</desc>
-  <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 Z" fill="#3b5bdb"/>
-    </marker>
-    <marker id="arrow-teal" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 Z" fill="#0f766e"/>
-    </marker>
-    <g id="fragments">
-      <rect x="0" y="0" width="11" height="10" rx="2" class="tile"/>
-      <rect x="14" y="0" width="11" height="10" rx="2" class="tile"/>
-      <rect x="28" y="0" width="11" height="10" rx="2" class="tile"/>
-      <rect x="42" y="0" width="11" height="10" rx="2" class="tile"/>
-      <rect x="56" y="0" width="11" height="10" rx="2" class="tile-k"/>
-      <rect x="70" y="0" width="11" height="10" rx="2" class="tile"/>
-      <rect x="84" y="0" width="11" height="10" rx="2" class="tile"/>
-      <rect x="98" y="0" width="11" height="10" rx="2" class="tile"/>
-    </g>
-    <style>
-      text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Helvetica, Arial, sans-serif; font-size: 12px; fill: #1f2328; }
-      .h { font-size: 15px; font-weight: 700; }
-      .muted { fill: #656d76; }
-      .small { font-size: 11px; }
-      .label { font-size: 11px; font-weight: 700; }
-      .digit { font-size: 9px; font-weight: 700; fill: #ffffff; }
-      .key { font-size: 11.5px; font-weight: 700; letter-spacing: 0.2px; }
-      .blue { fill: #3b5bdb; }
-      .teal { fill: #0f766e; }
-      .card { fill: #ffffff; stroke: #d0d7de; stroke-width: 1.5; }
-      .elected { fill: #f0f8f6; stroke: #0f766e; stroke-width: 1.5; }
-      .nested { fill: #ffffff; stroke: #0f766e; stroke-width: 1.25; }
-      .slot { fill: #ffffff; stroke: #aab6ee; }
-      .tile { fill: #eaeef2; stroke: #d0d7de; stroke-width: 1; }
-      .tile-k { fill: #3b5bdb; stroke: #3b5bdb; stroke-width: 1; }
-      .wire { fill: none; stroke: #3b5bdb; stroke-width: 1.75; marker-end: url(#arrow); }
-      .wire-teal { fill: none; stroke: #0f766e; stroke-width: 1.75; marker-end: url(#arrow-teal); }
-      .spine { fill: none; stroke: #0f766e; stroke-width: 1.75; }
-    </style>
-  </defs>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="492" viewBox="0 0 960 492" role="img" aria-label="Three nodes and a mailbox. Node A (MLX on Apple silicon), node B (PyTorch on an H100) and node C (PyTorch on an RTX 4090) each run a learner and a syncer. Each learner trains fragment k, puts its delta, the anchor minus its parameters, in the mailbox, polls for commits and aligns with them between its steps. Node B's syncer is elected for the round: it lists and gets the round's deltas, merges them with RDA, applies the Nesterov outer step and commits fragment k with the outer state. The other syncers follow it and take over if node B stalls. The mailbox, an S3, R2, MinIO or Hugging Face bucket, holds the deltas and the commits; every arrow is a request to it.">
+<style>
+svg { --paper: #fefdfc; --wash: #f5f1ec; --rule: #dedad5; --hatch: #cfc8c0; --muted: #665f5a; --ink: #1c1714; --accent: #065f74; --accent-wash: #e4f1f5; --on-accent: #ffffff; --signal: #86262e; --signal-wash: #fbeae9; --learner-a: #556892; --learner-b: #ac853f; --learner-c: #598361; --learner-d: #825172; --serif: "Newsreader", Georgia, "Times New Roman", serif; --math: "Source Serif 4", "Noto Sans Math", Georgia, serif; --sans: "Source Sans 3", "Source Sans Pro", system-ui, -apple-system, "Segoe UI", sans-serif; --mono: "Source Code Pro", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+@media (prefers-color-scheme: dark) { svg { --paper: #191512; --wash: #241f1c; --rule: #413c38; --hatch: #544f4a; --muted: #b3ada6; --ink: #eeebe5; --accent: #6ebccb; --accent-wash: #192f35; --on-accent: #191512; --signal: #e38182; --signal-wash: #3d2323; --learner-a: #899ecb; --learner-b: #d6ad68; --learner-c: #80b38a; --learner-d: #bd88ab; } }
+@font-face { font-family: "Source Sans 3"; font-style: normal; font-weight: 600; src: url(data:font/woff2;base64,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) format("woff2"); }
+@font-face { font-family: "Source Sans 3"; font-style: normal; font-weight: 400; src: url(data:font/woff2;base64,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) format("woff2"); }
+@font-face { font-family: "Source Serif 4"; font-style: italic; font-weight: 400; src: url(data:font/woff2;base64,d09GMgABAAAAAAOAABAAAAAABzAAAAMmAAQBBgAAAAAAAAAAAAAAAAAAAAAAAAAAGUYbgRocNgZgP1NUQVRaADQRCAqBCIErATYCJAMICwYABCAFhVIHIAwHGzEGCJ4FORlvKvE2WdSsLC6ilLi/Kx6e399/a597vzR0khpVYdU3VYzTps80IkKIxDtc06TtADglZslXgnxKc+DUlJmTI4zdbURvEFnwkoBXW4X//73jv/nZ1znKdcwLWFvX5uyJ5Et0TBwTJC1POOx80MxbErdPj01OJicT/fq7CpQjVystWwhzOp/OkGDk6EwFPd8dnaDnpTBGz6/FZujZPghJuWpRBCNQqTefoCaAn+NYsYjO0OFhIVehXFKpESyhfiY6QLUCIhML80maEKCV9x0CBMON8Up9WQpSEkrCSa4BIE+dYo8S0rY0tfjRhHmVVGYzpS2U8pIsj8aUchRYA8NOKI++suP46Lz6/zGyTzESEhCPexgd8IVQLkMTfHTHW7OW+8QLoC07YHgDvGxja4In4SnViAiGWO4SkgkpNsce0mmEREyCQeIAREcCHYi8M8iOF4sI+jsOhmSsnlGHkECODL0hEyCQA7JmzfJJ2+7di633nblq+927CndKg7efutTMsfVe5bbj589XuDs9ajyoGTDOKl0Qj11/d1mbW4F4Wq4aMMYsXZjGGT+dV+amP5aSvTY7MVcYea7dwNH6wWVZzAh+LYm8vFX3eM3AgiIfs9om2xDCUBh5lK5omlg0LgZ+K8+yD/Ck95mX8PTYwSP6/8/xO72VlEogeM9AKuhvP35v+4e7xSsASKlgTukPI+mND4LbV+2QTOQVuApTQht/SlLtlZKZ6F/Jdc1wpcTCrJRL9c0NR0xy6pWywGOTstxhaqVscJo6HbbZeerpVwcmBkYWhNaQifFVgrrm2gBRtsNhwBSHSJrpmKMW5qgWBnQRCgMMs+Cip7cJeZ2WFHSCR6f0lDSIjSFmgCgBHECtmxAzN/sOkdMyBci0UDa3QnXAPNHxUOWQ6IcN9RAWSUzLxFCHhY6BgYVbUERInlsSxzDgWhrps+eFRCvgxKCWSXOGt+GkVHIwkgyhRHJtlHG7jpGRjdtUyxikjT1gCwgTYUU21lEbGG8q5y0wEloAqZn+BOdDCZ+qA0N9A0wJ6FuZaKH4FL9SvKYv13o8io/mOwE=) format("woff2"); }
+/* The classes figure sources draw with. build.py prepends the theme's colors and font families as
+   variables; a source sets no color or font of its own. */
 
-  <rect width="960" height="546" rx="12" fill="#f6f8fa"/>
+text { font-family: var(--sans); font-size: 12px; fill: var(--ink); }
+.m { font-family: var(--math); font-size: 16px; }
+.code { font-family: var(--mono); font-size: 12px; }
+.title { font-size: 15px; font-weight: 600; }
+.small { font-size: 11px; }
+.sub { font-size: 11px; }
+.big { font-size: 20px; }
+.b { font-weight: 600; }
+.i { font-style: italic; }
+.var { font-family: var(--math); font-style: italic; font-size: 1.2em; }
+.muted { fill: var(--muted); }
+.acc { fill: var(--accent); }
+.sig { fill: var(--signal); }
+.on-accent { fill: var(--on-accent); }
+.on-learner { fill: var(--paper); }
+.mid { text-anchor: middle; }
+.end { text-anchor: end; }
+.digit { font-size: 9.5px; font-weight: 600; fill: var(--paper); text-anchor: middle; }
+.halo { paint-order: stroke; stroke: var(--paper); stroke-width: 4px; stroke-linejoin: round; }
 
-  <!-- Mailbox: stores the round's updates and its commit, no behaviour -->
-  <rect x="380" y="32" width="200" height="116" rx="10" class="card"/>
-  <text x="396" y="58" class="h">Mailbox</text>
-  <text x="396" y="76" class="small muted">S3 · R2 · MinIO · HF Buckets</text>
-  <text x="396" y="104" class="key blue">updates</text>
-  <rect x="456" y="90" width="28" height="20" rx="4" class="slot"/>
-  <text x="470" y="104" text-anchor="middle" class="label blue" font-size="10">ΔA</text>
-  <rect x="488" y="90" width="28" height="20" rx="4" class="slot"/>
-  <text x="502" y="104" text-anchor="middle" class="label blue" font-size="10">ΔB</text>
-  <rect x="520" y="90" width="28" height="20" rx="4" class="slot"/>
-  <text x="534" y="104" text-anchor="middle" class="label blue" font-size="10">ΔC</text>
-  <text x="396" y="132" class="key teal">commit</text>
-  <rect x="456" y="118" width="28" height="20" rx="4" fill="#ffffff" stroke="#9fd3c9"/>
-  <text x="470" y="132" text-anchor="middle" class="label teal" font-size="10">Θ</text>
-  <text x="490" y="132" class="small muted">+ outer state</text>
+.ground, .backing { fill: var(--paper); }
+.card { fill: var(--paper); stroke: var(--rule); stroke-width: 1.5; }
+.store { fill: var(--wash); }
+.store-card { fill: var(--wash); stroke: var(--rule); stroke-width: 1.5; }
+.elected { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.5; }
+.note { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.25; }
+.note-a { fill: var(--paper); stroke: var(--learner-a); stroke-width: 1.25; }
+.note-b { fill: var(--paper); stroke: var(--learner-b); stroke-width: 1.25; }
+.note-c { fill: var(--paper); stroke: var(--learner-c); stroke-width: 1.25; }
+.op { fill: var(--paper); stroke: var(--muted); stroke-width: 1.5; }
+.out { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.param { fill: var(--wash); stroke: var(--ink); stroke-width: 1.5; }
+.pill { fill: var(--paper); stroke: var(--rule); stroke-width: 1.25; }
+.chip { fill: var(--accent); }
+.tile, .layer, .slot-full { fill: var(--wash); stroke: var(--rule); stroke-width: 1; }
+.slot { fill: var(--paper); stroke: var(--rule); stroke-width: 1.25; }
+.tile-k { fill: var(--accent); }
+.picked { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.5; }
+.track { fill: var(--wash); }
 
-  <!-- Requests: every arrow starts at a learner -->
-  <path d="M 170 220 V 190 H 400 V 148" class="wire"/>
-  <path d="M 440 220 V 148" class="wire"/>
-  <path d="M 520 220 V 148" class="wire-teal"/>
-  <path d="M 790 220 V 190 H 560 V 148" class="wire"/>
-  <rect x="266" y="181" width="38" height="18" rx="9" fill="#f6f8fa"/>
-  <circle cx="277" cy="190" r="7" class="blue"/>
-  <text x="277" y="193.5" text-anchor="middle" class="digit">1</text>
-  <circle cx="293" cy="190" r="7" class="blue"/>
-  <text x="293" y="193.5" text-anchor="middle" class="digit">4</text>
-  <rect x="421" y="181" width="38" height="18" rx="9" fill="#f6f8fa"/>
-  <circle cx="432" cy="190" r="7" class="blue"/>
-  <text x="432" y="193.5" text-anchor="middle" class="digit">1</text>
-  <circle cx="448" cy="190" r="7" class="blue"/>
-  <text x="448" y="193.5" text-anchor="middle" class="digit">4</text>
-  <rect x="501" y="181" width="38" height="18" rx="9" fill="#f6f8fa"/>
-  <circle cx="512" cy="190" r="7" class="teal"/>
-  <text x="512" y="193.5" text-anchor="middle" class="digit">2</text>
-  <circle cx="528" cy="190" r="7" class="teal"/>
-  <text x="528" y="193.5" text-anchor="middle" class="digit">3</text>
-  <rect x="656" y="181" width="38" height="18" rx="9" fill="#f6f8fa"/>
-  <circle cx="667" cy="190" r="7" class="blue"/>
-  <text x="667" y="193.5" text-anchor="middle" class="digit">1</text>
-  <circle cx="683" cy="190" r="7" class="blue"/>
-  <text x="683" y="193.5" text-anchor="middle" class="digit">4</text>
+.sA { fill: var(--learner-a); }
+.sB { fill: var(--learner-b); }
+.sC { fill: var(--learner-c); }
+.sD { fill: var(--learner-d); }
+.wait { fill: url(#hatch); }
+.lost { fill: url(#lost); stroke: var(--signal); stroke-width: 1; }
+.xchg, .commit, .dot-acc, .badge-acc { fill: var(--accent); }
+.dot-ink, .badge, .close { fill: var(--ink); }
+.snap { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.round { fill: var(--paper); stroke: var(--accent); stroke-width: 1.25; }
+.miss { fill: none; stroke: var(--signal); stroke-width: 2.5; }
+.band { fill: var(--accent); }
 
-  <!-- Learner A -->
-  <rect x="40" y="220" width="260" height="120" rx="8" class="card"/>
-  <text x="56" y="246" class="h">Learner A</text>
-  <text x="56" y="266" class="muted">MLX · Apple silicon</text>
-  <use href="#fragments" x="56" y="278"/>
-  <text x="173" y="287" class="small muted">fragment k</text>
-  <circle cx="62.5" cy="304.5" r="6.5" class="blue"/>
-  <text x="62.5" y="307.5" text-anchor="middle" class="digit">1</text>
-  <text x="74" y="308" class="small">put Δ = anchor − trained</text>
-  <circle cx="62.5" cy="322.5" r="6.5" class="blue"/>
-  <text x="62.5" y="325.5" text-anchor="middle" class="digit">4</text>
-  <text x="74" y="326" class="small">poll commits, align while training</text>
+.rule { fill: none; stroke: var(--rule); stroke-width: 1; }
+.guide { fill: none; stroke: var(--rule); stroke-width: 1; stroke-dasharray: 4 4; }
+.axis, .tick { fill: none; stroke: var(--muted); stroke-width: 1; }
+.contour { fill: none; stroke: var(--hatch); stroke-width: 1; }
+.frame { fill: none; stroke: var(--rule); stroke-width: 1.5; }
+.valley { fill: none; stroke: var(--accent); stroke-width: 2; }
+.span { fill: none; stroke: var(--accent); stroke-width: 1; }
+.join { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+.batches { stroke: var(--accent); stroke-width: 0.75; stroke-opacity: 0.45; }
+.life-a { stroke: var(--learner-a); stroke-width: 2.5; }
+.life-b { stroke: var(--learner-b); stroke-width: 2.5; }
+.life-c { stroke: var(--learner-c); stroke-width: 2.5; }
+.life-s { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.line-a { fill: none; stroke: var(--learner-a); stroke-width: 1.25; }
+.line-b { fill: none; stroke: var(--learner-b); stroke-width: 1.25; }
+.line-c { fill: none; stroke: var(--learner-c); stroke-width: 1.25; }
+.line-d { fill: none; stroke: var(--learner-d); stroke-width: 1.25; }
+.dotted { fill: none; stroke: var(--muted); stroke-width: 1; stroke-dasharray: 1 3; stroke-linecap: round; }
 
-  <!-- Learner B, elected: trains like the others and runs the merge -->
-  <rect x="320" y="220" width="320" height="294" rx="10" class="elected"/>
-  <text x="336" y="246" class="h">Learner B</text>
-  <rect x="562" y="233" width="62" height="19" rx="9.5" fill="#0f766e"/>
-  <text x="593" y="246" text-anchor="middle" class="label" fill="#ffffff">elected</text>
-  <text x="336" y="266" class="muted">PyTorch · H100</text>
-  <use href="#fragments" x="336" y="278"/>
-  <text x="453" y="287" class="small muted">fragment k</text>
-  <circle cx="342.5" cy="304.5" r="6.5" class="blue"/>
-  <text x="342.5" y="307.5" text-anchor="middle" class="digit">1</text>
-  <text x="354" y="308" class="small">put Δ = anchor − trained</text>
+.arrow { fill: none; stroke: var(--muted); stroke-width: 1.5; marker-end: url(#head-muted); }
+.arrow-ink { fill: none; stroke: var(--ink); stroke-width: 1.5; marker-end: url(#head-ink); }
+.arrow-acc { fill: none; stroke: var(--accent); stroke-width: 1.5; marker-end: url(#head-accent); }
+.arrow-sig { fill: none; stroke: var(--signal); stroke-width: 1.5; marker-end: url(#head-signal); }
+.arrow-a { fill: none; stroke: var(--learner-a); stroke-width: 1.5; marker-end: url(#head-a); }
+.arrow-b { fill: none; stroke: var(--learner-b); stroke-width: 1.5; marker-end: url(#head-b); }
+.arrow-c { fill: none; stroke: var(--learner-c); stroke-width: 1.5; marker-end: url(#head-c); }
+.reply { fill: none; stroke: var(--muted); stroke-width: 1.25; stroke-dasharray: 4 3; marker-end: url(#head-muted); }
+.strong { stroke-width: 2.5; }
+.loop { fill: none; stroke: var(--muted); stroke-width: 1.25; marker-end: url(#head-muted); }
 
-  <rect x="336" y="324" width="288" height="152" rx="8" class="nested"/>
-  <rect x="350" y="318" width="52" height="13" fill="#f0f8f6"/>
-  <text x="356" y="328" class="label teal">Merge</text>
+.hatch-bg { fill: var(--wash); }
+.hatch-line { stroke: var(--hatch); stroke-width: 2.5; }
+.lost-bg { fill: var(--signal-wash); }
+.lost-line { stroke: var(--signal); stroke-opacity: 0.4; stroke-width: 2.5; }
+.head-ink { fill: var(--ink); }
+.head-muted { fill: var(--muted); }
+.head-accent { fill: var(--accent); }
+.head-signal { fill: var(--signal); }
+.head-a { fill: var(--learner-a); }
+.head-b { fill: var(--learner-b); }
+.head-c { fill: var(--learner-c); }
+</style>
+<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="hatch-bg"/><path d="M 0 0 V 6" class="hatch-line"/></pattern><pattern id="lost" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="lost-bg"/><path d="M 0 0 V 6" class="lost-line"/></pattern><marker id="head-ink" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-ink"/></marker><marker id="head-muted" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-muted"/></marker><marker id="head-accent" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-accent"/></marker><marker id="head-signal" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-signal"/></marker><marker id="head-a" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-a"/></marker><marker id="head-b" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-b"/></marker><marker id="head-c" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-c"/></marker></defs>
+<rect width="960" height="492" rx="6" class="ground"/>
 
-  <path d="M 356 348 V 438" class="spine"/>
-  <circle cx="356" cy="348" r="7" class="teal"/>
-  <text x="356" y="351.5" text-anchor="middle" class="digit">2</text>
-  <circle cx="356" cy="378" r="5" fill="#ffffff" stroke="#0f766e" stroke-width="2"/>
-  <circle cx="356" cy="408" r="5" fill="#ffffff" stroke="#0f766e" stroke-width="2"/>
-  <circle cx="356" cy="438" r="7" class="teal"/>
-  <text x="356" y="441.5" text-anchor="middle" class="digit">3</text>
-  <text x="372" y="352">list + get the round's Δs</text>
-  <text x="372" y="382">merge the Δs (RDA)</text>
-  <text x="372" y="412">Nesterov outer step</text>
-  <text x="372" y="442">put commit: fragment + outer state</text>
-  <text x="372" y="464" class="small muted">if B stalls, another is elected</text>
+<rect x="300" y="24" width="360" height="112" rx="6" class="store-card"/>
+<text x="480" y="50" class="title mid">Mailbox</text>
+<text x="480" y="68" class="small mid muted">S3 · R2 · MinIO · HF Storage Buckets</text>
+<text x="412" y="93" class="small end muted">updates</text>
+<rect x="420" y="80" width="40" height="18" rx="9" class="note-a"/><text x="440" y="93" class="small mid">ΔA</text>
+<rect x="466" y="80" width="40" height="18" rx="9" class="note-b"/><text x="486" y="93" class="small mid">ΔB</text>
+<rect x="512" y="80" width="40" height="18" rx="9" class="note-c"/><text x="532" y="93" class="small mid">ΔC</text>
+<text x="412" y="117" class="small end b acc">commits</text>
+<rect x="420" y="104" width="170" height="18" rx="9" class="note"/><text x="505" y="117" class="small mid acc">fragment k + outer state</text>
 
-  <circle cx="342.5" cy="494.5" r="6.5" class="blue"/>
-  <text x="342.5" y="497.5" text-anchor="middle" class="digit">4</text>
-  <text x="354" y="498" class="small">poll commits, align while training</text>
+<path d="M 154 196 V 72 H 299" class="arrow-a"/>
+<text x="164" y="150" class="small">put Δ · poll</text>
+<path d="M 806 196 V 72 H 661" class="arrow-c"/>
+<text x="796" y="150" class="small end">put Δ · poll</text>
+<path d="M 450 196 V 137" class="arrow-b"/>
+<text x="442" y="172" class="small end">put Δ · poll</text>
+<path d="M 510 196 V 137" class="arrow-acc"/>
+<text x="518" y="172" class="small acc">get Δs · commit</text>
 
-  <!-- Learner C -->
-  <rect x="660" y="220" width="260" height="120" rx="8" class="card"/>
-  <text x="676" y="246" class="h">Learner C</text>
-  <text x="676" y="266" class="muted">PyTorch · RTX 4090</text>
-  <use href="#fragments" x="676" y="278"/>
-  <text x="793" y="287" class="small muted">fragment k</text>
-  <circle cx="682.5" cy="304.5" r="6.5" class="blue"/>
-  <text x="682.5" y="307.5" text-anchor="middle" class="digit">1</text>
-  <text x="694" y="308" class="small">put Δ = anchor − trained</text>
-  <circle cx="682.5" cy="322.5" r="6.5" class="blue"/>
-  <text x="682.5" y="325.5" text-anchor="middle" class="digit">4</text>
-  <text x="694" y="326" class="small">poll commits, align while training</text>
+<rect x="24" y="196" width="260" height="192" rx="6" class="card"/>
+<circle cx="44" cy="217" r="4" class="sA"/>
+<text x="54" y="222" class="title">Node A</text>
+<text x="40" y="240" class="small muted">MLX · Apple silicon</text>
+<rect x="40" y="252" width="14" height="10" rx="2" class="tile"/><rect x="57" y="252" width="14" height="10" rx="2" class="tile"/><rect x="74" y="252" width="14" height="10" rx="2" class="tile"/><rect x="91" y="252" width="14" height="10" rx="2" class="tile"/><rect x="108" y="252" width="14" height="10" rx="2" class="tile-k"/><rect x="125" y="252" width="14" height="10" rx="2" class="tile"/><rect x="142" y="252" width="14" height="10" rx="2" class="tile"/><rect x="159" y="252" width="14" height="10" rx="2" class="tile"/>
+<text x="182" y="261" class="small muted">fragment k</text>
+<text x="40" y="288" class="small b">learner</text>
+<text x="40" y="304" class="small">puts Δ = anchor − <tspan class="var">θ</tspan> for fragment k</text>
+<text x="40" y="320" class="small">polls for commits, aligns between steps</text>
+<path d="M 40 336 H 268" class="rule"/>
+<text x="40" y="356" class="small b">syncer</text>
+<text x="40" y="372" class="small muted">follows; takes over if node B stalls</text>
+
+<rect x="350" y="196" width="260" height="224" rx="6" class="elected"/>
+<circle cx="370" cy="217" r="4" class="sB"/>
+<text x="380" y="222" class="title">Node B</text>
+<rect x="502" y="207" width="92" height="18" rx="9" class="chip"/>
+<text x="548" y="220" class="small b mid on-accent">elected syncer</text>
+<text x="366" y="240" class="small muted">PyTorch · H100</text>
+<rect x="366" y="252" width="14" height="10" rx="2" class="tile"/><rect x="383" y="252" width="14" height="10" rx="2" class="tile"/><rect x="400" y="252" width="14" height="10" rx="2" class="tile"/><rect x="417" y="252" width="14" height="10" rx="2" class="tile"/><rect x="434" y="252" width="14" height="10" rx="2" class="tile-k"/><rect x="451" y="252" width="14" height="10" rx="2" class="tile"/><rect x="468" y="252" width="14" height="10" rx="2" class="tile"/><rect x="485" y="252" width="14" height="10" rx="2" class="tile"/>
+<text x="508" y="261" class="small muted">fragment k</text>
+<text x="366" y="288" class="small b">learner</text>
+<text x="366" y="304" class="small">puts Δ = anchor − <tspan class="var">θ</tspan> for fragment k</text>
+<text x="366" y="320" class="small">polls for commits, aligns between steps</text>
+<path d="M 366 336 H 594" class="rule"/>
+<text x="366" y="356" class="small b acc">syncer</text>
+<text x="366" y="372" class="small">lists and gets the round's Δs</text>
+<text x="366" y="388" class="small">merges them (RDA), Nesterov outer step</text>
+<text x="366" y="404" class="small">commits fragment k and the outer state</text>
+
+<rect x="676" y="196" width="260" height="192" rx="6" class="card"/>
+<circle cx="696" cy="217" r="4" class="sC"/>
+<text x="706" y="222" class="title">Node C</text>
+<text x="692" y="240" class="small muted">PyTorch · RTX 4090</text>
+<rect x="692" y="252" width="14" height="10" rx="2" class="tile"/><rect x="709" y="252" width="14" height="10" rx="2" class="tile"/><rect x="726" y="252" width="14" height="10" rx="2" class="tile"/><rect x="743" y="252" width="14" height="10" rx="2" class="tile"/><rect x="760" y="252" width="14" height="10" rx="2" class="tile-k"/><rect x="777" y="252" width="14" height="10" rx="2" class="tile"/><rect x="794" y="252" width="14" height="10" rx="2" class="tile"/><rect x="811" y="252" width="14" height="10" rx="2" class="tile"/>
+<text x="834" y="261" class="small muted">fragment k</text>
+<text x="692" y="288" class="small b">learner</text>
+<text x="692" y="304" class="small">puts Δ = anchor − <tspan class="var">θ</tspan> for fragment k</text>
+<text x="692" y="320" class="small">polls for commits, aligns between steps</text>
+<path d="M 692 336 H 920" class="rule"/>
+<text x="692" y="356" class="small b">syncer</text>
+<text x="692" y="372" class="small muted">follows; takes over if node B stalls</text>
+
+<text x="24" y="452" class="small muted">Every node runs a learner and a syncer; the syncer elected for the round runs on node B, and the others follow it.</text>
+<text x="24" y="468" class="small muted">Arrows are requests to the mailbox, in the color of what sends them: a node's learner in its color, the elected syncer in petrol.</text>
 </svg>

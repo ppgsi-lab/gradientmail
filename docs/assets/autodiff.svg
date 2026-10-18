@@ -24,6 +24,7 @@ text { font-family: var(--sans); font-size: 12px; fill: var(--ink); }
 .acc { fill: var(--accent); }
 .sig { fill: var(--signal); }
 .on-accent { fill: var(--on-accent); }
+.on-learner { fill: var(--paper); }
 .mid { text-anchor: middle; }
 .end { text-anchor: end; }
 .digit { font-size: 9.5px; font-weight: 600; fill: var(--paper); text-anchor: middle; }
@@ -75,6 +76,11 @@ text { font-family: var(--sans); font-size: 12px; fill: var(--ink); }
 .life-b { stroke: var(--learner-b); stroke-width: 2.5; }
 .life-c { stroke: var(--learner-c); stroke-width: 2.5; }
 .life-s { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.line-a { fill: none; stroke: var(--learner-a); stroke-width: 1.25; }
+.line-b { fill: none; stroke: var(--learner-b); stroke-width: 1.25; }
+.line-c { fill: none; stroke: var(--learner-c); stroke-width: 1.25; }
+.line-d { fill: none; stroke: var(--learner-d); stroke-width: 1.25; }
+.dotted { fill: none; stroke: var(--muted); stroke-width: 1; stroke-dasharray: 1 3; stroke-linecap: round; }
 
 .arrow { fill: none; stroke: var(--muted); stroke-width: 1.5; marker-end: url(#head-muted); }
 .arrow-ink { fill: none; stroke: var(--ink); stroke-width: 1.5; marker-end: url(#head-ink); }

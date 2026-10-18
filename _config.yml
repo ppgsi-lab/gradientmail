@@ -1,0 +1,23 @@
+title: GradientMail
+plugins:
+  - jekyll-seo-tag
+nav:
+  - title: Introduction
+    url: /introduction.html
+  - title: Guide
+    url: /docs/guide/
+    numbered: true
+  - title: Patterns
+    url: /docs/patterns/
+  - title: Posts
+    url: /docs/posts/
+hero:
+  title: Low-communication distributed training <em>without P2P connections</em>
+  text: Decoupled DiLoCo over mailboxes (S3, R2, MinIO, HF Storage Buckets)
+  image: /docs/assets/hero.svg
+  alt: Four learners, A to D, each put a delta in a shared mailbox. Learner B, the elected syncer, gets the deltas, merges them and commits the fragment, and every learner aligns with the commit.
+  actions:
+    - title: Read the guide →
+      url: /docs/guide/
+    - title: Introduction
+      url: /introduction.html

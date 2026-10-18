@@ -1,0 +1,173 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="400" viewBox="0 0 480 400" role="img" aria-label="Four learners, A to D, each put a delta in a shared mailbox. Learner B, the elected syncer, gets the deltas, merges them and commits the fragment, and every learner aligns with the commit.">
+<style>
+svg { --paper: #fefdfc; --wash: #f5f1ec; --rule: #dedad5; --hatch: #cfc8c0; --muted: #665f5a; --ink: #1c1714; --accent: #065f74; --accent-wash: #e4f1f5; --on-accent: #ffffff; --signal: #86262e; --signal-wash: #fbeae9; --learner-a: #556892; --learner-b: #ac853f; --learner-c: #598361; --learner-d: #825172; --serif: "Newsreader", Georgia, "Times New Roman", serif; --math: "Source Serif 4", "Noto Sans Math", Georgia, serif; --sans: "Source Sans 3", "Source Sans Pro", system-ui, -apple-system, "Segoe UI", sans-serif; --mono: "Source Code Pro", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+@media (prefers-color-scheme: dark) { svg { --paper: #191512; --wash: #241f1c; --rule: #413c38; --hatch: #544f4a; --muted: #b3ada6; --ink: #eeebe5; --accent: #6ebccb; --accent-wash: #192f35; --on-accent: #191512; --signal: #e38182; --signal-wash: #3d2323; --learner-a: #899ecb; --learner-b: #d6ad68; --learner-c: #80b38a; --learner-d: #bd88ab; } }
+@font-face { font-family: "Source Sans 3"; font-style: normal; font-weight: 600; src: url(data:font/woff2;base64,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) format("woff2"); }
+@font-face { font-family: "Source Sans 3"; font-style: normal; font-weight: 400; src: url(data:font/woff2;base64,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) format("woff2"); }
+/* The classes figure sources draw with. build.py prepends the theme's colors and font families as
+   variables; a source sets no color or font of its own. */
+
+text { font-family: var(--sans); font-size: 12px; fill: var(--ink); }
+.m { font-family: var(--math); font-size: 16px; }
+.code { font-family: var(--mono); font-size: 12px; }
+.title { font-size: 15px; font-weight: 600; }
+.small { font-size: 11px; }
+.sub { font-size: 11px; }
+.big { font-size: 20px; }
+.b { font-weight: 600; }
+.i { font-style: italic; }
+.var { font-family: var(--math); font-style: italic; font-size: 1.2em; }
+.muted { fill: var(--muted); }
+.acc { fill: var(--accent); }
+.sig { fill: var(--signal); }
+.on-accent { fill: var(--on-accent); }
+.on-learner { fill: var(--paper); }
+.mid { text-anchor: middle; }
+.end { text-anchor: end; }
+.digit { font-size: 9.5px; font-weight: 600; fill: var(--paper); text-anchor: middle; }
+.halo { paint-order: stroke; stroke: var(--paper); stroke-width: 4px; stroke-linejoin: round; }
+
+.ground, .backing { fill: var(--paper); }
+.card { fill: var(--paper); stroke: var(--rule); stroke-width: 1.5; }
+.store { fill: var(--wash); }
+.store-card { fill: var(--wash); stroke: var(--rule); stroke-width: 1.5; }
+.elected { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.5; }
+.note { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.25; }
+.note-a { fill: var(--paper); stroke: var(--learner-a); stroke-width: 1.25; }
+.note-b { fill: var(--paper); stroke: var(--learner-b); stroke-width: 1.25; }
+.note-c { fill: var(--paper); stroke: var(--learner-c); stroke-width: 1.25; }
+.op { fill: var(--paper); stroke: var(--muted); stroke-width: 1.5; }
+.out { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.param { fill: var(--wash); stroke: var(--ink); stroke-width: 1.5; }
+.pill { fill: var(--paper); stroke: var(--rule); stroke-width: 1.25; }
+.chip { fill: var(--accent); }
+.tile, .layer, .slot-full { fill: var(--wash); stroke: var(--rule); stroke-width: 1; }
+.slot { fill: var(--paper); stroke: var(--rule); stroke-width: 1.25; }
+.tile-k { fill: var(--accent); }
+.picked { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.5; }
+.track { fill: var(--wash); }
+
+.sA { fill: var(--learner-a); }
+.sB { fill: var(--learner-b); }
+.sC { fill: var(--learner-c); }
+.sD { fill: var(--learner-d); }
+.wait { fill: url(#hatch); }
+.lost { fill: url(#lost); stroke: var(--signal); stroke-width: 1; }
+.xchg, .commit, .dot-acc, .badge-acc { fill: var(--accent); }
+.dot-ink, .badge, .close { fill: var(--ink); }
+.snap { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.round { fill: var(--paper); stroke: var(--accent); stroke-width: 1.25; }
+.miss { fill: none; stroke: var(--signal); stroke-width: 2.5; }
+.band { fill: var(--accent); }
+
+.rule { fill: none; stroke: var(--rule); stroke-width: 1; }
+.guide { fill: none; stroke: var(--rule); stroke-width: 1; stroke-dasharray: 4 4; }
+.axis, .tick { fill: none; stroke: var(--muted); stroke-width: 1; }
+.contour { fill: none; stroke: var(--hatch); stroke-width: 1; }
+.frame { fill: none; stroke: var(--rule); stroke-width: 1.5; }
+.valley { fill: none; stroke: var(--accent); stroke-width: 2; }
+.span { fill: none; stroke: var(--accent); stroke-width: 1; }
+.join { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+.batches { stroke: var(--accent); stroke-width: 0.75; stroke-opacity: 0.45; }
+.life-a { stroke: var(--learner-a); stroke-width: 2.5; }
+.life-b { stroke: var(--learner-b); stroke-width: 2.5; }
+.life-c { stroke: var(--learner-c); stroke-width: 2.5; }
+.life-s { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.line-a { fill: none; stroke: var(--learner-a); stroke-width: 1.25; }
+.line-b { fill: none; stroke: var(--learner-b); stroke-width: 1.25; }
+.line-c { fill: none; stroke: var(--learner-c); stroke-width: 1.25; }
+.line-d { fill: none; stroke: var(--learner-d); stroke-width: 1.25; }
+.dotted { fill: none; stroke: var(--muted); stroke-width: 1; stroke-dasharray: 1 3; stroke-linecap: round; }
+
+.arrow { fill: none; stroke: var(--muted); stroke-width: 1.5; marker-end: url(#head-muted); }
+.arrow-ink { fill: none; stroke: var(--ink); stroke-width: 1.5; marker-end: url(#head-ink); }
+.arrow-acc { fill: none; stroke: var(--accent); stroke-width: 1.5; marker-end: url(#head-accent); }
+.arrow-sig { fill: none; stroke: var(--signal); stroke-width: 1.5; marker-end: url(#head-signal); }
+.arrow-a { fill: none; stroke: var(--learner-a); stroke-width: 1.5; marker-end: url(#head-a); }
+.arrow-b { fill: none; stroke: var(--learner-b); stroke-width: 1.5; marker-end: url(#head-b); }
+.arrow-c { fill: none; stroke: var(--learner-c); stroke-width: 1.5; marker-end: url(#head-c); }
+.reply { fill: none; stroke: var(--muted); stroke-width: 1.25; stroke-dasharray: 4 3; marker-end: url(#head-muted); }
+.strong { stroke-width: 2.5; }
+.loop { fill: none; stroke: var(--muted); stroke-width: 1.25; marker-end: url(#head-muted); }
+
+.hatch-bg { fill: var(--wash); }
+.hatch-line { stroke: var(--hatch); stroke-width: 2.5; }
+.lost-bg { fill: var(--signal-wash); }
+.lost-line { stroke: var(--signal); stroke-opacity: 0.4; stroke-width: 2.5; }
+.head-ink { fill: var(--ink); }
+.head-muted { fill: var(--muted); }
+.head-accent { fill: var(--accent); }
+.head-signal { fill: var(--signal); }
+.head-a { fill: var(--learner-a); }
+.head-b { fill: var(--learner-b); }
+.head-c { fill: var(--learner-c); }
+</style>
+<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="hatch-bg"/><path d="M 0 0 V 6" class="hatch-line"/></pattern><pattern id="lost" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="lost-bg"/><path d="M 0 0 V 6" class="lost-line"/></pattern><marker id="head-ink" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-ink"/></marker><marker id="head-muted" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-muted"/></marker><marker id="head-accent" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-accent"/></marker><marker id="head-signal" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-signal"/></marker><marker id="head-a" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-a"/></marker><marker id="head-b" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-b"/></marker><marker id="head-c" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-c"/></marker></defs>
+<path id="route-a" d="M136 56H196Q204 56 204 64V149" class="line-a"/>
+<path id="route-b" d="M344 56H284Q276 56 276 64V149" class="line-b"/>
+<path id="route-c" d="M136 344H196Q204 344 204 336V251" class="line-c"/>
+<path id="route-d" d="M344 344H284Q276 344 276 336V251" class="line-d"/>
+<rect x="140" y="150" width="200" height="100" rx="8" class="store-card"/>
+<text x="240.0" y="176" class="title mid">Mailbox</text>
+<text x="154" y="212" class="small muted">updates</text>
+<text x="154" y="232" class="small muted">commit</text>
+<rect x="210" y="202" width="22" height="12" rx="6" class="slot"/>
+<rect x="210" y="202" width="22" height="12" rx="6" class="sA"><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.1800;0.9200" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/></rect>
+<rect x="238" y="202" width="22" height="12" rx="6" class="slot"/>
+<rect x="238" y="202" width="22" height="12" rx="6" class="sB"><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.1950;0.9200" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/></rect>
+<rect x="266" y="202" width="22" height="12" rx="6" class="slot"/>
+<rect x="266" y="202" width="22" height="12" rx="6" class="sC"><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.2100;0.9200" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/></rect>
+<rect x="294" y="202" width="22" height="12" rx="6" class="slot"/>
+<rect x="294" y="202" width="22" height="12" rx="6" class="sD"><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.2250;0.9200" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/></rect>
+<rect x="210" y="222" width="106" height="12" rx="6" class="slot"/>
+<rect x="210" y="222" width="106" height="12" rx="6" class="commit"><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.5600;0.9200" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/></rect>
+<rect x="16" y="24" width="120" height="64" rx="8" class="card"/>
+<circle cx="38" cy="46" r="10" class="sA"/>
+<text x="38" y="49.5" class="digit">A</text>
+<text x="56" y="50" class="small muted">learner</text>
+<rect x="30" y="64" width="18" height="10" rx="2" class="tile"/>
+<rect x="54" y="64" width="18" height="10" rx="2" class="tile"/>
+<rect x="54" y="64" width="18" height="10" rx="2" class="tile-k"><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.7200;0.9200" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/></rect>
+<rect x="78" y="64" width="18" height="10" rx="2" class="tile"/>
+<rect x="102" y="64" width="18" height="10" rx="2" class="tile"/>
+<circle cx="136" cy="56" r="3.5" class="snap"/>
+<rect x="344" y="24" width="120" height="64" rx="8" class="elected"/>
+<circle cx="366" cy="46" r="10" class="sB"/>
+<text x="366" y="49.5" class="digit">B</text>
+<text x="384" y="50" class="small muted">learner<tspan class="acc"> · syncer</tspan></text>
+<rect x="358" y="64" width="18" height="10" rx="2" class="tile"/>
+<rect x="382" y="64" width="18" height="10" rx="2" class="tile"/>
+<rect x="382" y="64" width="18" height="10" rx="2" class="tile-k"><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.5600;0.9200" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/></rect>
+<rect x="406" y="64" width="18" height="10" rx="2" class="tile"/>
+<rect x="430" y="64" width="18" height="10" rx="2" class="tile"/>
+<circle cx="344" cy="56" r="3.5" class="snap"/>
+<rect x="16" y="312" width="120" height="64" rx="8" class="card"/>
+<circle cx="38" cy="334" r="10" class="sC"/>
+<text x="38" y="337.5" class="digit">C</text>
+<text x="56" y="338" class="small muted">learner</text>
+<rect x="30" y="352" width="18" height="10" rx="2" class="tile"/>
+<rect x="54" y="352" width="18" height="10" rx="2" class="tile"/>
+<rect x="54" y="352" width="18" height="10" rx="2" class="tile-k"><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.7200;0.9200" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/></rect>
+<rect x="78" y="352" width="18" height="10" rx="2" class="tile"/>
+<rect x="102" y="352" width="18" height="10" rx="2" class="tile"/>
+<circle cx="136" cy="344" r="3.5" class="snap"/>
+<rect x="344" y="312" width="120" height="64" rx="8" class="card"/>
+<circle cx="366" cy="334" r="10" class="sD"/>
+<text x="366" y="337.5" class="digit">D</text>
+<text x="384" y="338" class="small muted">learner</text>
+<rect x="358" y="352" width="18" height="10" rx="2" class="tile"/>
+<rect x="382" y="352" width="18" height="10" rx="2" class="tile"/>
+<rect x="382" y="352" width="18" height="10" rx="2" class="tile-k"><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.7200;0.9200" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/></rect>
+<rect x="406" y="352" width="18" height="10" rx="2" class="tile"/>
+<rect x="430" y="352" width="18" height="10" rx="2" class="tile"/>
+<circle cx="344" cy="344" r="3.5" class="snap"/>
+<g opacity="0"><rect x="-9" y="-5" width="18" height="10" rx="5" class="sA"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.0600;0.1800" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/><animateMotion dur="10.0s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;0.0600;0.1800;1"><mpath href="#route-a"/></animateMotion></g>
+<g opacity="0"><rect x="-9" y="-5" width="18" height="10" rx="5" class="sB"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.0750;0.1950" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/><animateMotion dur="10.0s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;0.0750;0.1950;1"><mpath href="#route-b"/></animateMotion></g>
+<g opacity="0"><rect x="-9" y="-5" width="18" height="10" rx="5" class="sC"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.0900;0.2100" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/><animateMotion dur="10.0s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;0.0900;0.2100;1"><mpath href="#route-c"/></animateMotion></g>
+<g opacity="0"><rect x="-9" y="-5" width="18" height="10" rx="5" class="sD"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.1050;0.2250" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/><animateMotion dur="10.0s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;0.1050;0.2250;1"><mpath href="#route-d"/></animateMotion></g>
+<g opacity="0"><circle r="4.5" class="dot-acc"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.2800;0.4000" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/><animateMotion dur="10.0s" repeatCount="indefinite" calcMode="linear" keyPoints="1;1;0;0" keyTimes="0;0.2800;0.4000;1"><mpath href="#route-b"/></animateMotion></g>
+<g opacity="0"><rect x="-4.5" y="-4.5" width="9" height="9" transform="rotate(45)" class="commit"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.4400;0.5600" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/><animateMotion dur="10.0s" repeatCount="indefinite" calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;0.4400;0.5600;1"><mpath href="#route-b"/></animateMotion></g>
+<g opacity="0"><rect x="-4.5" y="-4.5" width="9" height="9" transform="rotate(45)" class="commit"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.6000;0.7200" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/><animateMotion dur="10.0s" repeatCount="indefinite" calcMode="linear" keyPoints="1;1;0;0" keyTimes="0;0.6000;0.7200;1"><mpath href="#route-a"/></animateMotion></g>
+<g opacity="0"><rect x="-4.5" y="-4.5" width="9" height="9" transform="rotate(45)" class="commit"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.6000;0.7200" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/><animateMotion dur="10.0s" repeatCount="indefinite" calcMode="linear" keyPoints="1;1;0;0" keyTimes="0;0.6000;0.7200;1"><mpath href="#route-c"/></animateMotion></g>
+<g opacity="0"><rect x="-4.5" y="-4.5" width="9" height="9" transform="rotate(45)" class="commit"/><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.6000;0.7200" calcMode="discrete" dur="10.0s" repeatCount="indefinite"/><animateMotion dur="10.0s" repeatCount="indefinite" calcMode="linear" keyPoints="1;1;0;0" keyTimes="0;0.6000;0.7200;1"><mpath href="#route-d"/></animateMotion></g>
+</svg>

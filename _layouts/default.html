@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+{% seo %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&amp;family=Source+Code+Pro:wght@400&amp;family=Source+Sans+3:ital,wght@0,400;0,600;1,400&amp;display=swap">
+{%- if content contains '\[' or content contains '$' %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.querySelector('main'), {delimiters: [{left: '\\[', right: '\\]', display: true}, {left: '\\(', right: '\\)', display: false}, {left: '$', right: '$', display: false}]})"></script>
+{%- endif %}
+<style>
+:root {
+  --paper: #fefdfc; --wash: #f5f1ec; --rule: #dedad5; --hatch: #cfc8c0;
+  --muted: #665f5a; --ink: #1c1714; --accent: #065f74;
+  --code-keyword: #9b2f56; --code-string: #4d6a1e; --code-number: #a0521a; --code-name: #5b3e94;
+  --serif: "Newsreader", Georgia, "Times New Roman", serif;
+  --sans: "Source Sans 3", "Source Sans Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Source Code Pro", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --column: 660px;
+  --sidebar: 192px;
+  --gap: 40px;
+  --page: calc(var(--sidebar) + var(--gap) + var(--column) + 32px);
+  --bar: 72px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #191512; --wash: #241f1c; --rule: #413c38; --hatch: #544f4a;
+    --muted: #b3ada6; --ink: #eeebe5; --accent: #6ebccb;
+    --code-keyword: #e48aa8; --code-string: #a9c97a; --code-number: #e0a368; --code-name: #b9a3e6;
+  }
+}
+* { box-sizing: border-box; }
+html { background: var(--paper); scroll-padding-top: calc(var(--bar) + 24px); }
+body {
+  margin: 0;
+  min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column;
+  background: var(--paper); color: var(--ink);
+  font: 16px/26px var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; text-decoration: underline 1px var(--hatch); text-underline-offset: 3px; }
+a:hover { text-decoration-color: var(--ink); }
+
+.bar { position: sticky; top: 0; z-index: 10; background: var(--paper); border-bottom: 1px solid var(--rule); }
+@supports (animation-timeline: scroll()) {
+  .bar { animation: lift linear both; animation-timeline: scroll(root); animation-range: 0 24px; }
+}
+@keyframes lift { from { border-bottom-color: transparent; } }
+.bar-inner { max-width: var(--page); height: var(--bar); margin: 0 auto; padding: 0 16px; display: flex; align-items: center; gap: 24px; }
+.bar .name { font: 600 16px/1 var(--sans); letter-spacing: 0.16em; text-transform: uppercase; text-decoration: none; }
+.bar nav { margin-left: auto; display: flex; align-items: center; gap: 32px; }
+.bar nav a { font: 400 16px/24px var(--serif); font-variation-settings: "opsz" 16; letter-spacing: 0.04em; color: var(--ink); text-decoration: underline 1.5px transparent; text-underline-offset: 10px; }
+.bar nav a:hover { text-decoration-color: var(--hatch); }
+.bar nav a[aria-current] { text-decoration-color: var(--accent); }
+.bar nav .out { color: var(--muted); }
+
+.page { flex: 1 0 auto; width: 100%; max-width: var(--page); margin: 0 auto; padding: 0 16px; display: grid; grid-template-columns: var(--sidebar) minmax(0, var(--column)); gap: var(--gap); }
+main { max-width: var(--column); padding: 48px 0 64px; min-width: 0; }
+main > :first-child { margin-top: 0; }
+
+.sidebar { position: sticky; top: var(--bar); align-self: start; max-height: calc(100vh - var(--bar)); overflow-y: auto; padding: 48px 0 32px; font-size: 14px; line-height: 20px; }
+.sidebar .label { margin: 0 0 12px; font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.sidebar .label a { text-decoration: none; }
+.sidebar ol, .sidebar ul { list-style: none; margin: 0; padding: 0; }
+.sidebar li + li { margin-top: 2px; }
+.sidebar ol > li > a { display: flex; gap: 10px; padding: 6px 10px; border-radius: 6px; color: var(--muted); text-decoration: none; }
+.sidebar ol > li > a:hover { color: var(--ink); background: var(--wash); }
+.sidebar ol > li > a[aria-current] { color: var(--ink); background: var(--wash); font-weight: 600; }
+.sidebar .n { font-variant-numeric: tabular-nums; min-width: 1ch; }
+.sidebar ol ul { margin: 6px 0 10px 10px; border-left: 1px solid var(--rule); }
+.sidebar ol.numbered ul { margin-left: 30px; }
+.sidebar > ul { border-left: 1px solid var(--rule); }
+.sidebar ul a { display: block; padding: 3px 0 3px 12px; color: var(--muted); text-decoration: none; }
+.sidebar ul a:hover { color: var(--ink); }
+
+h1, h2, h3 { font-family: var(--serif); font-weight: 600; text-wrap: balance; color: var(--ink); }
+h1 { font-size: 30px; line-height: 36px; font-variation-settings: "opsz" 36; margin: 0 0 24px; }
+h2 { font-size: 22px; line-height: 28px; font-variation-settings: "opsz" 24; margin: 48px 0 12px; }
+h3 { font-size: 18px; line-height: 24px; font-variation-settings: "opsz" 24; margin: 32px 0 8px; }
+h4 { font: 600 16px/26px var(--sans); margin: 24px 0 4px; }
+.part { margin: 0 0 6px; font-size: 13px; line-height: 18px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+
+.hero { width: 100%; max-width: var(--page); margin: 0 auto; padding: 72px 16px 64px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 400px); gap: var(--gap); align-items: center; }
+.hero h1 { margin: 0 0 24px; font: 400 46px/1.06 var(--serif); font-variation-settings: "opsz" 72; letter-spacing: -0.02em; }
+.hero .lede { margin: 0 0 32px; max-width: 30em; font-size: 18px; line-height: 28px; color: var(--muted); text-wrap: balance; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 0; }
+.button { height: 40px; display: inline-flex; align-items: center; padding: 0 18px; border: 1px solid var(--ink); border-radius: 8px; font-size: 15px; text-decoration: none; }
+.button.primary { background: var(--ink); color: var(--paper); }
+.hero-art { display: block; width: 100%; height: auto; }
+p, ul, ol, pre, table { margin: 0 0 16px; }
+main ul, main ol { padding-left: 24px; }
+main li + li { margin-top: 4px; }
+
+.index .page { display: block; }
+.index main { max-width: none; }
+.index main > p { max-width: var(--column); }
+:is(.index main > ul, .index main > ol, main #further-reading + ul) { list-style: none; margin: 32px 0 0; padding: 0; display: grid; gap: 16px; counter-reset: card; }
+.index main > :is(ul, ol) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+main #further-reading + ul { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+:is(.index main > ul, .index main > ol, main #further-reading + ul) > li { position: relative; counter-increment: card; display: flex; flex-direction: column; margin: 0; padding: 20px 24px 24px; border: 1px solid var(--hatch); border-radius: 12px; color: var(--muted); font-size: 15px; line-height: 22px; }
+:is(.index main > ul, .index main > ol, main #further-reading + ul) > li:hover { border-color: var(--ink); }
+:is(.index main > ul, .index main > ol, main #further-reading + ul) > li::before { content: counter(card, decimal-leading-zero); margin-bottom: 32px; font: 13px/16px var(--mono); }
+:is(.index main > ul, .index main > ol, main #further-reading + ul) > li::after { content: "→"; display: grid; place-items: center; width: 28px; height: 28px; margin-top: auto; border-radius: 50%; background: var(--ink); color: var(--paper); font-size: 15px; line-height: 1; }
+:is(.index main > ul, .index main > ol, main #further-reading + ul) > li > p { margin: 0 0 24px; }
+:is(.index main > ul, .index main > ol, main #further-reading + ul) > li > p:first-child { margin-bottom: 8px; font: 600 20px/26px var(--serif); font-variation-settings: "opsz" 24; color: var(--ink); text-wrap: balance; }
+:is(.index main > ul, .index main > ol, main #further-reading + ul) > li a { text-decoration: none; }
+:is(.index main > ul, .index main > ol, main #further-reading + ul) > li a::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+strong { font-weight: 600; }
+hr { border: 0; border-top: 1px solid var(--rule); margin: 40px 0 16px; }
+hr + p { color: var(--muted); font-size: 15px; }
+
+code { font: 0.875em/1 var(--mono); background: var(--wash); border-radius: 4px; padding: 2px 4px; }
+pre { font: 13px/20px var(--mono); background: var(--wash); border-radius: 6px; padding: 12px 16px; overflow-x: auto; }
+pre code { font: inherit; background: none; padding: 0; border-radius: 0; }
+.highlight .c, .highlight .c1, .highlight .cm, .highlight .ch, .highlight .cs { color: var(--muted); font-style: italic; }
+.highlight :is(.k, .kc, .kd, .kn, .kp, .kr, .kt, .ow) { color: var(--code-keyword); }
+.highlight :is(.s, .s1, .s2, .sa, .sb, .sc, .sd, .se, .sh, .sr, .ss, .sx, .dl) { color: var(--code-string); }
+.highlight :is(.m, .mb, .mf, .mh, .mi, .mo, .il, .nt) { color: var(--code-number); }
+.highlight :is(.nb, .nc, .nd, .nf, .fm, .nl) { color: var(--code-name); }
+div.highlighter-rouge { margin: 0 0 16px; }
+div.highlighter-rouge pre { margin: 0; }
+
+main img { display: block; width: 100%; height: auto; margin: 32px 0; }
+main p:has(> img:only-child) { margin: 0; }
+
+table { border-collapse: collapse; font-variant-numeric: tabular-nums; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); }
+th { font-weight: 600; text-align: left; border-bottom: 1px solid var(--rule); }
+th, td { padding: 4px 16px 4px 0; vertical-align: top; }
+th:last-child, td:last-child { padding-right: 0; }
+
+.katex { font-size: 1.1em; }
+.katex-display { margin: 20px 0; overflow-x: auto; overflow-y: hidden; }
+
+footer { border-top: 1px solid var(--rule); }
+.footer-inner { max-width: var(--page); margin: 0 auto; padding: 16px 16px 32px; display: flex; justify-content: space-between; gap: 16px; color: var(--muted); font-size: 13px; line-height: 18px; }
+
+@media (max-width: 1020px) {
+  .index main > :is(ul, ol) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hero { grid-template-columns: minmax(0, 1fr); max-width: calc(var(--column) + 32px); padding: 48px 16px; }
+  .hero-art { max-width: 440px; }
+  .page { display: block; }
+  .sidebar { display: none; }
+  main { margin: 0 auto; }
+}
+@media (max-width: 600px) {
+  :root { --bar: 96px; }
+  .bar-inner { flex-wrap: wrap; align-content: center; row-gap: 14px; }
+  .bar nav { margin-left: 0; width: 100%; gap: 22px; }
+  .bar nav a { font-size: 15px; }
+  .bar nav .out { display: none; }
+  .hero h1 { font-size: 36px; }
+  :is(.index main > ul, .index main > ol, main #further-reading + ul) { grid-template-columns: minmax(0, 1fr); }
+  h1 { font-size: 26px; line-height: 32px; }
+  main { padding-top: 32px; }
+}
+</style>
+</head>
+{%- assign section = nil %}
+{%- for link in site.nav %}{% if page.url contains link.url %}{% assign section = link %}{% endif %}{% endfor %}
+{%- assign entries = "" | split: "" %}
+{%- if section %}{% assign entries = site.pages | where: "dir", section.url | where_exp: "p", "p.name != 'README.md'" | sort: "name" %}{% endif %}
+{%- assign index = false %}
+{%- if page.url == "/" %}{% assign index = true %}{% endif %}
+{%- if entries.size > 0 and page.url == section.url %}{% assign index = true %}{% endif %}
+<body{% if page.url == "/" %} class="home index"{% elsif index %} class="index"{% endif %}>
+{%- capture toc %}
+{%- assign chunks = content | split: '<h2 id="' %}
+{%- if chunks.size > 1 %}
+<ul>
+  {%- for chunk in chunks offset: 1 %}
+  {%- assign id = chunk | split: '"' | first %}
+  {%- assign heading = chunk | split: '</h2>' | first | remove_first: id | remove_first: '">' %}
+  <li><a href="#{{ id }}">{{ heading }}</a></li>
+  {%- endfor %}
+</ul>
+{%- endif %}
+{%- endcapture %}
+<header class="bar">
+  <div class="bar-inner">
+    <a class="name" href="{{ '/' | relative_url }}">GradientMail</a>
+    <nav>
+      {%- for link in site.nav %}
+      <a href="{{ link.url | relative_url }}"{% if page.url contains link.url %} aria-current="page"{% endif %}>{{ link.title }}</a>
+      {%- endfor %}
+      <a class="out" href="https://github.com/ppgsi-lab/gradientmail">GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+{%- if page.url == "/" %}
+<section class="hero">
+  <div>
+    <h1>{{ site.hero.title }}</h1>
+    <p class="lede">{{ site.hero.text }}</p>
+    <p class="actions">
+      {%- for action in site.hero.actions %}
+      <a class="button{% if forloop.first %} primary{% endif %}" href="{{ action.url | relative_url }}">{{ action.title }}</a>
+      {%- endfor %}
+    </p>
+  </div>
+  <img class="hero-art" src="{{ site.hero.image | relative_url }}" alt="{{ site.hero.alt }}">
+</section>
+{%- endif %}
+<div class="page">
+  {%- unless index %}
+  <aside class="sidebar">
+  {%- if entries.size > 0 %}
+    <p class="label"><a href="{{ section.url | relative_url }}">{{ section.title }}</a></p>
+    <ol{% if section.numbered %} class="numbered"{% endif %}>
+      {%- for entry in entries %}
+      <li>
+        <a href="{{ entry.url | relative_url }}"{% if entry.url == page.url %} aria-current="page"{% endif %}>{% if section.numbered %}<span class="n">{{ forloop.index }}</span>{% endif %}<span>{{ entry.title }}</span></a>
+        {%- if entry.url == page.url %}{{ toc }}{% endif %}
+      </li>
+      {%- endfor %}
+    </ol>
+  {%- else %}
+    <p class="label">Contents</p>
+    {{ toc }}
+  {%- endif %}
+  </aside>
+  {%- endunless %}
+<main>
+{%- if section.numbered and page.name != "README.md" %}
+  {%- for entry in entries %}{% if entry.url == page.url %}<p class="part">Part {{ forloop.index }} of {{ entries.size }}</p>{% endif %}{% endfor %}
+{%- endif %}
+{{ content }}
+</main>
+</div>
+<footer>
+  <div class="footer-inner">
+    <span>GradientMail</span>
+    <a href="https://github.com/ppgsi-lab/gradientmail">Source on GitHub</a>
+  </div>
+</footer>
+</body>
+</html>
