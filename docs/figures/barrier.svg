@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="310" viewBox="0 0 960 310" role="img" aria-label="Three nodes, A, B and C, reach the barrier named start at different times, with parties = 3. Each records its arrival as barriers/start/ followed by its learner ID and polls the listing of that prefix. A arrives first and waits; B arrives next and waits; their polls see one key, then two. C arrives, lists three keys and passes at once; A and B pass on their next poll. All three train from the same moment.">
+<rect width="960" height="310" rx="6" class="ground"/>
+
+<path d="M 690 44 V 200" class="guide"/>
+<text x="698" y="48" class="small acc b">C arrives: 3 of 3, the barrier opens</text>
+
+<text x="24" y="80" class="b">Node A</text>
+<rect x="110" y="64" width="180" height="24" class="tile"/>
+<text x="118" y="80" class="small muted">loads model and data</text>
+<rect x="290" y="64" width="416" height="24" class="wait"/>
+<text x="498" y="80" class="small mid">waits, listing <tspan class="code">barriers/start/</tspan> every poll_interval</text>
+<rect x="706" y="64" width="214" height="24" class="sA"/>
+<text x="813" y="80" class="small mid on-learner">trains</text>
+<circle cx="290" cy="76" r="5" class="dot-ink"/>
+<text x="290" y="57" class="code small mid">put_if_absent(barriers/start/a)</text>
+
+<text x="24" y="128" class="b">Node B</text>
+<rect x="110" y="112" width="340" height="24" class="tile"/>
+<text x="118" y="128" class="small muted">loads model and data</text>
+<rect x="450" y="112" width="266" height="24" class="wait"/>
+<text x="583" y="128" class="small mid">waits</text>
+<rect x="716" y="112" width="204" height="24" class="sB"/>
+<text x="818" y="128" class="small mid on-learner">trains</text>
+<circle cx="450" cy="124" r="5" class="dot-ink"/>
+<text x="450" y="105" class="code small mid">put_if_absent(barriers/start/b)</text>
+
+<text x="24" y="176" class="b">Node C</text>
+<rect x="110" y="160" width="580" height="24" class="tile"/>
+<text x="118" y="176" class="small muted">loads model and data</text>
+<rect x="690" y="160" width="230" height="24" class="sC"/>
+<text x="805" y="176" class="small mid on-learner">trains</text>
+<circle cx="690" cy="172" r="5" class="dot-ink"/>
+<text x="682" y="153" class="code small end">put_if_absent(barriers/start/c)</text>
+
+<text x="24" y="230" class="b">Mailbox</text>
+<rect x="110" y="212" width="810" height="28" class="store"/>
+<text x="118" y="230" class="code small muted">barriers/start/</text>
+<text x="296" y="230" class="code small">a <tspan class="muted">1 of 3</tspan></text>
+<text x="456" y="230" class="code small">a b <tspan class="muted">2 of 3</tspan></text>
+<text x="696" y="230" class="code small">a b c <tspan class="acc b">3 of 3</tspan></text>
+
+<path d="M 24 262 H 936" class="rule"/>
+<text x="24" y="284">Each node records its arrival once and polls the listing: C sees three keys and passes, A and B pass on their next poll.</text>
+<text x="24" y="302" class="small muted">Arrivals are never removed, so a node that reaches <tspan class="code">start</tspan> after the barrier opened passes at once.</text>
+</svg>

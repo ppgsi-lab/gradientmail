@@ -70,6 +70,7 @@ For a PyTorch/MLX run across two machines, use [torch_learner.py](examples/torch
 ## Further reading
 
 - [Shared Queue](docs/patterns/00-shared-queue.md): distributing work across nodes with different processing speeds.
+- [Barrier](docs/patterns/01-barrier.md): holding nodes at a named point until a number of them have reached it.
 - [Pythia-14M on four rented GPUs and a bucket](docs/posts/00-pythia-14m-on-four-salad-gpus.md): a Salad training run, including failures and comparisons with the published checkpoints.
 
 ## Development
