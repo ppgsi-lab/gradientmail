@@ -3,6 +3,8 @@ name = "gradientmail"
 version = "0.1.0"
 description = "Distributed training through asynchronous message exchange"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
     { name = "Gabriel Francisco", email = "gabfssilva@gmail.com" }
 ]
