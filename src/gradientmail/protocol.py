@@ -9,7 +9,7 @@ Keys live under the mailbox's prefix; fixed widths make byte order equal numeric
     claims/manifest/{n:03d}.json                               nth claim to create the run
     leases/{learner}/{n:010d}.json                             nth beat of learner's lease
     blobs/init/{p:03d}/{sha256}{ext}                           Θ⁰ candidates (Manifest.init)
-    blobs/rounds/{r:010d}/{sha256}{ext}                        theta and outer payloads of r
+    blobs/rounds/{r:010d}/{sha256}{ext}                        theta, outer and update payloads of r
     blobs/snapshots/{r:010d}/{learner}/{sha256}{ext}           snapshot payload
 
 Records and payloads live under different prefixes, so ``list("rounds/", after=...)`` returns
@@ -20,7 +20,8 @@ with (``compression`` module), which every reader decodes by the extension alone
 Write ordering
 --------------
 A payload is written before the record that points at it: init payloads then the manifest, a
-snapshot payload then its record, theta then outer then the round record. With a store that
+snapshot payload then its record, theta, outer and the update then the round record. With a
+store that
 lists and reads its own writes, a record a party can see always has durable payloads, and a
 crash between the two writes leaves an orphan payload and no record. Snapshot orphans are
 swept with their round and round-payload orphans with their round's payloads; the init
@@ -103,7 +104,7 @@ from gradientmail.compression import EXTENSION, Compression, compression_of
 from gradientmail.compression import decode as decode_payload
 from gradientmail.compression import encode as encode_payload
 from gradientmail.mailbox import Mailbox, retrying
-from gradientmail.serialization import DType, ParameterSpec, Schema, TensorBytes
+from gradientmail.serialization import DType, ParameterSpec, Schema, TensorBytes, pack
 
 log = logging.getLogger(__name__)
 
@@ -119,7 +120,7 @@ class PayloadRef:
 
 @dataclass(frozen=True)
 class ManifestDraft:
-    schema: Schema
+    schema: Schema[DType]
     plan: tuple[tuple[str, ...], ...]
     algorithm: Mapping[str, object]
     created_by: str
@@ -159,8 +160,10 @@ class Snapshot(SnapshotDraft):
 
 @dataclass(frozen=True)
 class RoundRecordDraft:
-    """``quorum_seconds`` and ``grace_seconds`` are this round's realized waits; ``estimates``
-    are the timing EMAs entering the next round, so whoever closes it continues them."""
+    """``cosine`` is the mean cosine similarity between the participants' deltas over the
+    fragment, None with fewer than two; ``quorum_seconds`` and ``grace_seconds`` are this
+    round's realized waits; ``estimates`` are the timing EMAs entering the next round, so
+    whoever closes it continues them."""
 
     round: int
     step: int
@@ -168,15 +171,27 @@ class RoundRecordDraft:
     version: int
     participants: tuple[Participant, ...]
     rejected: tuple[tuple[str, Rejection], ...]
+    cosine: float | None
     quorum_seconds: float
     grace_seconds: float
     estimates: Estimates
 
 
 @dataclass(frozen=True)
+class CommitUpdate:
+    """``Θ_new - Θ_old`` at the algorithm's commit precision: a learner holding the old version
+    applies it to its copy instead of fetching theta and checks the result against
+    ``theta_digest``, the sha256 of theta packed as safetensors, whatever codec stored it."""
+
+    payload: PayloadRef
+    theta_digest: str
+
+
+@dataclass(frozen=True)
 class RoundRecord(RoundRecordDraft):
     theta: PayloadRef
     outer: PayloadRef
+    update: CommitUpdate | None
 
 
 type Record = Manifest | Snapshot | RoundRecord
@@ -330,8 +345,15 @@ def encode(record: Record) -> bytes:
                         for p in record.participants
                     ],
                     "rejected": record.rejected,
+                    "cosine": record.cosine,
                     "theta": ref(record.theta),
                     "outer": ref(record.outer),
+                    "update": None
+                    if record.update is None
+                    else {
+                        "payload": ref(record.update.payload),
+                        "theta_digest": record.update.theta_digest,
+                    },
                     "quorum_seconds": record.quorum_seconds,
                     "grace_seconds": record.grace_seconds,
                     "estimates": {
@@ -347,7 +369,7 @@ def encode(record: Record) -> bytes:
 
 
 def decode_manifest(data: bytes) -> Manifest:
-    def parameter(fields: _Fields) -> ParameterSpec:
+    def parameter(fields: _Fields) -> ParameterSpec[DType]:
         return ParameterSpec(
             fields.string("name"),
             dtype(fields.values.get("dtype")),
@@ -361,7 +383,7 @@ def decode_manifest(data: bytes) -> Manifest:
             case other:
                 raise ProtocolError(f"dtype: expected F32, F16 or BF16, got {other!r}")
 
-    def schema(fields: _Fields) -> Schema:
+    def schema(fields: _Fields) -> Schema[DType]:
         parameters = tuple(parameter(entry) for entry in fields.each("schema"))
         try:
             return Schema(parameters)
@@ -425,6 +447,12 @@ def decode_round_record(data: bytes) -> RoundRecord:
             sync=fields.optional_number("sync"),
         )
 
+    def update(fields: _Fields) -> CommitUpdate | None:
+        if fields.values.get("update") is None:
+            return None
+        nested = fields.nested("update")
+        return CommitUpdate(_ref(nested.nested("payload")), nested.string("theta_digest"))
+
     fields = _parse(data)
     return RoundRecord(
         round=fields.integer("round"),
@@ -433,8 +461,10 @@ def decode_round_record(data: bytes) -> RoundRecord:
         version=fields.integer("version"),
         participants=tuple(participant(entry) for entry in fields.each("participants")),
         rejected=tuple(rejection(entry) for entry in fields.items("rejected")),
+        cosine=fields.optional_number("cosine"),
         theta=_ref(fields.nested("theta")),
         outer=_ref(fields.nested("outer")),
+        update=update(fields),
         quorum_seconds=fields.number("quorum_seconds"),
         grace_seconds=fields.number("grace_seconds"),
         estimates=estimates(fields.nested("estimates")),
@@ -600,15 +630,22 @@ class Exchange:
         draft: RoundRecordDraft,
         theta: Mapping[str, TensorBytes],
         outer: Mapping[str, TensorBytes],
+        update: Mapping[str, TensorBytes] | None = None,
     ) -> CommitOutcome:
-        """Commit round ``draft.round``: theta, then outer, then the record.
+        """Commit round ``draft.round``: theta, outer and the update, if any, then the record.
 
         A record already present with the same payload keys is this node's own earlier attempt
         and counts as ``Committed``; different keys mean another node closed the round, and its
         record comes back as ``Superseded``.
         """
-        theta_ref = await self._publish(partial(round_blob_key, draft.round), theta)
-        outer_ref = await self._publish(partial(round_blob_key, draft.round), outer)
+        blob_key = partial(round_blob_key, draft.round)
+        theta_ref = await self._publish(blob_key, theta)
+        outer_ref = await self._publish(blob_key, outer)
+        update_ref = (
+            None
+            if update is None
+            else CommitUpdate(await self._publish(blob_key, update), theta_digest(theta))
+        )
         record = RoundRecord(
             round=draft.round,
             step=draft.step,
@@ -616,18 +653,20 @@ class Exchange:
             version=draft.version,
             participants=draft.participants,
             rejected=draft.rejected,
+            cosine=draft.cosine,
             quorum_seconds=draft.quorum_seconds,
             grace_seconds=draft.grace_seconds,
             estimates=draft.estimates,
             theta=theta_ref,
             outer=outer_ref,
+            update=update_ref,
         )
         key = round_key(draft.round)
         created = await self._retry(partial(self._mailbox.put_if_absent, key, encode(record)))
         if created:
             return Committed(record)
         existing = decode_round_record(await self._require(key))
-        if (existing.theta.key, existing.outer.key) == (theta_ref.key, outer_ref.key):
+        if _payload_keys(existing) == _payload_keys(record):
             return Committed(existing)
         return Superseded(existing)
 
@@ -781,6 +820,19 @@ def _integer(value: _Json, where: str) -> int:
 
 def _ref(fields: _Fields) -> PayloadRef:
     return PayloadRef(fields.string("key"), fields.string("sha256"), fields.integer("size"))
+
+
+def _payload_keys(record: RoundRecord) -> tuple[str, str, str | None]:
+    return (
+        record.theta.key,
+        record.outer.key,
+        None if record.update is None else record.update.payload.key,
+    )
+
+
+def theta_digest(theta: Mapping[str, TensorBytes]) -> str:
+    """The sha256 of ``theta`` packed as safetensors: the same whatever codec stores it."""
+    return _sha256(pack(theta))
 
 
 def _sha256(blob: bytes) -> str:

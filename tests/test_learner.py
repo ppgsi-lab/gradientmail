@@ -18,7 +18,7 @@ import pytest
 from fakes import FakeClock, SlowMailbox, TrippedMailbox
 
 from gradientmail.adapters import MemoryAdapter
-from gradientmail.algorithms import Algorithm, Estimates, RoundSchedule
+from gradientmail.algorithms import Algorithm, Estimates, Participant, RoundSchedule
 from gradientmail.algorithms.diloco import DiLoCo
 from gradientmail.events import (
     Callback,
@@ -38,6 +38,7 @@ from gradientmail.learner import (
     advanced,
     applied,
     due_round,
+    overdue,
 )
 from gradientmail.mailbox.memory import MemoryMailbox
 from gradientmail.protocol import (
@@ -69,7 +70,7 @@ FRESH = LearnerState(
     applied_version=(0, 0),
     rounds_seen=-1,
     last_published=-1,
-    step_at_last_publish=0,
+    published=(),
     step_seconds=0.0,
 )
 NOBODY = Publishers(-1, frozenset())
@@ -135,9 +136,10 @@ def joined(
     clock: FakeClock,
     tensors: Mapping[str, TensorBytes] = TENSORS,
     *,
+    algorithm: Algorithm = ALGORITHM,
     on_event: Callback = log_events,
 ) -> tuple[Learner, MemoryAdapter]:
-    created, adapter = learner(mailbox, clock, tensors, on_event=on_event)
+    created, adapter = learner(mailbox, clock, tensors, algorithm=algorithm, on_event=on_event)
     asyncio.run(created.join())
     return created, adapter
 
@@ -155,20 +157,27 @@ def started(
     return created, adapter
 
 
-def commit(exchange: Exchange, round: int, theta: Mapping[str, TensorBytes]) -> None:
+def commit(
+    exchange: Exchange,
+    round: int,
+    theta: Mapping[str, TensorBytes],
+    participants: tuple[Participant, ...] = (),
+    update: Mapping[str, TensorBytes] | None = None,
+) -> None:
     """The syncer's side of round ``round``: a committed record pointing at ``theta``."""
     draft = RoundRecordDraft(
         round=round,
         step=SCHEDULE.step_of(round),
         fragment=SCHEDULE.fragment_of(round),
         version=SCHEDULE.version_after(round),
-        participants=(),
+        participants=participants,
         rejected=(),
+        cosine=None,
         quorum_seconds=0.0,
         grace_seconds=0.0,
         estimates=Estimates(),
     )
-    asyncio.run(exchange.commit(draft, theta, {}))
+    asyncio.run(exchange.commit(draft, theta, {}, update))
 
 
 def snapshot(exchange: Exchange, round: int) -> Snapshot:
@@ -202,11 +211,11 @@ def describe_due_round():
                 steps=(20, 20),
                 rounds_seen=0,
                 last_published=1,
-                step_at_last_publish=4,
+                published=((1, 4),),
             )
 
             assert due(ahead) == 2
-            assert due(replace(ahead, last_published=2, step_at_last_publish=6)) is None
+            assert due(replace(ahead, last_published=2, published=((1, 4), (2, 6)))) is None
 
     def when_the_fragment_was_just_overwritten():
         def it_waits_for_a_step_on_it():
@@ -217,7 +226,7 @@ def describe_due_round():
                 applied_version=(1, 1),
                 rounds_seen=1,
                 last_published=1,
-                step_at_last_publish=4,
+                published=((1, 4),),
             )
 
             assert due(overwritten) is None
@@ -233,6 +242,18 @@ def describe_due_round():
             assert due(early, quorum=3, publishers=Publishers(1, two_others)) is None
 
 
+def describe_overdue():
+    def it_holds_once_an_unaligned_round_is_that_many_steps_old():
+        state = replace(
+            FRESH, local_step=6, rounds_seen=0, last_published=2, published=((1, 4), (2, 6))
+        )
+
+        assert not overdue(state, 3)
+        assert overdue(state, 2)
+        assert not overdue(replace(state, rounds_seen=1), 2)
+        assert overdue(replace(state, rounds_seen=1), 0)
+
+
 def describe_applied():
     def it_resets_only_that_fragments_counters():
         before = replace(FRESH, local_step=7, steps=(7, 7), tokens=(21, 21))
@@ -242,6 +263,19 @@ def describe_applied():
         assert after == replace(
             before, steps=(7, 0), tokens=(21, 0), applied_version=(0, 1), rounds_seen=1
         )
+
+    def when_the_algorithm_mixes():
+        def it_keeps_that_share_of_the_steps_the_commit_did_not_incorporate():
+            before = replace(FRESH, local_step=7, steps=(7, 7), tokens=(21, 21))
+            mine = Participant("learner-a", 5, 5, 15, 45.0)
+
+            took_part = applied(
+                before, round=1, fragment=1, version=1, participant=mine, mixing=0.5
+            )
+            left_out = applied(before, round=1, fragment=1, version=1, participant=None, mixing=0.5)
+
+            assert (took_part.steps, took_part.tokens) == ((7, 1), (21, 3))
+            assert (left_out.steps, left_out.tokens) == ((7, 3), (21, 10))
 
 
 def describe_learner():
@@ -315,6 +349,79 @@ def describe_learner():
                 trained.close()
 
             assert taken < 4
+
+    def when_the_algorithm_mixes():
+        def it_blends_the_commit_with_the_local_parameters_and_keeps_the_commit_as_anchor(
+            clock: FakeClock,
+        ):
+            mailbox = MemoryMailbox()
+            exchange = Exchange(mailbox, clock=clock)
+            algorithm = DiLoCo(sync_every=4, fragments=2, in_flight=2, mixing=0.5)
+            trained, adapter = started(mailbox, clock, algorithm=algorithm)
+            try:
+                # Local training moved "a" before any round; round 0 commits it elsewhere.
+                adapter.apply({"a": f32(3.0, 5.0)})
+                commit(exchange, 0, A1)
+                step_until(trained, 1, lambda: len(asyncio.run(exchange.snapshots(2))) == 1)
+                blended = adapter.tensors["a"]
+            finally:
+                trained.close()
+
+            # Aligning set "a" to the midpoint; the next delta is measured from the commit.
+            assert blended == f32(6.5, 12.5)
+            assert asyncio.run(exchange.fetch(snapshot(exchange, 2).payload)) == {
+                "a": f32(3.5, 7.5)
+            }
+
+    def when_a_commit_carries_an_update():
+        def it_rebuilds_theta_from_the_version_it_holds_instead_of_fetching_it(clock: FakeClock):
+            mailbox = MemoryMailbox()
+            exchange = Exchange(mailbox, clock=clock)
+            algorithm = DiLoCo(sync_every=4, fragments=2, in_flight=2, commit_dtype="F32")
+            trained, adapter = joined(mailbox, clock, algorithm=algorithm)
+            commit(exchange, 0, A1, update={"a": f32(9.0, 18.0)})
+            # Only the update can produce A1 now.
+            [record] = asyncio.run(exchange.rounds_after(-1))
+            asyncio.run(mailbox.delete([record.theta.key]))
+
+            asyncio.run(trained.poll())
+            trained.step(samples=1)
+
+            assert adapter.tensors["a"] == A1["a"]
+            assert trained.rounds_seen == 0
+
+        def when_the_rebuilt_theta_does_not_hash_to_the_record():
+            def it_fetches_theta(clock: FakeClock):
+                mailbox = MemoryMailbox()
+                exchange = Exchange(mailbox, clock=clock)
+                algorithm = DiLoCo(sync_every=4, fragments=2, in_flight=2, commit_dtype="F32")
+                trained, adapter = joined(mailbox, clock, algorithm=algorithm)
+                commit(exchange, 0, A1, update={"a": f32(0.0, 0.0)})
+
+                asyncio.run(trained.poll())
+                trained.step(samples=1)
+
+                assert adapter.tensors["a"] == A1["a"]
+                assert trained.rounds_seen == 0
+
+    def it_reports_how_many_steps_after_its_snapshot_it_aligned(clock: FakeClock):
+        mailbox = MemoryMailbox()
+        exchange = Exchange(mailbox, clock=clock)
+        seen: list[Event] = []
+        trained, _ = joined(mailbox, clock, on_event=seen.append)
+        for _ in range(2):
+            trained.step(samples=3)
+        commit(exchange, 0, A1, participants=(Participant("learner-a", 2, 2, 6, 18.0),))
+        commit(exchange, 1, B1)
+
+        asyncio.run(trained.poll())
+        trained.step(samples=3)
+
+        aligned = [e for e in seen if isinstance(e, FragmentAligned)]
+        assert [(e.fragment, e.local_step, e.lag_steps) for e in aligned] == [
+            (0, 3, 1),
+            (1, 3, None),
+        ]
 
     def it_publishes_the_delta_against_its_anchor(clock: FakeClock):
         mailbox = MemoryMailbox()

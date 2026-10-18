@@ -6,7 +6,7 @@ import sys
 import pytest
 
 from gradientmail.adapters import MemoryAdapter, adapter_for, backend_for, default_backend
-from gradientmail.serialization import ParameterSpec, Schema, TensorBytes, validate
+from gradientmail.serialization import ParameterSpec, Schema, SchemaMismatch, TensorBytes, validate
 
 TENSORS = {
     "fc1.weight": TensorBytes("F32", (2, 3), bytes(range(24))),
@@ -39,6 +39,15 @@ def describe_memory_adapter():
             )
         )
         validate(schema, adapter.snapshot(TENSORS), TENSORS)
+
+    def when_a_tensor_is_quantized():
+        def it_has_no_schema():
+            adapter = MemoryAdapter({**TENSORS, "q": TensorBytes("F4", (2,), bytes(1))})
+
+            with pytest.raises(SchemaMismatch) as failure:
+                adapter.schema()
+
+            assert failure.value.names == ("q",)
 
 
 def describe_backend_for():

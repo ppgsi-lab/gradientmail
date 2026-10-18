@@ -33,7 +33,8 @@ A round closes once ``quorum_size`` snapshots for it are accepted, or once every
 has reported and at least one snapshot is accepted. A snapshot is accepted iff its ``steps``
 are positive, its schema digest is the run's, its ``base_version`` is the fragment's current
 version, its payload is present and hashes to the record and its tensors match the fragment's
-delta schema (the parameters' shapes in the algorithm's delta dtype); otherwise it stays in
+delta schema (the parameters in the algorithm's delta dtype, with their scales when it is
+quantized); otherwise it stays in
 the round record as rejected (``zero_steps``, ``schema``,
 ``stale``, ``missing``, ``corrupt``) with weight 0, the paper's treatment of learners outside
 the round. A live learner is never ``stale``: it advances ``rounds_seen`` only after aligning
@@ -50,9 +51,10 @@ payloads are fetched as their snapshots appear, overlapping the wait.
 Grace
 -----
 After quorum the closer keeps collecting for
-``min(0.5 · max(τ·ξ_round - (ξ_quorum + ξ_sync), 0), ξ_round)`` seconds, ``ξ_round`` being the
-round's gap of steps times the step duration learners report: half the slack the ``in_flight``
-rounds leave before learners would stall, capped at one round of training. The three
+``min(0.5 · max(ahead·ξ_step - (ξ_quorum + ξ_sync), 0), ξ_round)`` seconds, ``ξ_round`` being the
+round's gap of steps times the step duration learners report and ``ahead`` the steps a learner
+trains before it would stall, ``in_flight`` rounds of them or the algorithm's ``overlap_steps``
+when that is less: half the slack those leave, capped at one round of training. The three
 estimates are EMAs (decay 0.1) of that step duration, taken from the snapshots, of the time
 from round start to quorum and of the time from closing to a durable commit. They travel
 in every round record, so the node that closes the next round continues them; the sync
@@ -68,8 +70,9 @@ after the close is not counted and is swept with the round.
 Recovery
 --------
 ``recover`` lists ``rounds/`` and takes the newest record per fragment: its theta payload is
-the anchor and its outer payload holds the fp32 momentum and, for F16 and BF16 schemas, the
-fp32 master; a fragment never committed starts from the manifest's Θ⁰ with zero momentum. The
+the anchor and its outer payload holds the fp32 momentum and, when the published tensor is not
+the master (F16 and BF16 schemas, commits that carry an update), the fp32 master; a fragment
+never committed starts from the manifest's Θ⁰ with zero momentum. The
 next round is the one after the last record and the timing estimates are the last record's.
 Nothing else is persisted, so a crash
 before the record write recomputes the round from the snapshots still in the store and a crash
@@ -108,6 +111,7 @@ from gradientmail.algorithms import (
     Estimates,
     FragmentState,
     RoundSchedule,
+    layout,
 )
 from gradientmail.algorithms.diloco import grace_window
 from gradientmail.clock import Clock, MonotonicClock
@@ -140,7 +144,7 @@ from gradientmail.protocol import (
     Snapshot,
     Superseded,
 )
-from gradientmail.serialization import Schema, SchemaMismatch, TensorBytes, validate
+from gradientmail.serialization import PayloadDType, Schema, SchemaMismatch, TensorBytes, validate
 
 __all__ = ["Following", "Progress", "Syncer", "SyncerState"]
 
@@ -374,7 +378,7 @@ class Syncer:
             if tensors is None:
                 return "missing"
             try:
-                validate(run.deltas, tensors, names)
+                validate(deltas, tensors, [spec.name for spec in deltas.parameters])
             except SchemaMismatch:
                 return "schema"
             return Contribution(
@@ -413,7 +417,7 @@ class Syncer:
         round = state.round
         fragment = run.schedule.fragment_of(round)
         current = state.fragments[fragment]
-        names = run.manifest.plan[fragment]
+        deltas = run.deltas[fragment]
         verdicts: dict[str, Contribution | Rejection] = {}
 
         started = self._clock.now()
@@ -424,7 +428,10 @@ class Syncer:
         quorum_at = self._clock.now()
 
         deadline = quorum_at + grace_window(
-            state.estimates, run.schedule.in_flight, run.schedule.gap(round)
+            state.estimates,
+            run.schedule.in_flight,
+            run.schedule.gap(round),
+            run.schedule.overlap_steps,
         )
         while (now := self._clock.now()) < deadline and not reported():
             await self._clock.sleep(min(self._poll_interval, deadline - now))
@@ -432,7 +439,8 @@ class Syncer:
         grace_ended = self._clock.now()
 
         contributions = accepted()
-        updated, participants = run.aggregators[fragment].close_round(current, contributions)
+        result = run.aggregators[fragment].close_round(current, contributions)
+        updated = result.state
         estimates = state.estimates.updated(
             step=fmean(c.step_seconds for c in contributions), quorum=quorum_at - started
         )
@@ -441,17 +449,18 @@ class Syncer:
             step=run.schedule.step_of(round),
             fragment=fragment,
             version=updated.version,
-            participants=participants,
+            participants=result.participants,
             rejected=tuple(
                 sorted((learner, why) for learner, why in verdicts.items() if isinstance(why, str))
             ),
+            cosine=result.cosine,
             quorum_seconds=quorum_at - started,
             grace_seconds=grace_ended - quorum_at,
             estimates=estimates,
         )
         self._on_event(RoundClosed(self._learner_id, draft))
         committing = time.perf_counter()
-        outcome = await self._exchange.commit(draft, updated.theta, updated.outer)
+        outcome = await self._exchange.commit(draft, updated.theta, updated.outer, result.update)
         if isinstance(outcome, Superseded):
             self._on_event(RoundSuperseded(self._learner_id, outcome.record))
             return Following(outcome.record.round + 1, self._timeout(outcome.record))
@@ -478,10 +487,16 @@ class Syncer:
             if manifest is None:
                 raise ProtocolError("manifest.json does not exist: no learner has created the run")
             schema, plan = manifest.schema, manifest.plan
+            specs = {spec.name: spec for spec in schema.parameters}
             self._run = _Run(
                 manifest=manifest,
                 digest=schema.digest(),
-                deltas=self._algorithm.delta_schema(schema),
+                deltas=tuple(
+                    layout(
+                        Schema(tuple(specs[name] for name in names)), self._algorithm.delta_dtype
+                    )
+                    for names in plan
+                ),
                 schedule=self._algorithm.schedule(len(plan)),
                 aggregators=tuple(
                     self._algorithm.aggregator(schema, names, self._backend) for names in plan
@@ -503,10 +518,11 @@ class Syncer:
 
 @dataclass(frozen=True)
 class _Run:
-    """What the manifest fixes for the life of the run; ``deltas`` is what snapshots must match."""
+    """What the manifest fixes for the life of the run; ``deltas`` is what a snapshot of each
+    fragment must hold."""
 
     manifest: Manifest
     digest: str
-    deltas: Schema
+    deltas: tuple[Schema[PayloadDType], ...]
     schedule: RoundSchedule
     aggregators: tuple[Aggregator, ...]

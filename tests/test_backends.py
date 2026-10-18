@@ -168,6 +168,103 @@ def describe_load_and_to_bytes():
                 assert mine == other, f"{pattern:08x}: {mine:04x} vs {other:04x}"
 
 
+def describe_dot():
+    def it_sums_the_elementwise_products(backend: Backend):
+        assert backend.load(f32(1, 2, 3)).dot(backend.load(f32(4, -5, 6))) == pytest.approx(12.0)
+
+
+def describe_quantize():
+    def when_e4m3():
+        def it_scales_the_largest_magnitude_under_256_and_keeps_4_significant_bits(
+            backend: Backend,
+        ):
+            data, scale = backend.load(f32(1.0, -0.5, 0.001, 300.0, 0.0)).quantize("F8_E4M3")
+
+            assert (data.dtype, data.shape, scale.dtype, scale.shape) == (
+                "F8_E4M3",
+                (5,),
+                "F32",
+                (),
+            )
+            assert floats(scale) == [2.0]
+            # 150 lies between 144 and 160 on the E4M3 grid; 0.0005 is below half its smallest
+            # subnormal.
+            assert as_list(backend.dequantize(data, scale, (5,))) == [1.0, -0.5, 0.0, 288.0, 0.0]
+
+    def when_e2m1():
+        def it_packs_the_grid_low_nibble_first_with_one_e8m0_scale_per_block(backend: Backend):
+            values = [0.0, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0, -0.5, -6.0] + [0.0] * 22
+
+            data, scale = backend.load(f32(*values)).quantize("F4")
+
+            assert (data.dtype, data.shape, scale.dtype, scale.shape) == (
+                "F4",
+                (32,),
+                "F8_E8M0",
+                (1,),
+            )
+            assert data.data == bytes([0x10, 0x32, 0x54, 0x76, 0xF9]) + bytes(11)
+            assert scale.data == bytes([127])
+            assert as_list(backend.dequantize(data, scale, (32,))) == values
+
+        def it_pads_to_whole_blocks_and_scales_each_block_by_its_largest_magnitude(
+            backend: Backend,
+        ):
+            values = [8.0] * 32 + [0.75]
+
+            data, scale = backend.load(f32(*values, shape=(3, 11))).quantize("F4")
+            back = backend.dequantize(data, scale, (3, 11)).to_bytes("F32")
+
+            assert (data.shape, scale.shape) == ((64,), (2,))
+            # 8 sits in [4, 8) at a scale of 2; 0.75 alone in its block at a scale of 2^-3.
+            assert scale.data == bytes([127 + 1, 127 - 3])
+            assert (back.shape, floats(back)) == ((3, 11), values)
+
+    def it_keeps_the_error_within_the_formats_precision(backend: Backend):
+        generator = random.Random(5)
+        values = [generator.gauss(0.0, 1.0) * 10 ** generator.uniform(-3.0, 3.0) for _ in range(70)]
+        largest = max(abs(v) for v in values)
+
+        e4m3 = as_list(backend.dequantize(*backend.load(f32(*values)).quantize("F8_E4M3"), (70,)))
+        e2m1 = as_list(backend.dequantize(*backend.load(f32(*values)).quantize("F4"), (70,)))
+
+        assert max(abs(a - b) for a, b in zip(values, e4m3, strict=True)) <= largest / 16
+        for start in range(0, 70, 32):
+            block = values[start : start + 32]
+            block_largest = max(abs(v) for v in block)
+            assert all(
+                abs(a - b) <= block_largest / 4
+                for a, b in zip(block, e2m1[start : start + 32], strict=True)
+            )
+
+    def it_produces_the_same_bytes_and_floats_on_every_installed_backend():
+        backends = installed_backends()
+        if len(backends) < 2:
+            pytest.skip("needs two backends")
+        generator = random.Random(9)
+        values = f32(
+            *(generator.gauss(0.0, 1.0) * 2.0 ** generator.randint(-20, 20) for _ in range(100))
+        )
+
+        for dtype in ("F8_E4M3", "F4"):
+            quantized = [backend.load(values).quantize(dtype) for backend in backends]
+            assert all(q == quantized[0] for q in quantized)
+            data, scale = quantized[0]
+            back = [as_list(backend.dequantize(data, scale, (100,))) for backend in backends]
+            assert all(b == back[0] for b in back)
+
+    def when_the_tensor_is_empty():
+        def it_round_trips_as_empty(backend: Backend):
+            for dtype in ("F8_E4M3", "F4"):
+                data, scale = backend.load(f32(shape=(0, 3))).quantize(dtype)
+                back = backend.dequantize(data, scale, (0, 3)).to_bytes("F32")
+                assert (back.shape, back.data) == ((0, 3), b"")
+
+    def it_refuses_to_load_quantized_bytes_without_their_scale(backend: Backend):
+        with pytest.raises(ValueError):
+            backend.load(TensorBytes("F8_E4M3", (2,), bytes(2)))
+
+
 def describe_merge():
     def when_rule_is_weighted_mean():
         def it_matches_the_analytic_mean(backend: Backend):
@@ -227,7 +324,7 @@ def describe_merge():
         ]
         close = aggregator(backend, "F32", names, merge=Rda(), lr=1.0, momentum=0.0)
 
-        new_state, _ = close.close_round(state, contributions)
+        new_state = close.close_round(state, contributions).state
 
         assert floats(new_state.theta["tok_embed.weight"]) == pytest.approx(
             [1 - 0.8, 1 - 0.2], rel=1e-6
@@ -249,7 +346,8 @@ def describe_nesterov():
             ]
             close = aggregator(backend, "F32", ["w"], merge=WeightedMean(), lr=1.0, momentum=0.0)
 
-            new_state, participants = close.close_round(state, contributions)
+            result = close.close_round(state, contributions)
+            new_state, participants = result.state, result.participants
 
             assert floats(new_state.theta["w"]) == pytest.approx([0.2, 0.8], rel=1e-6)
             assert new_state.version == 4
@@ -323,7 +421,7 @@ def describe_close_round():
         ]
 
         results = [
-            config.aggregator(schema, names, backend).close_round(state, contributions)[0]
+            config.aggregator(schema, names, backend).close_round(state, contributions).state
             for backend in installed_backends()
         ]
 
@@ -342,9 +440,9 @@ def describe_close_round():
         close = aggregator(backend, "BF16", ["w"], merge=WeightedMean(), lr=0.25, momentum=0.0)
         state = FragmentState(0, {"w": anchor}, {"momentum.w": f32(0, 0)})
 
-        after_one, _ = close.close_round(state, contributions)
-        after_two, _ = close.close_round(after_one, contributions)
-        after_three, _ = close.close_round(after_two, contributions)
+        after_one = close.close_round(state, contributions).state
+        after_two = close.close_round(after_one, contributions).state
+        after_three = close.close_round(after_two, contributions).state
 
         assert set(after_one.outer) == {"master.w", "momentum.w"}
         assert after_one.theta["w"] == anchor
@@ -352,6 +450,55 @@ def describe_close_round():
         assert after_two.theta["w"] == anchor
         assert after_three.theta["w"] == one_ulp_below
         assert floats(after_three.outer["master.w"]) == [1 - 3 * 2**-10] * 2
+
+    def it_records_the_mean_cosine_between_the_deltas_over_the_fragment(backend: Backend):
+        names = ["u", "v"]
+        state = FragmentState(
+            version=0,
+            theta={name: f32(0, 0) for name in names},
+            outer={f"momentum.{name}": f32(0, 0) for name in names},
+        )
+        # Over both tensors: a = (1, 0, 0, 1), b = (1, 0, 0, 0), c = (0, 1, 0, 0); a·b = 1/√2,
+        # a·c = 0, b·c = 0.
+        contributions = [
+            contribution("a", {"u": f32(1, 0), "v": f32(0, 1)}, tokens=1),
+            contribution("b", {"u": f32(1, 0), "v": f32(0, 0)}, tokens=1),
+            contribution("c", {"u": f32(0, 1), "v": f32(0, 0)}, tokens=1),
+        ]
+        close = aggregator(backend, "F32", names, merge=WeightedMean(), lr=1.0, momentum=0.0)
+
+        result = close.close_round(state, contributions)
+
+        assert result.cosine == pytest.approx(math.sqrt(0.5) / 3)
+        assert close.close_round(state, contributions[:1]).cosine is None
+
+    def when_commits_carry_an_update():
+        def it_publishes_the_anchor_plus_the_update_as_it_dequantizes_and_keeps_the_master(
+            backend: Backend,
+        ):
+            state = FragmentState(
+                version=0, theta={"w": f32(0, 0)}, outer={"momentum.w": f32(0, 0)}
+            )
+            config = DiLoCo(
+                sync_every=10,
+                fragments=1,
+                in_flight=1,
+                outer_lr=1.0,
+                outer_momentum=0.0,
+                merge=WeightedMean(),
+                commit_dtype="F4",
+            )
+            close = config.aggregator(Schema((ParameterSpec("w", "F32", (2,)),)), ["w"], backend)
+
+            # The master moves to (5, 7); on the E2M1 grid at a scale of one that is (4, 6).
+            first = close.close_round(state, [contribution("a", {"w": f32(-5, -7)}, tokens=1)])
+            # Nobody moves: the update carries what the first commit left in the master.
+            second = close.close_round(first.state, [contribution("a", {"w": f32(0, 0)}, tokens=1)])
+
+            assert floats(first.state.theta["w"]) == [4.0, 6.0]
+            assert floats(first.state.outer["master.w"]) == [5.0, 7.0]
+            assert first.update is not None and set(first.update) == {"w", "w.scale"}
+            assert floats(second.state.theta["w"]) == [5.0, 7.0]
 
     def when_a_learner_did_not_move():
         def it_contributes_a_zero_delta(backend: Backend):
@@ -364,9 +511,9 @@ def describe_close_round():
             )
             close = aggregator(backend, "BF16", ["w"], merge=Rda(), lr=0.7, momentum=0.9)
 
-            new_state, _ = close.close_round(
+            new_state = close.close_round(
                 state, [contribution("idle", {"w": bf16(0x0000, 0x0000)}, tokens=1)]
-            )
+            ).state
 
             assert new_state.theta["w"] == published
             assert new_state.outer["master.w"] == master
@@ -383,7 +530,7 @@ def describe_close_round():
             ]
             close = aggregator(backend, "F32", ["w"], merge=WeightedMean(), lr=0.7, momentum=0.9)
 
-            new_state, _ = close.close_round(state, contributions)
+            new_state = close.close_round(state, contributions).state
 
             assert floats(new_state.theta["w"]) == pytest.approx([0.2, 0.8], rel=1e-6)
             assert new_state.outer == {"momentum.w": f32(4, -2)}
@@ -400,7 +547,7 @@ def describe_close_round():
             ]
             close = aggregator(backend, "F32", ["w"], merge=WeightedMean(), lr=0.7, momentum=0.9)
 
-            new_state, _ = close.close_round(state, contributions)
+            new_state = close.close_round(state, contributions).state
 
             # Δ = (0.8, 0.2), m = 0.9·(4, -2) + Δ, Θ = (1, 1) - 0.7·(Δ + 0.9·m).
             assert floats(new_state.theta["w"]) == pytest.approx([-2.332, 1.868], rel=1e-6)

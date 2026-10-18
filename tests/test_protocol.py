@@ -12,6 +12,7 @@ import hashlib
 import json
 from array import array
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import replace
 
 import pytest
 from fakes import FakeClock, FaultyMailbox
@@ -21,6 +22,7 @@ from gradientmail.algorithms.diloco import DiLoCo
 from gradientmail.mailbox.memory import MemoryMailbox
 from gradientmail.protocol import (
     Committed,
+    CommitUpdate,
     Exchange,
     Manifest,
     ManifestDraft,
@@ -82,6 +84,7 @@ def round_draft(round: int) -> RoundRecordDraft:
         version=round // 2 + 1,
         participants=(Participant("learner-a", 12, 12, 384, 384 * 384 / 12),),
         rejected=(("learner-b", "stale"), ("learner-c", "zero_steps")),
+        cosine=None,
         quorum_seconds=0.5,
         grace_seconds=0.0,
         estimates=Estimates(quorum=0.5, sync=0.125),
@@ -123,8 +126,10 @@ def describe_records():
             Participant("learner-b", 40, 10, 2048, 2048 * 2048 / 10),
         ),
         rejected=(("learner-c", "stale"), ("learner-d", "missing")),
+        cosine=0.25,
         theta=ref("blobs/rounds/0000000003/d.safetensors"),
         outer=ref("blobs/rounds/0000000003/e.safetensors"),
+        update=CommitUpdate(ref("blobs/rounds/0000000003/f.safetensors"), "0" * 64),
         quorum_seconds=1.5,
         grace_seconds=0.25,
         estimates=Estimates(step=0.125, quorum=1.5, sync=None),
@@ -134,6 +139,8 @@ def describe_records():
         assert decode_manifest(encode(manifest)) == manifest
         assert decode_snapshot(encode(snapshot)) == snapshot
         assert decode_round_record(encode(record)) == record
+        without_update = replace(record, update=None, cosine=None)
+        assert decode_round_record(encode(without_update)) == without_update
 
     def when_a_record_is_malformed():
         def it_raises_protocol_error():
@@ -198,6 +205,30 @@ def describe_publish_snapshot():
 
 
 def describe_commit():
+    def when_the_round_carries_an_update():
+        def it_stores_it_beside_theta_with_thetas_digest(clock: FakeClock):
+            store = MemoryMailbox()
+            exchange = Exchange(store, clock=clock)
+            update = {"bias": f32(0.5, -0.5)}
+
+            async def scenario():
+                outcome = await exchange.commit(round_draft(0), THETA, OUTER, update)
+                assert isinstance(outcome, Committed)
+                record = outcome.record
+                assert record.update is not None
+                return (
+                    record,
+                    await exchange.fetch(record.update.payload),
+                    await store.list("blobs/"),
+                )
+
+            record, fetched, blobs = asyncio.run(scenario())
+
+            assert record.update is not None
+            assert fetched == update
+            assert record.update.theta_digest == hashlib.sha256(pack(THETA)).hexdigest()
+            assert len(blobs) == 3
+
     def when_two_nodes_commit_the_same_round():
         def it_stores_one_and_hands_its_record_to_the_other(clock: FakeClock):
             store = MemoryMailbox()

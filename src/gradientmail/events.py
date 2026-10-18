@@ -93,13 +93,16 @@ class Joined:
 
 @dataclass(frozen=True)
 class FragmentAligned:
-    """``fragment`` now holds ``version``, committed by ``round``, applied at ``local_step``."""
+    """``fragment`` now holds ``version``, committed by ``round``, applied at ``local_step``;
+    ``lag_steps`` is how many steps that is after this learner's snapshot in the round, None
+    when it took no part in it."""
 
     learner: str
     round: int
     fragment: int
     version: int
     local_step: int
+    lag_steps: int | None
 
 
 @dataclass(frozen=True)
@@ -359,14 +362,15 @@ def log_events(event: Event) -> None:
                 fragments,
                 round,
             )
-        case FragmentAligned(learner, round, fragment, version, local_step):
+        case FragmentAligned(learner, round, fragment, version, local_step, lag_steps):
             log.info(
-                "%s: fragment %d aligned with version %d (round %d), at local step %d",
+                "%s: fragment %d aligned with version %d (round %d), at local step %d%s",
                 learner,
                 fragment,
                 version,
                 round,
                 local_step,
+                "" if lag_steps is None else f", {lag_steps} steps after its snapshot",
             )
         case SnapshotPublished(learner, round, fragment, steps, tokens, size, seconds):
             log.info(
@@ -441,7 +445,7 @@ def log_events(event: Event) -> None:
         case RoundClosed(learner, draft):
             log.info(
                 "%s: round %d closed: fragment %d, participants %s, rejected %s, quorum %.1f s, "
-                "grace %.1f s",
+                "grace %.1f s%s",
                 learner,
                 draft.round,
                 draft.fragment,
@@ -449,6 +453,7 @@ def log_events(event: Event) -> None:
                 [f"{rejected} ({why})" for rejected, why in draft.rejected],
                 draft.quorum_seconds,
                 draft.grace_seconds,
+                "" if draft.cosine is None else f", cosine {draft.cosine:.3f}",
             )
         case RoundCommitted(learner, record, seconds):
             log.info(
@@ -456,7 +461,9 @@ def log_events(event: Event) -> None:
                 learner,
                 record.round,
                 record.version,
-                record.theta.size + record.outer.size,
+                record.theta.size
+                + record.outer.size
+                + (0 if record.update is None else record.update.payload.size),
                 seconds,
             )
         case RoundSuperseded(learner, record):

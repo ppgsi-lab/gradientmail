@@ -1,6 +1,5 @@
 """Both codecs against the bytes they leave: exact round trips, smaller blobs, the key's name."""
 
-import math
 import subprocess
 import sys
 from array import array
@@ -11,7 +10,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from gradientmail.compression import Compression, compression_of, decode, encode
-from gradientmail.serialization import ITEM_SIZE, DType, TensorBytes, pack
+from gradientmail.serialization import PayloadDType, TensorBytes, nbytes, pack
 
 CODECS: tuple[Compression, ...] = ("off", "zstd")
 
@@ -19,9 +18,13 @@ CODECS: tuple[Compression, ...] = ("off", "zstd")
 @st.composite
 def tensors(draw: st.DrawFn) -> Mapping[str, TensorBytes]:
     def tensor() -> TensorBytes:
-        dtype: DType = draw(st.sampled_from(["F32", "F16", "BF16"]))
+        dtype: PayloadDType = draw(
+            st.sampled_from(["F32", "F16", "BF16", "F8_E4M3", "F8_E8M0", "F4"])
+        )
         shape = tuple(draw(st.lists(st.integers(0, 5), max_size=3)))
-        size = ITEM_SIZE[dtype] * math.prod(shape)
+        if dtype == "F4":
+            shape = (*shape[:-1], 2 * shape[-1]) if shape else (2,)
+        size = nbytes(dtype, shape)
         return TensorBytes(dtype, shape, draw(st.binary(min_size=size, max_size=size)))
 
     names = draw(

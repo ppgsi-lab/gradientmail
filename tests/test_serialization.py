@@ -12,6 +12,7 @@ from gradientmail.serialization import (
     SchemaMismatch,
     TensorBytes,
     pack,
+    quantized_specs,
     unpack,
     validate,
 )
@@ -22,6 +23,9 @@ TENSORS = {
     "norm.weight": TensorBytes("BF16", (2, 2), bytes(range(200, 208))),
     "scale": TensorBytes("F32", (), bytes(range(50, 54))),
     "empty": TensorBytes("F32", (0, 3), b""),
+    "q8": TensorBytes("F8_E4M3", (3,), bytes(range(60, 63))),
+    "q8.scale": TensorBytes("F8_E8M0", (2,), bytes(range(120, 122))),
+    "q4": TensorBytes("F4", (2, 4), bytes(range(4))),
 }
 
 SCHEMA = Schema(
@@ -58,6 +62,14 @@ def describe_pack():
     def it_rejects_a_length_mismatch_before_serializing():
         with pytest.raises(ValueError):
             TensorBytes("F32", (2,), bytes(7))
+        with pytest.raises(ValueError):
+            TensorBytes("F4", (2, 4), bytes(5))
+
+    def it_rejects_an_f4_tensor_whose_last_axis_is_odd():
+        with pytest.raises(ValueError):
+            TensorBytes("F4", (4, 3), bytes(6))
+        with pytest.raises(ValueError):
+            TensorBytes("F4", (), b"")
 
 
 def describe_unpack():
@@ -122,6 +134,24 @@ def describe_validate():
                 validate(SCHEMA, tensors, ["fc1.weight", "fc1.bias"])
 
             assert excinfo.value.names == ("fc1.bias",)
+
+
+def describe_quantized_specs():
+    def it_keeps_the_shape_with_one_scale_for_e4m3():
+        assert quantized_specs("w", "F8_E4M3", (3, 5)) == (
+            ParameterSpec("w", "F8_E4M3", (3, 5)),
+            ParameterSpec("w.scale", "F32", ()),
+        )
+
+    def it_flattens_to_whole_blocks_with_a_scale_each_for_e2m1():
+        assert quantized_specs("w", "F4", (3, 11)) == (
+            ParameterSpec("w", "F4", (64,)),
+            ParameterSpec("w.scale", "F8_E8M0", (2,)),
+        )
+        assert quantized_specs("w", "F4", (0, 3)) == (
+            ParameterSpec("w", "F4", (0,)),
+            ParameterSpec("w.scale", "F8_E8M0", (0,)),
+        )
 
 
 def describe_schema():

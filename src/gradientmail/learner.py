@@ -6,8 +6,8 @@ anchor it was trained from, to the publish loop when a round is due; the publish
 computes their difference in the backend and publishes that delta. A daemon thread runs the
 receive and publish loops on its own event loop; the two sides meet only through two
 ``queue.SimpleQueue``s, so ``step()`` never awaits and never does I/O. It blocks only when
-the algorithm is synchronous, waiting in ``step()`` for the model to align with its published
-rounds, and ``close()`` waits for the last ones.
+the schedule bounds ``overlap_steps``, waiting in ``step()`` for the model to align with a
+round it published that many steps ago, and ``close()`` waits for the last ones.
 
 A fetched batch is queued only once every payload in it is in hand, so ``rounds_seen`` never
 runs ahead of a fragment that is not yet applied: that is what keeps a live learner's
@@ -28,7 +28,15 @@ from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, replace
 
 from gradientmail.adapters import Adapter, Backend, default_backend
-from gradientmail.algorithms import Algorithm, Estimates, RoundSchedule
+from gradientmail.algorithms import (
+    Algorithm,
+    Estimates,
+    Participant,
+    Precision,
+    RoundSchedule,
+    decoded,
+    encoded,
+)
 from gradientmail.clock import Clock, MonotonicClock
 from gradientmail.compression import Compression
 from gradientmail.events import (
@@ -61,6 +69,7 @@ from gradientmail.protocol import (
     RoundRecord,
     RunConfigMismatch,
     SnapshotDraft,
+    theta_digest,
 )
 from gradientmail.serialization import DType, Schema, SchemaMismatch, TensorBytes, validate
 
@@ -73,6 +82,7 @@ __all__ = [
     "align",
     "applied",
     "due_round",
+    "overdue",
     "publishable",
 ]
 
@@ -84,7 +94,8 @@ class LearnerState:
     """Everything the training thread tracks; one value per fragment where it says so.
 
     ``rounds_seen`` is the newest round whose fragment the model is aligned with,
-    ``last_published`` the newest round this learner has a snapshot queued for.
+    ``last_published`` the newest round this learner has a snapshot queued for and
+    ``published`` the ``(round, local_step)`` of its last ``in_flight`` publishes, oldest first.
     """
 
     local_step: int
@@ -93,7 +104,7 @@ class LearnerState:
     applied_version: tuple[int, ...]
     rounds_seen: int
     last_published: int
-    step_at_last_publish: int
+    published: tuple[tuple[int, int], ...]
     step_seconds: float
 
 
@@ -120,16 +131,33 @@ def advanced(state: LearnerState, samples: int, elapsed: float) -> LearnerState:
     )
 
 
-def applied(state: LearnerState, round: int, fragment: int, version: int) -> LearnerState:
-    """``fragment`` now holds ``version`` committed by ``round``; its counters start over."""
+def applied(
+    state: LearnerState,
+    round: int,
+    fragment: int,
+    version: int,
+    *,
+    participant: Participant | None = None,
+    mixing: float = 0.0,
+) -> LearnerState:
+    """``fragment`` now holds ``version`` committed by ``round``; its counters start over.
+
+    They keep ``mixing`` of the steps and tokens the commit did not incorporate, rounded down:
+    those since this learner's snapshot in the round (``participant``), or all of them when it
+    took no part. That share of the local progress survives in the blended parameters.
+    """
 
     def with_fragment(values: tuple[int, ...], value: int) -> tuple[int, ...]:
         return (*values[:fragment], value, *values[fragment + 1 :])
 
+    def kept(counted: int, incorporated: int) -> int:
+        return int(mixing * (counted - incorporated))
+
+    steps, tokens = (0, 0) if participant is None else (participant.steps, participant.tokens)
     return replace(
         state,
-        steps=with_fragment(state.steps, 0),
-        tokens=with_fragment(state.tokens, 0),
+        steps=with_fragment(state.steps, kept(state.steps[fragment], steps)),
+        tokens=with_fragment(state.tokens, kept(state.tokens[fragment], tokens)),
         applied_version=with_fragment(state.applied_version, version),
         rounds_seen=max(state.rounds_seen, round),
     )
@@ -165,9 +193,19 @@ def due_round(
     round = publishable(state, schedule)
     if round is None:
         return None
-    on_schedule = state.local_step - state.step_at_last_publish >= schedule.gap(round)
+    last = state.published[-1][1] if state.published else 0
+    on_schedule = state.local_step - last >= schedule.gap(round)
     closing = publishers.round == round and len(publishers.others) >= max(quorum - 1, 1)
     return round if on_schedule or closing else None
+
+
+def overdue(state: LearnerState, overlap_steps: int) -> bool:
+    """Whether a round this learner published, and is not yet aligned with, went out
+    ``overlap_steps`` or more steps ago: training may not run further ahead of it."""
+    return any(
+        round > state.rounds_seen and state.local_step - at >= overlap_steps
+        for round, at in state.published
+    )
 
 
 class Learner:
@@ -176,12 +214,12 @@ class Learner:
     ``start`` blocks until the model holds the newest committed version of every fragment,
     then starts the communication thread. An operation that fails on that thread is reported
     (``PollFailed``, ``PublishFailed``) and its loop goes on (``communicate``); only the thread's
-    own death is raised from the next ``step()``. When the algorithm is ``synchronous``,
-    ``step()`` waits for the model to align with a published round's commit before training on, as
-    standard DiLoCo does; otherwise training goes on and the commit overwrites the steps taken
-    meanwhile. The
-    lease is renewed every ``lease_every`` seconds and the other learners' leases are presumed lost
-    after ``lease_timeout`` seconds without a change.
+    own death is raised from the next ``step()``. When the schedule bounds ``overlap_steps``,
+    ``step()`` waits for the model to align with a round published that many steps ago before
+    training on, as standard DiLoCo does at zero; otherwise training goes on and the commit
+    overwrites the steps taken meanwhile. The lease is renewed every ``lease_every`` seconds and
+    the other learners' leases are presumed lost after ``lease_timeout`` seconds without a
+    change.
 
     What goes out is ``anchor - θ``, computed in ``backend`` (the installed one by default)
     against the version of the fragment this learner aligned with last, of which it keeps one host
@@ -222,7 +260,8 @@ class Learner:
         self._outbox: queue.SimpleQueue[_Outgoing | None] = queue.SimpleQueue()
         self._run: _Run | None = None
         self._anchors: list[Mapping[str, TensorBytes]] = []
-        self._state = LearnerState(0, (), (), (), -1, -1, 0, 0.0)
+        self._newest: dict[int, tuple[int, Mapping[str, TensorBytes]]] = {}
+        self._state = LearnerState(0, (), (), (), -1, -1, (), 0.0)
         self._cursor = -1
         self._publishers = Publishers(-1, frozenset())
         self._liveness = Liveness(lease_timeout)
@@ -278,8 +317,8 @@ class Learner:
         Queued fragment versions are validated against the schema and applied here, while the
         model is quiescent, and so is the snapshot of a fragment whose round is due. Only bytes
         are copied; the delta, packing, hashing and I/O happen on the communication thread. When
-        the algorithm is synchronous, it then waits until fewer than ``in_flight`` of its rounds
-        are outstanding; the wait does not count as step time.
+        the schedule bounds ``overlap_steps``, it then waits until no round published that many
+        steps ago is still outstanding; the wait does not count as step time.
         """
         if self._failure is not None:
             raise self._failure
@@ -298,13 +337,8 @@ class Learner:
         )
         if round is not None:
             state = self._publish(run, state, round, final=False)
-        if self._algorithm.synchronous:
-            state = self._settled(
-                run,
-                state,
-                lambda s: s.last_published - s.rounds_seen < run.schedule.in_flight,
-                patience=None,
-            )
+        if (limit := run.schedule.overlap_steps) is not None:
+            state = self._settled(run, state, lambda s: not overdue(s, limit), patience=None)
             self._last_step_at = self._clock.now()
         self._state = state
 
@@ -359,15 +393,20 @@ class Learner:
         records = aligned.records
         newest = _newest_per_fragment(records)
         self._anchors = list(aligned.fragments)
+        self._newest = {
+            p: (newest[p].version if p in newest else 0, tensors)
+            for p, tensors in enumerate(aligned.fragments)
+        }
         self._run = _Run(
             schema=schema,
             plan=manifest.plan,
             schedule=self._algorithm.schedule(len(manifest.plan)),
             quorum=self._algorithm.quorum(),
+            mixing=self._algorithm.mixing,
+            commit_dtype=self._algorithm.commit_dtype,
             digest=schema.digest(),
-            delta_dtype={
-                spec.name: spec.dtype for spec in self._algorithm.delta_schema(schema).parameters
-            },
+            dtypes={spec.name: spec.dtype for spec in schema.parameters},
+            shapes={spec.name: spec.shape for spec in schema.parameters},
         )
         self._state = LearnerState(
             local_step=0,
@@ -376,7 +415,7 @@ class Learner:
             applied_version=tuple(newest[p].version if p in newest else 0 for p in fragments),
             rounds_seen=records[-1].round if records else -1,
             last_published=-1,
-            step_at_last_publish=0,
+            published=(),
             step_seconds=0.0,
         )
         self._cursor = self._state.rounds_seen
@@ -388,7 +427,7 @@ class Learner:
             )
         )
 
-    async def create(self, schema: Schema) -> Manifest:
+    async def create(self, schema: Schema[DType]) -> Manifest:
         """Create the run from this model, or wait for the node that is creating it.
 
         The first claim on the manifest elects the creator, as the first claim on a round elects
@@ -512,14 +551,30 @@ class Learner:
         The batch is queued only once every payload in it has been fetched. A payload already
         swept is skipped; the next poll finds that fragment's newer version.
         """
+        if self._run is None:
+            raise RuntimeError("Learner.poll() before join()")
+        run = self._run
         records = await self._exchange.rounds_after(self._cursor)
         if records:
             newest = tuple(_newest_per_fragment(records).values())
-            fetched = await _fetch(self._exchange, [record.theta for record in newest])
+            mine = {
+                record.fragment: participant
+                for record in records
+                for participant in record.participants
+                if participant.learner == self._learner_id
+            }
+            async with asyncio.TaskGroup() as group:
+                fetches = [group.create_task(self._fetched(run, record)) for record in newest]
             updates = tuple(
-                _Update(record.round, record.fragment, record.version, tensors)
-                for record, tensors in zip(newest, fetched, strict=True)
-                if tensors is not None
+                _Update(
+                    record.round,
+                    record.fragment,
+                    record.version,
+                    tensors,
+                    mine.get(record.fragment),
+                )
+                for record, fetch in zip(newest, fetches, strict=True)
+                if (tensors := fetch.result()) is not None
             )
             if updates:
                 self._inbox.put(updates)
@@ -564,26 +619,105 @@ class Learner:
             draft.steps,
             state.local_step,
         )
-        return replace(state, last_published=round, step_at_last_publish=state.local_step)
+        published = (*state.published, (round, state.local_step))[-run.schedule.in_flight :]
+        return replace(state, last_published=round, published=published)
 
-    def _delta(self, run: "_Run", outgoing: "_Outgoing") -> Mapping[str, TensorBytes]:
-        """``anchor - θ`` of every tensor in the snapshot, in the algorithm's delta dtype."""
+    async def _fetched(self, run: "_Run", record: RoundRecord) -> Mapping[str, TensorBytes] | None:
+        """The committed bytes of ``record``'s fragment: rebuilt from the commit's update when
+        this learner holds the version before it and the result hashes to the record's theta,
+        otherwise fetched; None when swept."""
+        held = self._newest.get(record.fragment)
+        if record.update is not None and held is not None and held[0] == record.version - 1:
+            update = await self._exchange.fetch(record.update.payload)
+            if update is not None:
+                rebuilt = await asyncio.to_thread(
+                    self._rebuilt, run, record.fragment, held[1], update
+                )
+                if theta_digest(rebuilt) == record.update.theta_digest:
+                    self._newest[record.fragment] = (record.version, rebuilt)
+                    return rebuilt
+                log.debug(
+                    "%s: round %d: the update does not rebuild theta; fetching it",
+                    self._learner_id,
+                    record.round,
+                )
+        tensors = await self._exchange.fetch(record.theta)
+        if tensors is not None:
+            self._newest[record.fragment] = (record.version, tensors)
+        return tensors
+
+    def _rebuilt(
+        self,
+        run: "_Run",
+        fragment: int,
+        base: Mapping[str, TensorBytes],
+        update: Mapping[str, TensorBytes],
+    ) -> Mapping[str, TensorBytes]:
+        """``base`` plus the commit's update, rounded to the schema's dtypes."""
         load = self._backend.load
         return {
-            name: (load(outgoing.anchor[name]) - load(tensor)).to_bytes(run.delta_dtype[name])
-            for name, tensor in outgoing.snapshot.items()
+            name: (
+                load(base[name])
+                + decoded(self._backend, update, name, run.shapes[name], run.commit_dtype)
+            ).to_bytes(run.dtypes[name])
+            for name in run.plan[fragment]
+        }
+
+    def _delta(self, run: "_Run", outgoing: "_Outgoing") -> Mapping[str, TensorBytes]:
+        """``anchor - θ`` of every tensor in the snapshot, at the algorithm's delta precision."""
+        load = self._backend.load
+        return {
+            key: tensor
+            for name, local in outgoing.snapshot.items()
+            for key, tensor in encoded(
+                name,
+                load(outgoing.anchor[name]) - load(local),
+                run.dtypes[name],
+                self._algorithm.delta_dtype,
+            ).items()
         }
 
     def _align(self, run: "_Run", state: LearnerState, update: "_Update") -> LearnerState:
-        validate(run.schema, update.tensors, run.plan[update.fragment])
-        self._adapter.apply(update.tensors)
+        """Set the fragment to the committed version, blended with the local parameters when
+        the algorithm mixes; the committed bytes become the anchor either way."""
+        names = run.plan[update.fragment]
+        validate(run.schema, update.tensors, names)
+        self._adapter.apply(
+            self._blended(run, names, update.tensors) if run.mixing else update.tensors
+        )
         self._anchors[update.fragment] = update.tensors
+        mine = update.participant
         self._on_event(
             FragmentAligned(
-                self._learner_id, update.round, update.fragment, update.version, state.local_step
+                self._learner_id,
+                update.round,
+                update.fragment,
+                update.version,
+                state.local_step,
+                None if mine is None else state.local_step - mine.local_step,
             )
         )
-        return applied(state, update.round, update.fragment, update.version)
+        return applied(
+            state,
+            update.round,
+            update.fragment,
+            update.version,
+            participant=mine,
+            mixing=run.mixing,
+        )
+
+    def _blended(
+        self, run: "_Run", names: Sequence[str], theta: Mapping[str, TensorBytes]
+    ) -> Mapping[str, TensorBytes]:
+        """``mixing·θ + (1 - mixing)·Θ`` over the fragment, rounded to the schema's dtypes."""
+        load = self._backend.load
+        local = self._adapter.snapshot(names)
+        return {
+            name: (load(local[name]) * run.mixing + load(theta[name]) * (1 - run.mixing)).to_bytes(
+                run.dtypes[name]
+            )
+            for name in names
+        }
 
     def _drained(self, run: "_Run", state: LearnerState) -> LearnerState:
         """Align with every fragment version the receive loop has queued, without waiting."""
@@ -703,22 +837,28 @@ async def align(adapter: Adapter, exchange: Exchange, manifest: Manifest) -> Ali
 class _Run:
     """The run as joined: fixed for the learner's lifetime."""
 
-    schema: Schema
+    schema: Schema[DType]
     plan: tuple[tuple[str, ...], ...]
     schedule: RoundSchedule
     quorum: int
+    mixing: float
+    commit_dtype: Precision
     digest: str
-    delta_dtype: Mapping[str, DType]
+    dtypes: Mapping[str, DType]
+    shapes: Mapping[str, tuple[int, ...]]
 
 
 @dataclass(frozen=True)
 class _Update:
-    """A fragment version fetched by the receive loop, waiting for ``step()`` to apply it."""
+    """A fragment version fetched by the receive loop, waiting for ``step()`` to apply it;
+    ``participant`` is this learner's snapshot in the fragment's rounds of the same listing,
+    when it took part in one."""
 
     round: int
     fragment: int
     version: int
     tensors: Mapping[str, TensorBytes]
+    participant: Participant | None
 
 
 @dataclass(frozen=True)

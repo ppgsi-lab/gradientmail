@@ -14,7 +14,14 @@ from collections.abc import Iterable, Mapping
 from importlib.util import find_spec
 from typing import Protocol, Self, runtime_checkable
 
-from gradientmail.serialization import DType, ParameterSpec, Schema, TensorBytes
+from gradientmail.serialization import (
+    DType,
+    ParameterSpec,
+    Quantized,
+    Schema,
+    SchemaMismatch,
+    TensorBytes,
+)
 
 __all__ = [
     "Adapter",
@@ -40,7 +47,7 @@ class MissingExtra(ImportError):
 
 @runtime_checkable
 class Adapter(Protocol):
-    def schema(self) -> Schema:
+    def schema(self) -> Schema[DType]:
         """Canonical trainable parameters, sorted by name."""
         ...
 
@@ -58,7 +65,11 @@ class Value(Protocol):
     """An fp32 tensor held by a backend, with the arithmetic the outer step is made of.
 
     Every operation returns a new value of the same backend. ``norm`` is the Euclidean norm
-    over all elements; ``to_bytes`` rounds to ``dtype`` (nearest even) and serializes.
+    over all elements and ``dot`` the sum of the elementwise products with ``other``.
+    ``to_bytes`` rounds to ``dtype`` (nearest even) and serializes; ``quantize`` serializes to
+    a ``Quantized`` format as ``(data, scales)`` in the layout ``serialization.quantized_specs``
+    describes, each scale a power of two that puts the largest magnitude of its tensor or
+    block at the top of the format, so dequantizing is exact in fp32.
     """
 
     def __add__(self, other: Self) -> Self: ...
@@ -69,7 +80,11 @@ class Value(Protocol):
 
     def norm(self) -> float: ...
 
+    def dot(self, other: Self) -> float: ...
+
     def to_bytes(self, dtype: DType) -> TensorBytes: ...
+
+    def quantize(self, dtype: Quantized) -> tuple[TensorBytes, TensorBytes]: ...
 
 
 @runtime_checkable
@@ -81,7 +96,13 @@ class Backend(Protocol):
         ...
 
     def load(self, tensor: TensorBytes) -> Value:
-        """``tensor`` as an fp32 value of its shape."""
+        """``tensor`` as an fp32 value of its shape; ``ValueError`` for a quantized dtype,
+        whose bytes mean nothing without their scales."""
+        ...
+
+    def dequantize(self, data: TensorBytes, scale: TensorBytes, shape: tuple[int, ...]) -> Value:
+        """The fp32 value of ``shape`` whose ``quantize`` gave ``(data, scale)``, up to the
+        format's rounding; the same floats on every backend."""
         ...
 
 
@@ -95,12 +116,15 @@ class MemoryAdapter(Adapter):
     def tensors(self) -> Mapping[str, TensorBytes]:
         return self._tensors
 
-    def schema(self) -> Schema:
-        return Schema(
-            tuple(
-                ParameterSpec(name, t.dtype, t.shape) for name, t in sorted(self._tensors.items())
-            )
-        )
+    def schema(self) -> Schema[DType]:
+        def spec(name: str, t: TensorBytes) -> ParameterSpec[DType]:
+            match t.dtype:
+                case "F32" | "F16" | "BF16" as dtype:
+                    return ParameterSpec(name, dtype, t.shape)
+                case _:
+                    raise SchemaMismatch([name], "parameter dtype is not F32, F16 or BF16")
+
+        return Schema(tuple(spec(name, t) for name, t in sorted(self._tensors.items())))
 
     def snapshot(self, names: Iterable[str]) -> Mapping[str, TensorBytes]:
         return {name: self._tensors[name] for name in names}

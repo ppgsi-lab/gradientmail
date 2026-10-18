@@ -129,14 +129,13 @@ def describe_session():
             def when_earlier_rounds_built_up_momentum():
                 def it_commits_the_parameters_it_trained_without_an_outer_step():
                     mailbox = gm.MemoryMailbox()
-                    # One round in flight, synchronous: the model is aligned with every round a
-                    # step publishes before the step returns, so close() starts with nothing
-                    # outstanding.
+                    # No overlap: the model is aligned with every round a step publishes before
+                    # the step returns, so close() starts with nothing outstanding.
                     algorithm = gm.DiLoCo(
                         sync_every=4,
                         fragments=2,
                         in_flight=1,
-                        synchronous=True,
+                        overlap_steps=0,
                         outer_momentum=0.9,
                         flush_on_close=True,
                     )
@@ -157,10 +156,10 @@ def describe_session():
                         name: pytest.approx(values, rel=1e-6) for name, values in trained.items()
                     }
 
-    def when_synchronous():
+    def when_overlap_is_zero():
         def it_aligns_with_a_published_round_before_the_next_step():
             mailbox = gm.MemoryMailbox()
-            algorithm = gm.DiLoCo(sync_every=4, fragments=2, in_flight=1, synchronous=True)
+            algorithm = gm.DiLoCo(sync_every=4, fragments=2, in_flight=1, overlap_steps=0)
             model = gm.MemoryAdapter({"a": f32(1.0, 2.0), "b": f32(3.0, 4.0)})
             with gm.Session(
                 model, algorithm=algorithm, mailbox=mailbox, poll_interval=0.01
@@ -171,9 +170,26 @@ def describe_session():
                     session.step(samples=1)
                     seen.append(session.rounds_seen)
 
-            # A round goes out every two steps and, with one round in flight, the step that
-            # publishes it returns only once it is committed and the model aligned with it.
+            # A round goes out every two steps and the step that publishes it returns only once
+            # it is committed and the model aligned with it.
             assert seen == [-1, 0, 0, 1, 1, 2]
+
+    def when_overlap_is_one_step():
+        def it_trains_one_step_past_a_publish_and_then_waits():
+            mailbox = gm.MemoryMailbox()
+            algorithm = gm.DiLoCo(sync_every=4, fragments=2, overlap_steps=1)
+            model = gm.MemoryAdapter({"a": f32(1.0, 2.0), "b": f32(3.0, 4.0)})
+            with gm.Session(
+                model, algorithm=algorithm, mailbox=mailbox, poll_interval=0.01
+            ) as session:
+                seen = []
+                for _ in range(7):
+                    train_step(model, (1,))
+                    session.step(samples=1)
+                    seen.append(session.rounds_seen)
+
+            # A round goes out every two steps; the step after it returns aligned with it.
+            assert seen == [-1, -1, 0, 0, 1, 1, 2]
 
     def when_a_callback_raises():
         def it_still_hands_the_learners_and_the_syncers_events_to_the_others():
@@ -239,6 +255,63 @@ def describe_session():
             theta = asyncio.run(exchange.fetch(records[rounds_seen].theta))
             assert theta is not None
             assert {name: model.tensors[name] for name in theta} == dict(theta)
+
+    def when_deltas_travel_as_f4():
+        def it_commits_from_the_dequantized_deltas():
+            mailbox = gm.MemoryMailbox()
+            algorithm = gm.DiLoCo(
+                sync_every=4,
+                fragments=2,
+                outer_lr=1.0,
+                outer_momentum=0.0,
+                merge=gm.WeightedMean(),
+                delta_dtype="F4",
+            )
+            model = gm.MemoryAdapter({"a": f32(1.0, 2.0), "b": f32(3.0, 4.0)})
+            with gm.Session(
+                model, algorithm=algorithm, mailbox=mailbox, poll_interval=0.01
+            ) as session:
+                deadline = time.monotonic() + 20.0
+                while session.rounds_seen < 1:
+                    assert time.monotonic() < deadline, "the model never received round 1"
+                    train_step(model, (1,))
+                    session.step(samples=1)
+                    time.sleep(0.001)
+
+            exchange = Exchange(mailbox, clock=MonotonicClock())
+            records = asyncio.run(exchange.rounds_after(-1))
+            # Round 0 went out at step 2 with a delta of -2 on "a", round 1 at step 4 with -4 on
+            # "b": both exact in E2M1, so with lr 1 the commits hold the trained values.
+            assert [record.rejected for record in records] == [()] * len(records)
+            assert asyncio.run(exchange.fetch(records[0].theta)) == {"a": f32(3.0, 4.0)}
+            assert asyncio.run(exchange.fetch(records[1].theta)) == {"b": f32(7.0, 8.0)}
+
+    def when_commits_carry_f4_updates():
+        def it_aligns_the_model_with_every_commit_from_the_updates():
+            mailbox = gm.MemoryMailbox()
+            algorithm = gm.DiLoCo(sync_every=4, fragments=2, commit_dtype="F4")
+            model = gm.MemoryAdapter({"a": f32(1.0, 2.0), "b": f32(3.0, 4.0)})
+            with gm.Session(
+                model, algorithm=algorithm, mailbox=mailbox, poll_interval=0.01
+            ) as session:
+                deadline = time.monotonic() + 20.0
+                while session.rounds_seen < 3:
+                    assert time.monotonic() < deadline, "the model never received round 3"
+                    train_step(model, (1,))
+                    session.step(samples=1)
+                    time.sleep(0.001)
+            rounds_seen = session.rounds_seen
+
+            exchange = Exchange(mailbox, clock=MonotonicClock())
+            records = asyncio.run(exchange.rounds_after(-1))
+            assert all(record.update is not None for record in records)
+            # close() set the model to the newest version of every fragment, whether a learner
+            # rebuilt it from an update or fetched it.
+            newest = {record.fragment: record for record in records[: rounds_seen + 1]}
+            for record in newest.values():
+                theta = asyncio.run(exchange.fetch(record.theta))
+                assert theta is not None
+                assert {name: model.tensors[name] for name in theta} == dict(theta)
 
     def when_the_algorithm_sets_a_global_batch():
         def it_gives_each_node_its_share_among_the_live_nodes():

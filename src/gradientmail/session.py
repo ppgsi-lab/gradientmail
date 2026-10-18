@@ -157,8 +157,8 @@ class Session:
     def step(self, *, samples: int) -> None:
         """Account for one training step of ``samples`` tokens; never awaits or does I/O.
 
-        Blocks only when the algorithm is synchronous. Raises what either background thread
-        died of.
+        Blocks only when the algorithm bounds ``overlap_steps`` and a round published that many
+        steps ago is still outstanding. Raises what either background thread died of.
         """
         if self._failure is not None:
             raise self._failure

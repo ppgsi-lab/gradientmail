@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 
 from gradientmail.adapters import Adapter, Backend, MemoryAdapter, MissingExtra
 from gradientmail.algorithms import Algorithm
-from gradientmail.algorithms.diloco import DiLoCo, Rda, WeightedMean
+from gradientmail.algorithms.diloco import ByBytes, DiLoCo, Rda, Strided, WeightedMean
 from gradientmail.events import Callback, Event, log_events
 from gradientmail.mailbox import Mailbox, MailboxUnavailable
 from gradientmail.mailbox.memory import MemoryMailbox
@@ -27,6 +27,7 @@ __all__ = [
     "Adapter",
     "Algorithm",
     "Backend",
+    "ByBytes",
     "Callback",
     "DiLoCo",
     "Event",
@@ -40,6 +41,7 @@ __all__ = [
     "Schema",
     "SchemaMismatch",
     "Session",
+    "Strided",
     "TensorBytes",
     "WeightedMean",
     "align",

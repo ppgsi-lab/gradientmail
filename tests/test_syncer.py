@@ -18,6 +18,7 @@ from typing import Literal
 import pytest
 from fakes import FakeClock, TrippedMailbox
 
+from gradientmail.adapters import default_backend
 from gradientmail.algorithms import Estimates
 from gradientmail.algorithms.diloco import DiLoCo, WeightedMean, grace_window
 from gradientmail.mailbox.memory import MemoryMailbox
@@ -53,7 +54,7 @@ INIT = ({"bias": f32(1.0, 1.0)}, {"weight": f32(1.0, 1.0)})
 # Steps of 0.2 s over the schedule's gap of 5 make a 1 s round; with quorum 0.1 and sync 0.1
 # and in_flight 2 the window is 0.9 s.
 TIMINGS = Estimates(step=0.2, quorum=0.1, sync=0.1)
-WINDOW = grace_window(TIMINGS, 2, 5)
+WINDOW = grace_window(TIMINGS, 2, 5, None)
 
 
 def algorithm(*, quorum: int = 1, lr: float = 1.0, momentum: float = 0.0) -> DiLoCo:
@@ -117,6 +118,7 @@ class Rig:
         steps: int = 1,
         digest: str = SCHEMA.digest(),
         dtype: Literal["F32", "BF16"] = "F32",
+        tensors: Mapping[str, TensorBytes] | None = None,
     ) -> None:
         draft = SnapshotDraft(
             learner=learner,
@@ -131,7 +133,9 @@ class Rig:
             final=False,
         )
         tensor = f32(*delta) if dtype == "F32" else bf16(*delta)
-        await self.exchange.publish_snapshot(draft, {PLAN[round % 2][0]: tensor})
+        if tensors is None:
+            tensors = {PLAN[round % 2][0]: tensor}
+        await self.exchange.publish_snapshot(draft, tensors)
 
     async def committed(self) -> Sequence[RoundRecord]:
         return await self.exchange.rounds_after(-1)
@@ -326,6 +330,27 @@ def describe_run_round():
 
             assert record.rejected == (("f32", "schema"),)
             assert [p.learner for p in record.participants] == ["bf16"]
+            assert values(theta["bias"]) == [0.5, 0.75]
+
+    def when_the_algorithm_sends_deltas_in_e4m3():
+        def it_accepts_a_delta_with_its_scale_and_rejects_one_without(clock: FakeClock):
+            rig = Rig(MemoryMailbox(), clock, replace(algorithm(quorum=1), delta_dtype="F8_E4M3"))
+            data, scale = default_backend().load(f32(0.5, 0.25)).quantize("F8_E4M3")
+
+            async def scenario():
+                await rig.create_run()
+                syncer = rig.syncer()
+                state = await syncer.recover()
+                await rig.publish("with", 0, (), tensors={"bias": data, "bias.scale": scale})
+                await rig.publish("without", 0, (), tensors={"bias": data})
+                await completed(syncer.run_round(state))
+                [record] = await rig.committed()
+                return record, await rig.theta_of(record)
+
+            record, theta = asyncio.run(scenario())
+
+            assert record.rejected == (("without", "schema"),)
+            assert [p.learner for p in record.participants] == ["with"]
             assert values(theta["bias"]) == [0.5, 0.75]
 
     def it_rejects_payloads_whose_sha256_mismatches(clock: FakeClock):
