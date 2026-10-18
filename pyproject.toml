@@ -13,6 +13,11 @@ dependencies = [
     "safetensors>=0.8,<1",
 ]
 
+[project.urls]
+Homepage = "https://ppgsi-lab.github.io/gradientmail/"
+Documentation = "https://ppgsi-lab.github.io/gradientmail/docs/guide/"
+Repository = "https://github.com/ppgsi-lab/gradientmail"
+
 [project.optional-dependencies]
 s3 = ["boto3>=1.36"]
 torch = ["torch"]

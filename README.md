@@ -8,19 +8,19 @@ The cluster is heterogeneous and elastic: nodes with different GPUs and framewor
 
 Each learner keeps a local copy of the model and runs its own optimizer. Parameters are split into fragments, synchronized on a staggered schedule. For each fragment, a learner publishes its update: the difference between the committed parameters it last aligned with and the ones it trained.
 
-![Three nodes and a mailbox. Node A (MLX on Apple silicon), node B (PyTorch on an H100) and node C (PyTorch on an RTX 4090) each run a learner and a syncer. Each learner trains fragment k, puts its delta, the anchor minus its parameters, in the mailbox, polls for commits and aligns with them between its steps. Node B's syncer is elected for the round: it lists and gets the round's deltas, merges them with RDA, applies the Nesterov outer step and commits fragment k with the outer state. The other syncers follow it and take over if node B stalls. The mailbox, an S3, R2, MinIO or Hugging Face bucket, holds the deltas and the commits; every arrow is a request to it.](docs/assets/training-flow.svg)
+![Three nodes and a mailbox. Node A (MLX on Apple silicon), node B (PyTorch on an H100) and node C (PyTorch on an RTX 4090) each run a learner and a syncer. Each learner trains fragment k, puts its delta, the anchor minus its parameters, in the mailbox, polls for commits and aligns with them between its steps. Node B's syncer is elected for the round: it lists and gets the round's deltas, merges them with RDA, applies the Nesterov outer step and commits fragment k with the outer state. The other syncers follow it and take over if node B stalls. The mailbox, an S3, R2, MinIO or Hugging Face bucket, holds the deltas and the commits; every arrow is a request to it.](https://ppgsi-lab.github.io/gradientmail/docs/assets/training-flow.svg)
 
 An elected learner reads the updates for a round, merges them and applies the outer optimizer. It commits the updated fragment through the mailbox; learners poll for new commits and align their local models with them. All training and merge arithmetic runs on the learners.
 
 ## Install
 
-Python 3.12+. From a checkout:
+Python 3.12+.
 
 ```sh
-uv sync --extra s3 --extra torch
+pip install "gradientmail[s3,torch]"
 ```
 
-Use `--extra mlx` instead of `--extra torch` for MLX on Apple Silicon.
+Use `mlx` instead of `torch` for MLX on Apple Silicon.
 
 ## Usage
 
@@ -65,29 +65,32 @@ Run two synthetic learners locally, with PyTorch or MLX installed:
 uv run python examples/synthetic.py
 ```
 
-For a PyTorch/MLX run across two machines, use [torch_learner.py](examples/torch_learner.py) and [mlx_learner.py](examples/mlx_learner.py). The PyTorch example includes the MinIO setup and commands.
+For a PyTorch/MLX run across two machines, use [torch_learner.py](https://github.com/ppgsi-lab/gradientmail/blob/main/examples/torch_learner.py) and [mlx_learner.py](https://github.com/ppgsi-lab/gradientmail/blob/main/examples/mlx_learner.py). The PyTorch example includes the MinIO setup and commands.
 
 ## Further reading
 
-- [Guide](docs/guide/README.md)
+- [Guide](https://ppgsi-lab.github.io/gradientmail/docs/guide/)
 
   A collection of explanations for understanding distributed training.
 
-- [Shared Queue](docs/patterns/00-shared-queue.md)
+- [Shared Queue](https://ppgsi-lab.github.io/gradientmail/docs/patterns/00-shared-queue.html)
 
   Distributing work across nodes with different processing speeds.
 
-- [Barrier](docs/patterns/01-barrier.md)
+- [Barrier](https://ppgsi-lab.github.io/gradientmail/docs/patterns/01-barrier.html)
 
   Holding nodes at a named point until a number of them have reached it.
 
-- [Posts](docs/posts/README.md)
+- [Posts](https://ppgsi-lab.github.io/gradientmail/docs/posts/)
 
   A Pythia-14M run on four rented GPUs, MLX and PyTorch learners in one run, merging deltas with RDA, and implementing a mailbox backend.
 
 ## Development
 
+From a checkout:
+
 ```sh
+uv sync --extra s3 --extra torch
 uv run pytest
 uv run ruff check
 uv run ruff format --check
