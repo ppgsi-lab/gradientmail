@@ -57,6 +57,9 @@ class FaultyMailbox(Mailbox):
         await self._inner.delete(keys)
         self._tick()
 
+    def clock(self) -> Clock:
+        return self._inner.clock()
+
     def _tick(self) -> None:
         self._operations += 1
         if self._operations == self._fail_after:
@@ -91,6 +94,9 @@ class TrippedMailbox(Mailbox):
         self._trip("delete", "")
         await self._inner.delete(keys)
 
+    def clock(self) -> Clock:
+        return self._inner.clock()
+
     def _trip(self, operation: str, key: str) -> None:
         if self._error is not None and self._when(operation, key):
             error, self._error = self._error, None
@@ -118,3 +124,29 @@ class SlowMailbox(Mailbox):
 
     async def delete(self, keys: Iterable[str]) -> None:
         await self._inner.delete(keys)
+
+    def clock(self) -> Clock:
+        return self._inner.clock()
+
+
+class ClockedMailbox(Mailbox):
+    """One node's view of a shared store: ``inner``'s objects, timed by this node's ``clock``."""
+
+    def __init__(self, inner: Mailbox, clock: Clock) -> None:
+        self._inner = inner
+        self._clock = clock
+
+    async def put_if_absent(self, key: str, data: bytes) -> bool:
+        return await self._inner.put_if_absent(key, data)
+
+    async def get(self, key: str) -> bytes | None:
+        return await self._inner.get(key)
+
+    async def list(self, prefix: str, *, after: str = "") -> Sequence[str]:
+        return await self._inner.list(prefix, after=after)
+
+    async def delete(self, keys: Iterable[str]) -> None:
+        await self._inner.delete(keys)
+
+    def clock(self) -> Clock:
+        return self._clock

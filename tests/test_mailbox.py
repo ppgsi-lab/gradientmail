@@ -6,7 +6,11 @@ idempotent bulk delete), so nothing here is mocked.
 
 import asyncio
 import itertools
+import threading
+import time
 from collections.abc import Sequence
+from email.utils import formatdate
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 from fakes import FakeClock, FaultyMailbox
@@ -97,6 +101,47 @@ def describe_s3_mailbox():
 
         with pytest.raises(MailboxUnavailable):
             asyncio.run(mailbox.get("rounds/0000000000.json"))
+
+    def it_reads_the_store_clock_from_the_date_of_its_responses(monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("AWS_ACCESS_KEY_ID", "unused")
+        monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "unused")
+        ahead = 3600.0
+
+        class AheadStore(BaseHTTPRequestHandler):
+            """Answers every GET with NoSuchKey, dated an hour ahead of this machine."""
+
+            def do_GET(self) -> None:
+                body = b"<Error><Code>NoSuchKey</Code><Message>absent</Message></Error>"
+                self.send_response(404)
+                self.send_header("Content-Type", "application/xml")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def date_time_string(self, timestamp: float | None = None) -> str:
+                return formatdate(time.time() + ahead, usegmt=True)
+
+            def log_message(self, format: str, *args: object) -> None:
+                pass
+
+        server = ThreadingHTTPServer(("127.0.0.1", 0), AheadStore)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        try:
+            mailbox = S3Mailbox(
+                "bucket",
+                "run",
+                endpoint_url=f"http://127.0.0.1:{server.server_port}",
+                region="us-east-1",
+            )
+            before = mailbox.clock().now() - time.time()
+            assert asyncio.run(mailbox.get("k")) is None
+            after = mailbox.clock().now() - time.time()
+        finally:
+            server.shutdown()
+            server.server_close()
+
+        assert abs(before) < 0.1
+        assert abs(after - ahead) < 1.0
 
 
 def describe_retrying():

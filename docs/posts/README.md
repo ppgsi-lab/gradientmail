@@ -14,4 +14,4 @@
 
 - [Implementing a mailbox backend](03-implementing-a-mailbox-backend.md)
 
-  The four methods, the guarantees a store must give, and a filesystem backend tested against the suite.
+  The four methods and the clock, the guarantees a store must give, and a filesystem backend tested against the suite.

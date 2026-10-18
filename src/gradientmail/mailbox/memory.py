@@ -3,6 +3,7 @@
 import threading
 from collections.abc import Iterable, Sequence
 
+from gradientmail.clock import Clock, MonotonicClock
 from gradientmail.mailbox import Mailbox
 
 
@@ -10,12 +11,14 @@ class MemoryMailbox(Mailbox):
     """A dict behind a ``threading.Lock``.
 
     The lock is not an asyncio primitive because one instance is shared between event loops
-    running on different threads (a ``Session``'s background loop and a ``Syncer``).
+    running on different threads (a ``Session``'s background loop and a ``Syncer``). Every node
+    shares the instance, so ``clock`` is one clock for all of them: monotonic time unless given.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, clock: Clock | None = None) -> None:
         self._store: dict[str, bytes] = {}
         self._lock = threading.Lock()
+        self._clock = clock if clock is not None else MonotonicClock()
 
     async def put_if_absent(self, key: str, data: bytes) -> bool:
         with self._lock:
@@ -37,3 +40,6 @@ class MemoryMailbox(Mailbox):
         with self._lock:
             for key in keys:
                 self._store.pop(key, None)
+
+    def clock(self) -> Clock:
+        return self._clock

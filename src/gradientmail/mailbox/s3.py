@@ -16,9 +16,14 @@ Hugging Face Storage Buckets are reached at ``https://s3.hf.co/<namespace>`` wit
 ``request_checksums="when_required"`` and S3 credentials generated from a Hub token; a PUT there
 takes about half a second. Verified with the contract and training suites in October 2026.
 
-Not assumed: FIFO delivery, exactly-once, atomicity across keys, server clocks or ETag-as-MD5.
-Without multi-key atomicity a listing may show a payload before its record, so readers follow
-records and never list ``blobs/``.
+Not assumed: FIFO delivery, exactly-once, atomicity across keys or ETag-as-MD5. Without
+multi-key atomicity a listing may show a payload before its record, so readers follow records
+and never list ``blobs/``.
+
+The server's clock is read but nothing depends on it for correctness: ``clock`` is a
+``StoreClock`` fed by botocore's ``before-send`` and ``before-parse`` events, which fire on the
+calling thread around every HTTP exchange, retries and listing pages included, and carry the
+response's ``Date`` header. It starts at the local wall clock.
 
 Unsupported: S3 Express directory buckets (unordered listing, no ``StartAfter``), R2 behind a
 caching custom domain (a cached read breaks read-after-write), MinIO on NFS (not a supported
@@ -48,7 +53,9 @@ instance, so one mailbox can be driven from several event loops in turn.
 
 import asyncio
 import threading
-from collections.abc import Callable, Iterable, Sequence
+import time
+from collections.abc import Callable, Iterable, Mapping, Sequence
+from email.utils import parsedate_to_datetime
 from functools import partial
 from itertools import batched
 from typing import TYPE_CHECKING, Literal
@@ -63,6 +70,7 @@ from botocore.exceptions import (
     ReadTimeoutError,
 )
 
+from gradientmail.clock import Clock, MonotonicClock, StoreClock
 from gradientmail.mailbox import Mailbox, MailboxUnavailable
 
 if TYPE_CHECKING:
@@ -70,6 +78,10 @@ if TYPE_CHECKING:
 
 MAX_OBJECT_BYTES = 5 * 2**30
 """Largest single PUT S3 accepts; larger payloads need more fragments, not multipart uploads."""
+
+
+class _SentAt(threading.local):
+    at: float | None = None
 
 
 class S3Mailbox(Mailbox):
@@ -122,6 +134,11 @@ class S3Mailbox(Mailbox):
             if request_checksums == "when_supported"
             else put_object
         )
+        self._local = MonotonicClock()
+        self._clock = StoreClock(self._local, time.time() - self._local.now())
+        self._sent = _SentAt()
+        self._client.meta.events.register("before-send.s3", self._mark_sent)
+        self._client.meta.events.register("before-parse.s3", self._observe_date)
 
     async def put_if_absent(self, key: str, data: bytes) -> bool:
         if len(data) > MAX_OBJECT_BYTES:
@@ -193,6 +210,26 @@ class S3Mailbox(Mailbox):
 
         for chunk in batched(keys, 1000):
             await self._call(partial(delete_chunk, chunk))
+
+    def clock(self) -> Clock:
+        return self._clock
+
+    def _mark_sent(self, **_: object) -> None:
+        self._sent.at = self._local.now()
+
+    def _observe_date(self, response_dict: Mapping[str, object], **_: object) -> None:
+        received = self._local.now()
+        headers = response_dict.get("headers")
+        date = headers.get("Date") if isinstance(headers, Mapping) else None
+        sent = self._sent.at
+        if sent is None or not isinstance(date, str):
+            return
+        # An exception raised here would fail the request being observed.
+        try:
+            stamped = parsedate_to_datetime(date).timestamp()
+        except ValueError:
+            return
+        self._clock.observe(sent, received, stamped)
 
     async def _call[T](self, op: Callable[[], T]) -> T:
         def guarded() -> T:

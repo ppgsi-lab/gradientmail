@@ -1,8 +1,10 @@
-"""Transport: four operations over immutable, create-once objects.
+"""Transport: four operations over immutable, create-once objects, and the store's clock.
 
 An object is written at most once (``put_if_absent``), read back by key (``get``), discovered
-by prefix in UTF-8 byte order (``list``) and removed idempotently (``delete``). Nothing here
-knows about rounds or snapshots; ``gradientmail.protocol`` builds the exchange on top.
+by prefix in UTF-8 byte order (``list``) and removed idempotently (``delete``). ``clock`` is the
+store's time as this node estimates it, the time base in which nodes agree on an instant.
+Nothing here knows about rounds or snapshots; ``gradientmail.protocol`` builds the exchange on
+top.
 """
 
 import logging
@@ -37,6 +39,10 @@ class Mailbox(Protocol):
 
     async def delete(self, keys: Iterable[str]) -> None:
         """Remove ``keys`` in any number; missing keys are not an error."""
+        ...
+
+    def clock(self) -> Clock:
+        """The store's time, as closely as this node can tell; every node reads it alike."""
         ...
 
 

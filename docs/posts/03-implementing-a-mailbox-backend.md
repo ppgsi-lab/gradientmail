@@ -4,7 +4,7 @@
 
 GradientMail nodes do not connect to each other. They read and write objects in a shared store, the mailbox, and the run is coordinated there: who creates it, which snapshots a round contains, who closes the round and which nodes are still alive. [`S3Mailbox`](../../src/gradientmail/mailbox/s3.py) covers AWS S3, Cloudflare R2, MinIO and Hugging Face Storage Buckets; [`MemoryMailbox`](../../src/gradientmail/mailbox/memory.py) keeps a dict for tests.
 
-Another store needs a class with four methods. This post describes what they must guarantee, where GradientMail relies on each guarantee and how to test a new backend, using one that keeps objects as files on one machine. For a service with an S3-compatible API, `S3Mailbox` with `endpoint_url=` is the first thing to try; the test suite runs against it when `GRADIENTMAIL_S3_ENDPOINT` is set.
+Another store needs a class with four methods and a clock. This post describes what they must guarantee, where GradientMail relies on each guarantee and how to test a new backend, using one that keeps objects as files on one machine. For a service with an S3-compatible API, `S3Mailbox` with `endpoint_url=` is the first thing to try; the test suite runs against it when `GRADIENTMAIL_S3_ENDPOINT` is set.
 
 ## The interface
 
@@ -16,9 +16,10 @@ class Mailbox(Protocol):
     async def get(self, key: str) -> bytes | None: ...
     async def list(self, prefix: str, *, after: str = "") -> Sequence[str]: ...
     async def delete(self, keys: Iterable[str]) -> None: ...
+    def clock(self) -> Clock: ...
 ```
 
-`put_if_absent` creates an object and returns whether this call created it; an existing object is left untouched. `get` returns `None` for a missing key. `list` returns every key under `prefix` greater than `after`, in UTF-8 byte order, across all pages. `delete` removes any number of keys, and a missing key is not an error.
+`put_if_absent` creates an object and returns whether this call created it; an existing object is left untouched. `get` returns `None` for a missing key. `list` returns every key under `prefix` greater than `after`, in UTF-8 byte order, across all pages. `delete` removes any number of keys, and a missing key is not an error. `clock` returns the store's time as this node estimates it, and the [Barrier](../patterns/01-barrier.md) releases nodes at one instant of it. `S3Mailbox` estimates it from the `Date` header of its responses; a store whose nodes all run on one machine can return `MonotonicClock()`, which every process there reads alike.
 
 Keys are relative to the run: `S3Mailbox` prepends its `prefix`, and each run uses a new one. [`protocol.py`](../../src/gradientmail/protocol.py) documents the layout (`manifest.json`, `rounds/`, `snapshots/`, `claims/`, `leases/`, `blobs/`), and the [Shared Queue](../patterns/00-shared-queue.md) adds `units/`. Numbers in keys have a fixed width, so byte order is numeric order.
 
@@ -36,7 +37,7 @@ The methods are coroutines, and one instance serves several event loops on diffe
 
 **Idempotent deletes.** A sweep lists keys and then deletes them, and another node or a retried request may have removed some of them in between.
 
-The protocol does not assume FIFO delivery, exactly-once delivery, atomicity across keys or server clocks.
+The protocol does not assume FIFO delivery, exactly-once delivery or atomicity across keys. Nothing depends on the clock for correctness: only the Barrier reads it, to time its release.
 
 ## Errors and retries
 
@@ -60,6 +61,7 @@ from collections.abc import Iterable, Sequence
 from pathlib import Path
 
 import gradientmail as gm
+from gradientmail.clock import Clock, MonotonicClock
 
 
 class FileMailbox(gm.Mailbox):
@@ -82,6 +84,9 @@ class FileMailbox(gm.Mailbox):
 
     async def delete(self, keys: Iterable[str]) -> None:
         await asyncio.to_thread(self._delete, tuple(keys))
+
+    def clock(self) -> Clock:
+        return MonotonicClock()
 
     def _put_if_absent(self, key: str, data: bytes) -> bool:
         target = self._objects / key
