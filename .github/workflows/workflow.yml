@@ -1,0 +1,19 @@
+name: Publish
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v10
+      - name: Set version from tag
+        run: uv version --frozen "${GITHUB_REF_NAME#v}"
+      - run: uv build
+      - uses: pypa/gh-action-pypi-publish@release/v1
