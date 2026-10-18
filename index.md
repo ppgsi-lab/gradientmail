@@ -2,6 +2,16 @@
 title: GradientMail
 ---
 
+## Install
+
+```sh
+uv add "gradientmail[s3,torch]"
+# or
+pip install "gradientmail[s3,torch]"
+```
+
+Python 3.12+. Use `mlx` instead of `torch` for MLX on Apple Silicon.
+
 ## Documentation
 
 - [Introduction](introduction.md)

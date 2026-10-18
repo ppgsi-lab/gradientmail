@@ -17,6 +17,8 @@ An elected learner reads the updates for a round, merges them and applies the ou
 Python 3.12+.
 
 ```sh
+uv add "gradientmail[s3,torch]"
+# or
 pip install "gradientmail[s3,torch]"
 ```
 

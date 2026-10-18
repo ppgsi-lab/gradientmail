@@ -59,6 +59,12 @@ checkpointed separately.
 
 ## Connecting a training loop
 
+Install the package with the extras for the mailbox and the framework:
+
+```sh
+uv add "gradientmail[s3,torch]"
+```
+
 The integration has this shape; `train_step` is the application's existing
 forward pass, backward pass, and optimizer update:
 
