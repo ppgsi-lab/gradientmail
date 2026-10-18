@@ -103,7 +103,7 @@ Tests use memory and moto stores by default. Set `GRADIENTMAIL_S3_ENDPOINT` to t
 
 ```bibtex
 @software{gradientmail,
-  author = {Francisco, Gabriel},
+  author = {dos Santos Silva, Gabriel Francisco},
   title = {GradientMail: Distributed training through asynchronous message exchange},
   year = {2026},
   url = {https://github.com/ppgsi-lab/gradientmail},

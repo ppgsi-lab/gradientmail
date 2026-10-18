@@ -1,0 +1,31 @@
+cff-version: 1.2.0
+title: "GradientMail: Distributed training through asynchronous message exchange"
+message: "If you use this software, please cite it as below."
+type: software
+authors:
+  - given-names: Gabriel Francisco
+    family-names: dos Santos Silva
+    email: gabfssilva@gmail.com
+abstract: >-
+  GradientMail implements Decoupled DiLoCo over a shared mailbox: nodes exchange
+  parameter fragments through S3, R2, MinIO or Hugging Face Storage Buckets,
+  without P2P connections or a separate coordinator. Each learner wraps an
+  existing PyTorch or MLX training loop, keeps a local copy of the model with
+  its own optimizer, and publishes its update for one parameter fragment at a
+  time on a staggered schedule. For each round, one of the training nodes is
+  elected to merge the updates with RDA, apply the Nesterov outer step and
+  commit the fragment through the mailbox; the other learners align with the
+  commit, and another node takes over if the elected one fails. The cluster is
+  heterogeneous and elastic: nodes with different GPUs and frameworks can join
+  an ongoing run, train for a period and leave.
+repository-code: "https://github.com/ppgsi-lab/gradientmail"
+url: "https://ppgsi-lab.github.io/gradientmail/"
+license: MIT
+keywords:
+  - distributed-training
+  - diloco
+  - local-sgd
+  - decentralized-training
+  - object-storage
+  - pytorch
+  - mlx
