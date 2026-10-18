@@ -98,3 +98,14 @@ uv run pyrefly check
 ```
 
 Tests use memory and moto stores by default. Set `GRADIENTMAIL_S3_ENDPOINT` to test against an S3-compatible store. Framework tests skip when their dependencies are absent.
+
+## Citation
+
+```bibtex
+@software{gradientmail,
+  author = {Francisco, Gabriel},
+  title = {GradientMail: Distributed training through asynchronous message exchange},
+  year = {2026},
+  url = {https://github.com/ppgsi-lab/gradientmail},
+}
+```
