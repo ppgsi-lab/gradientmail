@@ -4,6 +4,8 @@ Distributed training with [Decoupled DiLoCo](https://arxiv.org/abs/2604.21428) o
 
 The cluster is heterogeneous and elastic: nodes with different GPUs and frameworks (PyTorch or MLX) can join an ongoing run, contribute to training for a period and leave. One of the training nodes merges each round and publishes the result. If it fails, another takes over.
 
+![Above, the shared parameters Θ over loss contours; below, the four learners' timelines. Each learner leaves Θ at its own pace toward its own data's minimum and publishes a snapshot when it is due, while it keeps training. At quorum the syncer waits a grace window, weights the snapshots by tokens squared over steps and merges them with RDA, which keeps the mean length the weighted mean loses; the Nesterov step carries momentum past the learners. Each learner aligns with the new Θ between its own steps and keeps what it trained since its snapshot, which its next snapshot carries. Over three rounds the learners agree more and Θ settles in the valley.](https://ppgsi-lab.github.io/gradientmail/docs/assets/hero.svg)
+
 ## How it works
 
 Each learner keeps a local copy of the model and runs its own optimizer. Parameters are split into fragments, synchronized on a staggered schedule. For each fragment, a learner publishes its update: the difference between the committed parameters it last aligned with and the ones it trained.

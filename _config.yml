@@ -15,7 +15,7 @@ hero:
   title: Low-communication distributed training <em>without P2P connections</em>
   text: Decoupled DiLoCo over mailboxes (S3, R2, MinIO, HF Storage Buckets)
   image: /docs/assets/hero.svg
-  alt: Four learners, A to D, each put a delta in a shared mailbox. Learner B, the elected syncer, gets the deltas, merges them and commits the fragment, and every learner aligns with the commit.
+  alt: Above, the shared parameters Θ over loss contours; below, the four learners' timelines. Each learner leaves Θ at its own pace toward its own data's minimum and publishes a snapshot when it is due, while it keeps training. At quorum the syncer waits a grace window, weights the snapshots by tokens squared over steps and merges them with RDA, which keeps the mean length the weighted mean loses; the Nesterov step carries momentum past the learners. Each learner aligns with the new Θ between its own steps and keeps what it trained since its snapshot, which its next snapshot carries. Over three rounds the learners agree more and Θ settles in the valley.
   actions:
     - title: Read the guide →
       url: /docs/guide/
