@@ -1,0 +1,72 @@
+{
+  "source": {
+    "bucket": "https://huggingface.co/buckets/itsmechico/gradientmail",
+    "prefix": "pythia-14m-8n-carry-f8-h25",
+    "round": 456,
+    "previous_round": 452,
+    "fragment": 0,
+    "tensor": "embed_out.weight",
+    "shape": [
+      50304,
+      128
+    ],
+    "payloads": {
+      "anchor": {
+        "key": "blobs/rounds/0000000452/eea33c8bcf54792fd537a64bfa1e17f3307e9b3383da896698d551ba94160a1f.safetensors.zst",
+        "sha256": "eea33c8bcf54792fd537a64bfa1e17f3307e9b3383da896698d551ba94160a1f",
+        "size": 17205494
+      },
+      "theta": {
+        "key": "blobs/rounds/0000000456/0c0d9d6b6d055336c5890052691a5a7bfc1df63df8bea58386c9ae6158e6e9c2.safetensors.zst",
+        "sha256": "0c0d9d6b6d055336c5890052691a5a7bfc1df63df8bea58386c9ae6158e6e9c2",
+        "size": 17195248
+      },
+      "outer": {
+        "key": "blobs/rounds/0000000456/fcdebb46640e69c78b79ac75f6da2e4374b16d107d2acb7ece5e1c3bbae7d26f.safetensors.zst",
+        "sha256": "fcdebb46640e69c78b79ac75f6da2e4374b16d107d2acb7ece5e1c3bbae7d26f",
+        "size": 43489657
+      },
+      "update": {
+        "key": "blobs/rounds/0000000456/863f74553180cfd930ac3eae522dd172e669cba95def4990f95e96076187c7bf.safetensors.zst",
+        "sha256": "863f74553180cfd930ac3eae522dd172e669cba95def4990f95e96076187c7bf",
+        "size": 5293135
+      }
+    },
+    "fp8_reproduces_stored_payloads": true,
+    "torch": "2.14.1",
+    "zstandard": "0.25.0"
+  },
+  "observed": {
+    "commit_zstd": 65978040
+  },
+  "measurements": [
+    {
+      "precision": "FP32",
+      "update_raw": 25755744,
+      "update_zstd": 19584834,
+      "commit_raw": 51511496,
+      "commit_zstd": 43487766
+    },
+    {
+      "precision": "BF16",
+      "update_raw": 12877920,
+      "update_zstd": 8818826,
+      "commit_raw": 90145160,
+      "commit_zstd": 69536035
+    },
+    {
+      "precision": "FP8",
+      "update_raw": 6439084,
+      "update_zstd": 5293135,
+      "commit_raw": 83706324,
+      "commit_zstd": 65978040
+    },
+    {
+      "precision": "FP4",
+      "update_raw": 3420856,
+      "update_zstd": 3250967,
+      "commit_raw": 80688096,
+      "commit_zstd": 63935822
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="648" viewBox="0 0 960 648" role="img" aria-label="Measured payload sizes for the same Pythia-14M output-embedding update in FP32, BF16, FP8 and FP4, with and without zstd. Global commit update and complete-commit sizes share one decimal megabyte axis. The default FP32 commit stores the fragment and momentum; quantized commits also store an fp32 master and a separate update. Re-encoding round 456 does not measure the training quality of alternative formats.">
+<rect width="960" height="648" rx="6" class="ground"/>
+<text x="24" y="36" class="title">Payload size by precision and compression</text>
+<text x="24" y="58" class="small muted">The same output-embedding global commit update, re-encoded from round 456.</text>
+<rect x="24" y="82" width="24" height="12" rx="2" class="param"/>
+<text x="56" y="92" class="small">Without zstd</text>
+<rect x="208" y="82" width="24" height="12" rx="2" class="commit"/>
+<text x="240" y="92" class="small">With zstd</text>
+<text x="936" y="118" class="small end muted">Raw / zstd, MB</text>
+<path d="M 152.0 144 V 520" class="guide"/>
+<text x="152.0" y="562" class="small mid muted">0</text>
+<path d="M 270.4 144 V 520" class="guide"/>
+<text x="270.4" y="562" class="small mid muted">20</text>
+<path d="M 388.8 144 V 520" class="guide"/>
+<text x="388.8" y="562" class="small mid muted">40</text>
+<path d="M 507.2 144 V 520" class="guide"/>
+<text x="507.2" y="562" class="small mid muted">60</text>
+<path d="M 625.6 144 V 520" class="guide"/>
+<text x="625.6" y="562" class="small mid muted">80</text>
+<path d="M 744.0 144 V 520" class="guide"/>
+<text x="744.0" y="562" class="small mid muted">100</text>
+<text x="24" y="132" class="b">Global commit update (learner download)</text>
+<text x="24" y="168" class="small">FP32</text>
+<rect x="152" y="150" width="152.47" height="10" rx="2" class="param"/>
+<rect x="152" y="165" width="115.94" height="10" rx="2" class="commit"/>
+<text x="936" y="168" class="small end">25.76 / 19.58</text>
+<text x="24" y="210" class="small">BF16</text>
+<rect x="152" y="192" width="76.24" height="10" rx="2" class="param"/>
+<rect x="152" y="207" width="52.21" height="10" rx="2" class="commit"/>
+<text x="936" y="210" class="small end">12.88 / 8.82</text>
+<text x="24" y="252" class="small">FP8</text>
+<rect x="152" y="234" width="38.12" height="10" rx="2" class="param"/>
+<rect x="152" y="249" width="31.34" height="10" rx="2" class="commit"/>
+<text x="936" y="252" class="small end">6.44 / 5.29</text>
+<text x="24" y="294" class="small">FP4</text>
+<rect x="152" y="276" width="20.25" height="10" rx="2" class="param"/>
+<rect x="152" y="291" width="19.25" height="10" rx="2" class="commit"/>
+<text x="936" y="294" class="small end">3.42 / 3.25</text>
+<text x="24" y="352" class="b">Complete commit (synchronizer upload)</text>
+<text x="24" y="388" class="small">FP32 (default)</text>
+<rect x="152" y="370" width="304.95" height="10" rx="2" class="param"/>
+<rect x="152" y="385" width="257.45" height="10" rx="2" class="commit"/>
+<text x="936" y="388" class="small end">51.51 / 43.49</text>
+<text x="24" y="430" class="small">BF16</text>
+<rect x="152" y="412" width="533.66" height="10" rx="2" class="param"/>
+<rect x="152" y="427" width="411.65" height="10" rx="2" class="commit"/>
+<text x="936" y="430" class="small end">90.15 / 69.54</text>
+<text x="24" y="472" class="small">FP8</text>
+<rect x="152" y="454" width="495.54" height="10" rx="2" class="param"/>
+<rect x="152" y="469" width="390.59" height="10" rx="2" class="commit"/>
+<text x="936" y="472" class="small end">83.71 / 65.98</text>
+<text x="24" y="514" class="small">FP4</text>
+<rect x="152" y="496" width="477.67" height="10" rx="2" class="param"/>
+<rect x="152" y="511" width="378.50" height="10" rx="2" class="commit"/>
+<text x="936" y="514" class="small end">80.69 / 63.94</text>
+<path d="M 24 326 H 936" class="rule"/>
+<path d="M 152 540 H 744" class="axis"/>
+<text x="448.0" y="588" class="small mid muted">Payload size (MB, decimal)</text>
+<text x="24" y="618" class="small muted">Quantized commits retain fp32 fragment, momentum and master, plus the update.</text>
+</svg>

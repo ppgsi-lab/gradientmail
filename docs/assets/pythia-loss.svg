@@ -1,0 +1,184 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="520" viewBox="0 0 960 520" role="img" aria-label="Mean local training cross-entropy in nats per token against dataset step for 1, 2, 4, 8 and 16 replicas. A legend identifies every curve. One replica uses H = 50 and fp32; the distributed runs use H = 25 and F8 with zstd. The view shows loss below 5 after the initial drop. Dots mark the last logged 100-step bin, centered at step 3,950. At that bin: 1 replica 3.602; 2 replicas 3.590; 4 replicas 3.625; 8 replicas 3.673; 16 replicas 3.823. These are training losses, not held-out evaluation losses.">
+<style>
+svg { --paper: #fefdfc; --wash: #f5f1ec; --rule: #dedad5; --hatch: #cfc8c0; --muted: #665f5a; --ink: #1c1714; --accent: #065f74; --accent-wash: #e4f1f5; --on-accent: #ffffff; --signal: #86262e; --signal-wash: #fbeae9; --learner-a: #556892; --learner-b: #ac853f; --learner-c: #598361; --learner-d: #825172; --serif: "Newsreader", Georgia, "Times New Roman", serif; --math: "Source Serif 4", "Noto Sans Math", Georgia, serif; --sans: "Source Sans 3", "Source Sans Pro", system-ui, -apple-system, "Segoe UI", sans-serif; --mono: "Source Code Pro", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+@media (prefers-color-scheme: dark) { svg { --paper: #191512; --wash: #241f1c; --rule: #413c38; --hatch: #544f4a; --muted: #b3ada6; --ink: #eeebe5; --accent: #6ebccb; --accent-wash: #192f35; --on-accent: #191512; --signal: #e38182; --signal-wash: #3d2323; --learner-a: #899ecb; --learner-b: #d6ad68; --learner-c: #80b38a; --learner-d: #bd88ab; } }
+@font-face { font-family: "Source Sans 3"; font-style: normal; font-weight: 600; src: url(data:font/woff2;base64,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) format("woff2"); }
+@font-face { font-family: "Source Sans 3"; font-style: normal; font-weight: 400; src: url(data:font/woff2;base64,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) format("woff2"); }
+/* The classes figure sources draw with. build.py prepends the theme's colors and font families as
+   variables; a source sets no color or font of its own. */
+
+text { font-family: var(--sans); font-size: 12px; fill: var(--ink); }
+.m { font-family: var(--math); font-size: 16px; }
+.code { font-family: var(--mono); font-size: 12px; }
+.title { font-size: 15px; font-weight: 600; }
+.small { font-size: 11px; }
+.sub { font-size: 11px; }
+.big { font-size: 20px; }
+.b { font-weight: 600; }
+.i { font-style: italic; }
+.var { font-family: var(--math); font-style: italic; font-size: 1.2em; }
+.muted { fill: var(--muted); }
+.acc { fill: var(--accent); }
+.sig { fill: var(--signal); }
+.on-accent { fill: var(--on-accent); }
+.on-learner { fill: var(--paper); }
+.mid { text-anchor: middle; }
+.end { text-anchor: end; }
+.digit { font-size: 9.5px; font-weight: 600; fill: var(--paper); text-anchor: middle; }
+.halo { paint-order: stroke; stroke: var(--paper); stroke-width: 4px; stroke-linejoin: round; }
+
+.ground, .backing { fill: var(--paper); }
+.card { fill: var(--paper); stroke: var(--rule); stroke-width: 1.5; }
+.store { fill: var(--wash); }
+.store-card { fill: var(--wash); stroke: var(--rule); stroke-width: 1.5; }
+.elected { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.5; }
+.note { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.25; }
+.note-a { fill: var(--paper); stroke: var(--learner-a); stroke-width: 1.25; }
+.note-b { fill: var(--paper); stroke: var(--learner-b); stroke-width: 1.25; }
+.note-c { fill: var(--paper); stroke: var(--learner-c); stroke-width: 1.25; }
+.op { fill: var(--paper); stroke: var(--muted); stroke-width: 1.5; }
+.out { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.param { fill: var(--wash); stroke: var(--ink); stroke-width: 1.5; }
+.pill { fill: var(--paper); stroke: var(--rule); stroke-width: 1.25; }
+.chip { fill: var(--accent); }
+.tile, .layer, .slot-full { fill: var(--wash); stroke: var(--rule); stroke-width: 1; }
+.slot { fill: var(--paper); stroke: var(--rule); stroke-width: 1.25; }
+.tile-k { fill: var(--accent); }
+.picked { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.5; }
+.track { fill: var(--wash); }
+
+.sA { fill: var(--learner-a); }
+.sB { fill: var(--learner-b); }
+.sC { fill: var(--learner-c); }
+.sD { fill: var(--learner-d); }
+.wait { fill: url(#hatch); }
+.lost { fill: url(#lost); stroke: var(--signal); stroke-width: 1; }
+.xchg, .commit, .dot-acc, .badge-acc { fill: var(--accent); }
+.dot-ink, .badge, .close { fill: var(--ink); }
+.dot-sig { fill: var(--signal); }
+.dot-muted { fill: var(--muted); }
+.snap { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.round { fill: var(--paper); stroke: var(--accent); stroke-width: 1.25; }
+.miss { fill: none; stroke: var(--signal); stroke-width: 2.5; }
+.band { fill: var(--accent); }
+.ring { stroke: var(--paper); stroke-width: 1.5; }
+
+.rule { fill: none; stroke: var(--rule); stroke-width: 1; }
+.guide { fill: none; stroke: var(--rule); stroke-width: 1; stroke-dasharray: 4 4; }
+.axis, .tick { fill: none; stroke: var(--muted); stroke-width: 1; }
+.contour { fill: none; stroke: var(--hatch); stroke-width: 1; }
+.frame { fill: none; stroke: var(--rule); stroke-width: 1.5; }
+.valley { fill: none; stroke: var(--accent); stroke-width: 2; }
+.span { fill: none; stroke: var(--accent); stroke-width: 1; }
+.join { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+.batches { stroke: var(--accent); stroke-width: 0.75; stroke-opacity: 0.45; }
+.life-a { stroke: var(--learner-a); stroke-width: 2.5; }
+.life-b { stroke: var(--learner-b); stroke-width: 2.5; }
+.life-c { stroke: var(--learner-c); stroke-width: 2.5; }
+.life-s { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.line-a { fill: none; stroke: var(--learner-a); stroke-width: 1.25; }
+.line-b { fill: none; stroke: var(--learner-b); stroke-width: 1.25; }
+.line-c { fill: none; stroke: var(--learner-c); stroke-width: 1.25; }
+.line-d { fill: none; stroke: var(--learner-d); stroke-width: 1.25; }
+.dotted { fill: none; stroke: var(--muted); stroke-width: 1; stroke-dasharray: 1 3; stroke-linecap: round; }
+.line-ink { fill: none; stroke: var(--ink); stroke-width: 2; }
+.line-sig { fill: none; stroke: var(--signal); stroke-width: 2; }
+.line-muted { fill: none; stroke: var(--muted); stroke-width: 2; }
+.line-acc { fill: none; stroke: var(--accent); stroke-width: 2; }
+.thin { stroke-width: 1; stroke-opacity: 0.6; }
+
+.arrow { fill: none; stroke: var(--muted); stroke-width: 1.5; marker-end: url(#head-muted); }
+.arrow-ink { fill: none; stroke: var(--ink); stroke-width: 1.5; marker-end: url(#head-ink); }
+.arrow-acc { fill: none; stroke: var(--accent); stroke-width: 1.5; marker-end: url(#head-accent); }
+.arrow-sig { fill: none; stroke: var(--signal); stroke-width: 1.5; marker-end: url(#head-signal); }
+.arrow-a { fill: none; stroke: var(--learner-a); stroke-width: 1.5; marker-end: url(#head-a); }
+.arrow-b { fill: none; stroke: var(--learner-b); stroke-width: 1.5; marker-end: url(#head-b); }
+.arrow-c { fill: none; stroke: var(--learner-c); stroke-width: 1.5; marker-end: url(#head-c); }
+.reply { fill: none; stroke: var(--muted); stroke-width: 1.25; stroke-dasharray: 4 3; marker-end: url(#head-muted); }
+.strong { stroke-width: 2.5; }
+.loop { fill: none; stroke: var(--muted); stroke-width: 1.25; marker-end: url(#head-muted); }
+
+.hatch-bg { fill: var(--wash); }
+.hatch-line { stroke: var(--hatch); stroke-width: 2.5; }
+.lost-bg { fill: var(--signal-wash); }
+.lost-line { stroke: var(--signal); stroke-opacity: 0.4; stroke-width: 2.5; }
+.head-ink { fill: var(--ink); }
+.head-muted { fill: var(--muted); }
+.head-accent { fill: var(--accent); }
+.head-signal { fill: var(--signal); }
+.head-a { fill: var(--learner-a); }
+.head-b { fill: var(--learner-b); }
+.head-c { fill: var(--learner-c); }
+</style>
+<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="hatch-bg"/><path d="M 0 0 V 6" class="hatch-line"/></pattern><pattern id="lost" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="lost-bg"/><path d="M 0 0 V 6" class="lost-line"/></pattern><marker id="head-ink" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-ink"/></marker><marker id="head-muted" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-muted"/></marker><marker id="head-accent" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-accent"/></marker><marker id="head-signal" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-signal"/></marker><marker id="head-a" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-a"/></marker><marker id="head-b" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-b"/></marker><marker id="head-c" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-c"/></marker></defs>
+<rect width="960" height="520" rx="6" class="ground"/>
+<text x="24" y="36" class="title">Training loss over 4,000 dataset steps</text>
+<text x="24" y="58" class="small muted">Mean local cross-entropy in nats per token; lower is better.</text>
+<g aria-label="Legend">
+<path d="M 88 86 L 118 86" class="dotted strong"/>
+<text x="128" y="90" class="small">1 replica</text>
+<path d="M 248 86 L 278 86" class="line-a strong"/>
+<text x="288" y="90" class="small">2 replicas</text>
+<path d="M 408 86 L 438 86" class="line-b strong"/>
+<text x="448" y="90" class="small">4 replicas</text>
+<path d="M 568 86 L 598 86" class="line-c strong"/>
+<text x="608" y="90" class="small">8 replicas</text>
+<path d="M 728 86 L 758 86" class="line-d strong"/>
+<text x="768" y="90" class="small">16 replicas</text>
+</g>
+<text x="24" y="118" class="small muted">1 replica: H = 50, fp32. Other runs: H = 25, F8 + zstd.</text>
+<path d="M 88 405 H 768 M 88 369.2 H 768 M 88 333.3 H 768 M 88 297.4 H 768 M 88 261.6 H 768 M 88 225.7 H 768 M 88 189.9 H 768 M 88 154 H 768" class="rule"/>
+<path d="M 88 154 V 414 H 768" class="axis"/>
+<text x="76" y="409" class="small end muted">3.6</text>
+<text x="76" y="373.2" class="small end muted">3.8</text>
+<text x="76" y="337.3" class="small end muted">4.0</text>
+<text x="76" y="301.4" class="small end muted">4.2</text>
+<text x="76" y="265.6" class="small end muted">4.4</text>
+<text x="76" y="229.7" class="small end muted">4.6</text>
+<text x="76" y="193.9" class="small end muted">4.8</text>
+<text x="76" y="158" class="small end muted">5.0</text>
+<text x="0" y="0" class="small mid muted" transform="translate(28 284) rotate(-90)">Training loss</text>
+<path d="M 140.3 414 V 418 M 244.9 414 V 418 M 349.5 414 V 418 M 454.2 414 V 418 M 558.8 414 V 418 M 663.4 414 V 418 M 768 414 V 418" class="tick"/>
+<text x="140.3" y="434" class="small mid muted">1,000</text>
+<text x="244.9" y="434" class="small mid muted">1,500</text>
+<text x="349.5" y="434" class="small mid muted">2,000</text>
+<text x="454.2" y="434" class="small mid muted">2,500</text>
+<text x="558.8" y="434" class="small mid muted">3,000</text>
+<text x="663.4" y="434" class="small mid muted">3,500</text>
+<text x="768" y="434" class="small mid muted">4,000</text>
+<text x="428" y="464" class="small mid muted">Dataset step</text>
+<text x="808" y="328" class="small muted">Last logged bin</text>
+<g role="list" aria-label="Training loss curves">
+<g role="listitem" aria-label="1 replica">
+<path d="M 108.9 156 L 129.8 188.2 L 150.8 222.5 L 171.7 261.6 L 192.6 290.3 L 213.5 308.9 L 234.5 323.8 L 255.4 333.8 L 276.3 343.2 L 297.2 350 L 318.2 356.6 L 339.1 361.1 L 360 366.3 L 380.9 370.6 L 401.8 374 L 422.8 377.2 L 443.7 380.3 L 464.6 382.6 L 485.5 385.7 L 506.5 389.1 L 527.4 389.8 L 548.3 392.5 L 569.2 393.7 L 590.2 395.5 L 611.1 397.5 L 632 398 L 652.9 400 L 673.8 400.6 L 694.8 401.8 L 715.7 403.2 L 736.6 404.1 L 757.5 404.7" class="dotted strong"/>
+<path d="M 757.5 404.7 L 788 404.7 L 800 435" class="dotted thin"/>
+<circle cx="757.5" cy="404.7" r="5" class="dot-muted"/>
+<text x="808" y="439" class="small">1 replica · 3.602</text>
+</g>
+<g role="listitem" aria-label="2 replicas">
+<path d="M 108.9 163 L 129.8 195.8 L 150.8 228.8 L 171.7 269.1 L 192.6 299.4 L 213.5 318.8 L 234.5 334 L 255.4 344.2 L 276.3 353.4 L 297.2 360.4 L 318.2 366.8 L 339.1 371 L 360 376 L 380.9 380.1 L 401.8 383.2 L 422.8 386.2 L 443.7 388.9 L 464.6 390.9 L 485.5 393.6 L 506.5 396.4 L 527.4 397 L 548.3 399.1 L 569.2 399.8 L 590.2 401.4 L 611.1 403.2 L 632 403.2 L 652.9 404.9 L 673.8 404.9 L 694.8 405.8 L 715.7 407.2 L 736.6 406.6 L 757.5 406.8" class="line-a strong"/>
+<path d="M 757.5 406.8 L 788 406.8 L 800 462" class="line-a thin"/>
+<circle cx="757.5" cy="406.8" r="5" class="sA"/>
+<text x="808" y="466" class="small">2 replicas · 3.590</text>
+</g>
+<g role="listitem" aria-label="4 replicas">
+<path d="M 150.8 176.2 L 171.7 211.7 L 192.6 249 L 213.5 279.5 L 234.5 302.1 L 255.4 316.6 L 276.3 329.7 L 297.2 339.2 L 318.2 347.1 L 339.1 353.4 L 360 359.8 L 380.9 364.7 L 401.8 368.3 L 422.8 372 L 443.7 376.2 L 464.6 379 L 485.5 382.1 L 506.5 385 L 527.4 386.2 L 548.3 389.1 L 569.2 390.2 L 590.2 392.1 L 611.1 393.9 L 632 394.3 L 652.9 395.5 L 673.8 396.2 L 694.8 398 L 715.7 399.7 L 736.6 400 L 757.5 400.6" class="line-b strong"/>
+<path d="M 757.5 400.6 L 788 400.6 L 800 408" class="line-b thin"/>
+<circle cx="757.5" cy="400.6" r="5" class="sB"/>
+<text x="808" y="412" class="small">4 replicas · 3.625</text>
+</g>
+<g role="listitem" aria-label="8 replicas">
+<path d="M 150.8 163.1 L 171.7 192.2 L 192.6 226.3 L 213.5 258.4 L 234.5 284.2 L 255.4 301.4 L 276.3 316.3 L 297.2 326.7 L 318.2 335.5 L 339.1 342.3 L 360 349.3 L 380.9 355 L 401.8 359.7 L 422.8 363.6 L 443.7 367.7 L 464.6 370.4 L 485.5 374 L 506.5 377.6 L 527.4 378.7 L 548.3 381.7 L 569.2 382.8 L 590.2 384.4 L 611.1 385.8 L 632 385.3 L 652.9 386.9 L 673.8 387.6 L 694.8 389.1 L 715.7 390.9 L 736.6 391.6 L 757.5 391.9" class="line-c strong"/>
+<path d="M 757.5 391.9 L 788 391.9 L 800 381" class="line-c thin"/>
+<circle cx="757.5" cy="391.9" r="5" class="sC"/>
+<text x="808" y="385" class="small">8 replicas · 3.673</text>
+</g>
+<g role="listitem" aria-label="16 replicas">
+<path d="M 213.5 166.7 L 234.5 192.7 L 255.4 220.2 L 276.3 244.7 L 297.2 263 L 318.2 278.3 L 339.1 289 L 360 298.5 L 380.9 307.1 L 401.8 313.8 L 422.8 319.3 L 443.7 325.2 L 464.6 329.2 L 485.5 333.8 L 506.5 339 L 527.4 341 L 548.3 345.3 L 569.2 347.1 L 590.2 349.8 L 611.1 352.3 L 632 353.6 L 652.9 356.6 L 673.8 357.9 L 694.8 360 L 715.7 362.2 L 736.6 363.4 L 757.5 365" class="line-d strong"/>
+<path d="M 757.5 365 L 788 365 L 800 354" class="line-d thin"/>
+<circle cx="757.5" cy="365" r="5" class="sD"/>
+<text x="808" y="358" class="small">16 replicas · 3.823</text>
+</g>
+</g>
+<text x="24" y="496" class="small muted">100-step bins. Dots mark the last logged bin at step 3,950. Initial loss above 5 is outside the view.</text>
+</svg>

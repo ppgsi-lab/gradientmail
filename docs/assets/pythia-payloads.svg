@@ -1,0 +1,172 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="648" viewBox="0 0 960 648" role="img" aria-label="Measured payload sizes for the same Pythia-14M output-embedding update in FP32, BF16, FP8 and FP4, with and without zstd. Global commit update and complete-commit sizes share one decimal megabyte axis. The default FP32 commit stores the fragment and momentum; quantized commits also store an fp32 master and a separate update. Re-encoding round 456 does not measure the training quality of alternative formats.">
+<style>
+svg { --paper: #fefdfc; --wash: #f5f1ec; --rule: #dedad5; --hatch: #cfc8c0; --muted: #665f5a; --ink: #1c1714; --accent: #065f74; --accent-wash: #e4f1f5; --on-accent: #ffffff; --signal: #86262e; --signal-wash: #fbeae9; --learner-a: #556892; --learner-b: #ac853f; --learner-c: #598361; --learner-d: #825172; --serif: "Newsreader", Georgia, "Times New Roman", serif; --math: "Source Serif 4", "Noto Sans Math", Georgia, serif; --sans: "Source Sans 3", "Source Sans Pro", system-ui, -apple-system, "Segoe UI", sans-serif; --mono: "Source Code Pro", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+@media (prefers-color-scheme: dark) { svg { --paper: #191512; --wash: #241f1c; --rule: #413c38; --hatch: #544f4a; --muted: #b3ada6; --ink: #eeebe5; --accent: #6ebccb; --accent-wash: #192f35; --on-accent: #191512; --signal: #e38182; --signal-wash: #3d2323; --learner-a: #899ecb; --learner-b: #d6ad68; --learner-c: #80b38a; --learner-d: #bd88ab; } }
+@font-face { font-family: "Source Sans 3"; font-style: normal; font-weight: 600; src: url(data:font/woff2;base64,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) format("woff2"); }
+@font-face { font-family: "Source Sans 3"; font-style: normal; font-weight: 400; src: url(data:font/woff2;base64,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) format("woff2"); }
+/* The classes figure sources draw with. build.py prepends the theme's colors and font families as
+   variables; a source sets no color or font of its own. */
+
+text { font-family: var(--sans); font-size: 12px; fill: var(--ink); }
+.m { font-family: var(--math); font-size: 16px; }
+.code { font-family: var(--mono); font-size: 12px; }
+.title { font-size: 15px; font-weight: 600; }
+.small { font-size: 11px; }
+.sub { font-size: 11px; }
+.big { font-size: 20px; }
+.b { font-weight: 600; }
+.i { font-style: italic; }
+.var { font-family: var(--math); font-style: italic; font-size: 1.2em; }
+.muted { fill: var(--muted); }
+.acc { fill: var(--accent); }
+.sig { fill: var(--signal); }
+.on-accent { fill: var(--on-accent); }
+.on-learner { fill: var(--paper); }
+.mid { text-anchor: middle; }
+.end { text-anchor: end; }
+.digit { font-size: 9.5px; font-weight: 600; fill: var(--paper); text-anchor: middle; }
+.halo { paint-order: stroke; stroke: var(--paper); stroke-width: 4px; stroke-linejoin: round; }
+
+.ground, .backing { fill: var(--paper); }
+.card { fill: var(--paper); stroke: var(--rule); stroke-width: 1.5; }
+.store { fill: var(--wash); }
+.store-card { fill: var(--wash); stroke: var(--rule); stroke-width: 1.5; }
+.elected { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.5; }
+.note { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.25; }
+.note-a { fill: var(--paper); stroke: var(--learner-a); stroke-width: 1.25; }
+.note-b { fill: var(--paper); stroke: var(--learner-b); stroke-width: 1.25; }
+.note-c { fill: var(--paper); stroke: var(--learner-c); stroke-width: 1.25; }
+.op { fill: var(--paper); stroke: var(--muted); stroke-width: 1.5; }
+.out { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.param { fill: var(--wash); stroke: var(--ink); stroke-width: 1.5; }
+.pill { fill: var(--paper); stroke: var(--rule); stroke-width: 1.25; }
+.chip { fill: var(--accent); }
+.tile, .layer, .slot-full { fill: var(--wash); stroke: var(--rule); stroke-width: 1; }
+.slot { fill: var(--paper); stroke: var(--rule); stroke-width: 1.25; }
+.tile-k { fill: var(--accent); }
+.picked { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.5; }
+.track { fill: var(--wash); }
+
+.sA { fill: var(--learner-a); }
+.sB { fill: var(--learner-b); }
+.sC { fill: var(--learner-c); }
+.sD { fill: var(--learner-d); }
+.wait { fill: url(#hatch); }
+.lost { fill: url(#lost); stroke: var(--signal); stroke-width: 1; }
+.xchg, .commit, .dot-acc, .badge-acc { fill: var(--accent); }
+.dot-ink, .badge, .close { fill: var(--ink); }
+.dot-sig { fill: var(--signal); }
+.dot-muted { fill: var(--muted); }
+.snap { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.round { fill: var(--paper); stroke: var(--accent); stroke-width: 1.25; }
+.miss { fill: none; stroke: var(--signal); stroke-width: 2.5; }
+.band { fill: var(--accent); }
+.ring { stroke: var(--paper); stroke-width: 1.5; }
+
+.rule { fill: none; stroke: var(--rule); stroke-width: 1; }
+.guide { fill: none; stroke: var(--rule); stroke-width: 1; stroke-dasharray: 4 4; }
+.axis, .tick { fill: none; stroke: var(--muted); stroke-width: 1; }
+.contour { fill: none; stroke: var(--hatch); stroke-width: 1; }
+.frame { fill: none; stroke: var(--rule); stroke-width: 1.5; }
+.valley { fill: none; stroke: var(--accent); stroke-width: 2; }
+.span { fill: none; stroke: var(--accent); stroke-width: 1; }
+.join { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+.batches { stroke: var(--accent); stroke-width: 0.75; stroke-opacity: 0.45; }
+.life-a { stroke: var(--learner-a); stroke-width: 2.5; }
+.life-b { stroke: var(--learner-b); stroke-width: 2.5; }
+.life-c { stroke: var(--learner-c); stroke-width: 2.5; }
+.life-s { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.line-a { fill: none; stroke: var(--learner-a); stroke-width: 1.25; }
+.line-b { fill: none; stroke: var(--learner-b); stroke-width: 1.25; }
+.line-c { fill: none; stroke: var(--learner-c); stroke-width: 1.25; }
+.line-d { fill: none; stroke: var(--learner-d); stroke-width: 1.25; }
+.dotted { fill: none; stroke: var(--muted); stroke-width: 1; stroke-dasharray: 1 3; stroke-linecap: round; }
+.line-ink { fill: none; stroke: var(--ink); stroke-width: 2; }
+.line-sig { fill: none; stroke: var(--signal); stroke-width: 2; }
+.line-muted { fill: none; stroke: var(--muted); stroke-width: 2; }
+.line-acc { fill: none; stroke: var(--accent); stroke-width: 2; }
+.thin { stroke-width: 1; stroke-opacity: 0.6; }
+
+.arrow { fill: none; stroke: var(--muted); stroke-width: 1.5; marker-end: url(#head-muted); }
+.arrow-ink { fill: none; stroke: var(--ink); stroke-width: 1.5; marker-end: url(#head-ink); }
+.arrow-acc { fill: none; stroke: var(--accent); stroke-width: 1.5; marker-end: url(#head-accent); }
+.arrow-sig { fill: none; stroke: var(--signal); stroke-width: 1.5; marker-end: url(#head-signal); }
+.arrow-a { fill: none; stroke: var(--learner-a); stroke-width: 1.5; marker-end: url(#head-a); }
+.arrow-b { fill: none; stroke: var(--learner-b); stroke-width: 1.5; marker-end: url(#head-b); }
+.arrow-c { fill: none; stroke: var(--learner-c); stroke-width: 1.5; marker-end: url(#head-c); }
+.reply { fill: none; stroke: var(--muted); stroke-width: 1.25; stroke-dasharray: 4 3; marker-end: url(#head-muted); }
+.strong { stroke-width: 2.5; }
+.loop { fill: none; stroke: var(--muted); stroke-width: 1.25; marker-end: url(#head-muted); }
+
+.hatch-bg { fill: var(--wash); }
+.hatch-line { stroke: var(--hatch); stroke-width: 2.5; }
+.lost-bg { fill: var(--signal-wash); }
+.lost-line { stroke: var(--signal); stroke-opacity: 0.4; stroke-width: 2.5; }
+.head-ink { fill: var(--ink); }
+.head-muted { fill: var(--muted); }
+.head-accent { fill: var(--accent); }
+.head-signal { fill: var(--signal); }
+.head-a { fill: var(--learner-a); }
+.head-b { fill: var(--learner-b); }
+.head-c { fill: var(--learner-c); }
+</style>
+<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="hatch-bg"/><path d="M 0 0 V 6" class="hatch-line"/></pattern><pattern id="lost" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="lost-bg"/><path d="M 0 0 V 6" class="lost-line"/></pattern><marker id="head-ink" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-ink"/></marker><marker id="head-muted" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-muted"/></marker><marker id="head-accent" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-accent"/></marker><marker id="head-signal" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-signal"/></marker><marker id="head-a" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-a"/></marker><marker id="head-b" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-b"/></marker><marker id="head-c" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-c"/></marker></defs>
+<rect width="960" height="648" rx="6" class="ground"/>
+<text x="24" y="36" class="title">Payload size by precision and compression</text>
+<text x="24" y="58" class="small muted">The same output-embedding global commit update, re-encoded from round 456.</text>
+<rect x="24" y="82" width="24" height="12" rx="2" class="param"/>
+<text x="56" y="92" class="small">Without zstd</text>
+<rect x="208" y="82" width="24" height="12" rx="2" class="commit"/>
+<text x="240" y="92" class="small">With zstd</text>
+<text x="936" y="118" class="small end muted">Raw / zstd, MB</text>
+<path d="M 152.0 144 V 520" class="guide"/>
+<text x="152.0" y="562" class="small mid muted">0</text>
+<path d="M 270.4 144 V 520" class="guide"/>
+<text x="270.4" y="562" class="small mid muted">20</text>
+<path d="M 388.8 144 V 520" class="guide"/>
+<text x="388.8" y="562" class="small mid muted">40</text>
+<path d="M 507.2 144 V 520" class="guide"/>
+<text x="507.2" y="562" class="small mid muted">60</text>
+<path d="M 625.6 144 V 520" class="guide"/>
+<text x="625.6" y="562" class="small mid muted">80</text>
+<path d="M 744.0 144 V 520" class="guide"/>
+<text x="744.0" y="562" class="small mid muted">100</text>
+<text x="24" y="132" class="b">Global commit update (learner download)</text>
+<text x="24" y="168" class="small">FP32</text>
+<rect x="152" y="150" width="152.47" height="10" rx="2" class="param"/>
+<rect x="152" y="165" width="115.94" height="10" rx="2" class="commit"/>
+<text x="936" y="168" class="small end">25.76 / 19.58</text>
+<text x="24" y="210" class="small">BF16</text>
+<rect x="152" y="192" width="76.24" height="10" rx="2" class="param"/>
+<rect x="152" y="207" width="52.21" height="10" rx="2" class="commit"/>
+<text x="936" y="210" class="small end">12.88 / 8.82</text>
+<text x="24" y="252" class="small">FP8</text>
+<rect x="152" y="234" width="38.12" height="10" rx="2" class="param"/>
+<rect x="152" y="249" width="31.34" height="10" rx="2" class="commit"/>
+<text x="936" y="252" class="small end">6.44 / 5.29</text>
+<text x="24" y="294" class="small">FP4</text>
+<rect x="152" y="276" width="20.25" height="10" rx="2" class="param"/>
+<rect x="152" y="291" width="19.25" height="10" rx="2" class="commit"/>
+<text x="936" y="294" class="small end">3.42 / 3.25</text>
+<text x="24" y="352" class="b">Complete commit (synchronizer upload)</text>
+<text x="24" y="388" class="small">FP32 (default)</text>
+<rect x="152" y="370" width="304.95" height="10" rx="2" class="param"/>
+<rect x="152" y="385" width="257.45" height="10" rx="2" class="commit"/>
+<text x="936" y="388" class="small end">51.51 / 43.49</text>
+<text x="24" y="430" class="small">BF16</text>
+<rect x="152" y="412" width="533.66" height="10" rx="2" class="param"/>
+<rect x="152" y="427" width="411.65" height="10" rx="2" class="commit"/>
+<text x="936" y="430" class="small end">90.15 / 69.54</text>
+<text x="24" y="472" class="small">FP8</text>
+<rect x="152" y="454" width="495.54" height="10" rx="2" class="param"/>
+<rect x="152" y="469" width="390.59" height="10" rx="2" class="commit"/>
+<text x="936" y="472" class="small end">83.71 / 65.98</text>
+<text x="24" y="514" class="small">FP4</text>
+<rect x="152" y="496" width="477.67" height="10" rx="2" class="param"/>
+<rect x="152" y="511" width="378.50" height="10" rx="2" class="commit"/>
+<text x="936" y="514" class="small end">80.69 / 63.94</text>
+<path d="M 24 326 H 936" class="rule"/>
+<path d="M 152 540 H 744" class="axis"/>
+<text x="448.0" y="588" class="small mid muted">Payload size (MB, decimal)</text>
+<text x="24" y="618" class="small muted">Quantized commits retain fp32 fragment, momentum and master, plus the update.</text>
+</svg>

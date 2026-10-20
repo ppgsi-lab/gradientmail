@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="440" viewBox="0 0 960 440" role="img" aria-label="Held-out loss at dataset step 4,000 of every eight-replica run. Carry, H = 25, F8 + zstd: the recipe, 3.601; Carry, H = 50, fp32, 3.678; Adaptive, H = 50, fp32, 3.705; Overwrite, H = 50, fp32, 3.723; Carry, H = 50, F8 + zstd, 3.733; Blend(0.5), H = 50, fp32, 3.770; Carry, H = 250, bf16, 3.836. One replica scores 3.585, the official checkpoint 3.781 and the nine PolyPythia seeds 3.732 to 3.762.">
+<rect width="960" height="440" rx="6" class="ground"/>
+<rect x="640.8" y="32" width="46.3" height="340" class="store"/>
+<path d="M 716.4 32 V 372" class="guide"/>
+<path d="M 414 32 V 372" class="guide"/>
+<text x="722.4" y="26" class="small muted">official, 3.781</text>
+<text x="634.8" y="26" class="small end muted">seeds</text>
+<text x="420" y="26" class="small muted">one replica, 3.585</text>
+<path d="M 360 372 H 900" class="axis"/>
+<path d="M 360 372 V 376 M 437.1 372 V 376 M 514.3 372 V 376 M 591.4 372 V 376 M 668.6 372 V 376 M 745.7 372 V 376 M 822.9 372 V 376 M 900 372 V 376" class="tick"/>
+<text x="360" y="392" class="small mid muted">3.55</text>
+<text x="437.1" y="392" class="small mid muted">3.60</text>
+<text x="514.3" y="392" class="small mid muted">3.65</text>
+<text x="591.4" y="392" class="small mid muted">3.70</text>
+<text x="668.6" y="392" class="small mid muted">3.75</text>
+<text x="745.7" y="392" class="small mid muted">3.80</text>
+<text x="822.9" y="392" class="small mid muted">3.85</text>
+<text x="900" y="392" class="small mid muted">3.90</text>
+<text x="630" y="416" class="small mid muted">held-out loss at step 4,000 (nats per token), eight replicas</text>
+<path d="M 360 56 H 438.5" class="rule"/>
+<circle cx="438.5" cy="56" r="5" class="dot-ink"/>
+<text x="348" y="60" class="small end">Carry, H = 25, F8 + zstd: the recipe</text>
+<text x="450.5" y="60" class="small">3.601</text>
+<path d="M 360 106 H 557.5" class="rule"/>
+<circle cx="557.5" cy="106" r="5" class="dot-muted"/>
+<text x="348" y="110" class="small end muted">Carry, H = 50, fp32</text>
+<text x="569.5" y="110" class="small muted">3.678</text>
+<path d="M 360 156 H 599.1" class="rule"/>
+<circle cx="599.1" cy="156" r="5" class="dot-muted"/>
+<text x="348" y="160" class="small end muted">Adaptive, H = 50, fp32</text>
+<text x="611.1" y="160" class="small muted">3.705</text>
+<path d="M 360 206 H 626.9" class="rule"/>
+<circle cx="626.9" cy="206" r="5" class="dot-muted"/>
+<text x="348" y="210" class="small end muted">Overwrite, H = 50, fp32</text>
+<text x="638.9" y="210" class="small muted">3.723</text>
+<path d="M 360 256 H 642.3" class="rule"/>
+<circle cx="642.3" cy="256" r="5" class="dot-muted"/>
+<text x="348" y="260" class="small end muted">Carry, H = 50, F8 + zstd</text>
+<text x="654.3" y="260" class="small muted">3.733</text>
+<path d="M 360 306 H 699.4" class="rule"/>
+<circle cx="699.4" cy="306" r="5" class="dot-muted"/>
+<text x="348" y="310" class="small end muted">Blend(0.5), H = 50, fp32</text>
+<text x="711.4" y="310" class="small muted">3.770</text>
+<path d="M 360 356 H 801.3" class="rule"/>
+<circle cx="801.3" cy="356" r="5" class="dot-muted"/>
+<text x="348" y="360" class="small end muted">Carry, H = 250, bf16</text>
+<text x="813.3" y="360" class="small muted">3.836</text>
+</svg>

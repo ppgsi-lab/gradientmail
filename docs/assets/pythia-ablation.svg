@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="440" viewBox="0 0 960 440" role="img" aria-label="Held-out loss at dataset step 4,000 of every eight-replica run. Carry, H = 25, F8 + zstd: the recipe, 3.601; Carry, H = 50, fp32, 3.678; Adaptive, H = 50, fp32, 3.705; Overwrite, H = 50, fp32, 3.723; Carry, H = 50, F8 + zstd, 3.733; Blend(0.5), H = 50, fp32, 3.770; Carry, H = 250, bf16, 3.836. One replica scores 3.585, the official checkpoint 3.781 and the nine PolyPythia seeds 3.732 to 3.762.">
+<style>
+svg { --paper: #fefdfc; --wash: #f5f1ec; --rule: #dedad5; --hatch: #cfc8c0; --muted: #665f5a; --ink: #1c1714; --accent: #065f74; --accent-wash: #e4f1f5; --on-accent: #ffffff; --signal: #86262e; --signal-wash: #fbeae9; --learner-a: #556892; --learner-b: #ac853f; --learner-c: #598361; --learner-d: #825172; --serif: "Newsreader", Georgia, "Times New Roman", serif; --math: "Source Serif 4", "Noto Sans Math", Georgia, serif; --sans: "Source Sans 3", "Source Sans Pro", system-ui, -apple-system, "Segoe UI", sans-serif; --mono: "Source Code Pro", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+@media (prefers-color-scheme: dark) { svg { --paper: #191512; --wash: #241f1c; --rule: #413c38; --hatch: #544f4a; --muted: #b3ada6; --ink: #eeebe5; --accent: #6ebccb; --accent-wash: #192f35; --on-accent: #191512; --signal: #e38182; --signal-wash: #3d2323; --learner-a: #899ecb; --learner-b: #d6ad68; --learner-c: #80b38a; --learner-d: #bd88ab; } }
+@font-face { font-family: "Source Sans 3"; font-style: normal; font-weight: 400; src: url(data:font/woff2;base64,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) format("woff2"); }
+/* The classes figure sources draw with. build.py prepends the theme's colors and font families as
+   variables; a source sets no color or font of its own. */
+
+text { font-family: var(--sans); font-size: 12px; fill: var(--ink); }
+.m { font-family: var(--math); font-size: 16px; }
+.code { font-family: var(--mono); font-size: 12px; }
+.title { font-size: 15px; font-weight: 600; }
+.small { font-size: 11px; }
+.sub { font-size: 11px; }
+.big { font-size: 20px; }
+.b { font-weight: 600; }
+.i { font-style: italic; }
+.var { font-family: var(--math); font-style: italic; font-size: 1.2em; }
+.muted { fill: var(--muted); }
+.acc { fill: var(--accent); }
+.sig { fill: var(--signal); }
+.on-accent { fill: var(--on-accent); }
+.on-learner { fill: var(--paper); }
+.mid { text-anchor: middle; }
+.end { text-anchor: end; }
+.digit { font-size: 9.5px; font-weight: 600; fill: var(--paper); text-anchor: middle; }
+.halo { paint-order: stroke; stroke: var(--paper); stroke-width: 4px; stroke-linejoin: round; }
+
+.ground, .backing { fill: var(--paper); }
+.card { fill: var(--paper); stroke: var(--rule); stroke-width: 1.5; }
+.store { fill: var(--wash); }
+.store-card { fill: var(--wash); stroke: var(--rule); stroke-width: 1.5; }
+.elected { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.5; }
+.note { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.25; }
+.note-a { fill: var(--paper); stroke: var(--learner-a); stroke-width: 1.25; }
+.note-b { fill: var(--paper); stroke: var(--learner-b); stroke-width: 1.25; }
+.note-c { fill: var(--paper); stroke: var(--learner-c); stroke-width: 1.25; }
+.op { fill: var(--paper); stroke: var(--muted); stroke-width: 1.5; }
+.out { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.param { fill: var(--wash); stroke: var(--ink); stroke-width: 1.5; }
+.pill { fill: var(--paper); stroke: var(--rule); stroke-width: 1.25; }
+.chip { fill: var(--accent); }
+.tile, .layer, .slot-full { fill: var(--wash); stroke: var(--rule); stroke-width: 1; }
+.slot { fill: var(--paper); stroke: var(--rule); stroke-width: 1.25; }
+.tile-k { fill: var(--accent); }
+.picked { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.5; }
+.track { fill: var(--wash); }
+
+.sA { fill: var(--learner-a); }
+.sB { fill: var(--learner-b); }
+.sC { fill: var(--learner-c); }
+.sD { fill: var(--learner-d); }
+.wait { fill: url(#hatch); }
+.lost { fill: url(#lost); stroke: var(--signal); stroke-width: 1; }
+.xchg, .commit, .dot-acc, .badge-acc { fill: var(--accent); }
+.dot-ink, .badge, .close { fill: var(--ink); }
+.dot-sig { fill: var(--signal); }
+.dot-muted { fill: var(--muted); }
+.snap { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.round { fill: var(--paper); stroke: var(--accent); stroke-width: 1.25; }
+.miss { fill: none; stroke: var(--signal); stroke-width: 2.5; }
+.band { fill: var(--accent); }
+.ring { stroke: var(--paper); stroke-width: 1.5; }
+
+.rule { fill: none; stroke: var(--rule); stroke-width: 1; }
+.guide { fill: none; stroke: var(--rule); stroke-width: 1; stroke-dasharray: 4 4; }
+.axis, .tick { fill: none; stroke: var(--muted); stroke-width: 1; }
+.contour { fill: none; stroke: var(--hatch); stroke-width: 1; }
+.frame { fill: none; stroke: var(--rule); stroke-width: 1.5; }
+.valley { fill: none; stroke: var(--accent); stroke-width: 2; }
+.span { fill: none; stroke: var(--accent); stroke-width: 1; }
+.join { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+.batches { stroke: var(--accent); stroke-width: 0.75; stroke-opacity: 0.45; }
+.life-a { stroke: var(--learner-a); stroke-width: 2.5; }
+.life-b { stroke: var(--learner-b); stroke-width: 2.5; }
+.life-c { stroke: var(--learner-c); stroke-width: 2.5; }
+.life-s { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.line-a { fill: none; stroke: var(--learner-a); stroke-width: 1.25; }
+.line-b { fill: none; stroke: var(--learner-b); stroke-width: 1.25; }
+.line-c { fill: none; stroke: var(--learner-c); stroke-width: 1.25; }
+.line-d { fill: none; stroke: var(--learner-d); stroke-width: 1.25; }
+.dotted { fill: none; stroke: var(--muted); stroke-width: 1; stroke-dasharray: 1 3; stroke-linecap: round; }
+.line-ink { fill: none; stroke: var(--ink); stroke-width: 2; }
+.line-sig { fill: none; stroke: var(--signal); stroke-width: 2; }
+.line-muted { fill: none; stroke: var(--muted); stroke-width: 2; }
+.line-acc { fill: none; stroke: var(--accent); stroke-width: 2; }
+.thin { stroke-width: 1; stroke-opacity: 0.6; }
+
+.arrow { fill: none; stroke: var(--muted); stroke-width: 1.5; marker-end: url(#head-muted); }
+.arrow-ink { fill: none; stroke: var(--ink); stroke-width: 1.5; marker-end: url(#head-ink); }
+.arrow-acc { fill: none; stroke: var(--accent); stroke-width: 1.5; marker-end: url(#head-accent); }
+.arrow-sig { fill: none; stroke: var(--signal); stroke-width: 1.5; marker-end: url(#head-signal); }
+.arrow-a { fill: none; stroke: var(--learner-a); stroke-width: 1.5; marker-end: url(#head-a); }
+.arrow-b { fill: none; stroke: var(--learner-b); stroke-width: 1.5; marker-end: url(#head-b); }
+.arrow-c { fill: none; stroke: var(--learner-c); stroke-width: 1.5; marker-end: url(#head-c); }
+.reply { fill: none; stroke: var(--muted); stroke-width: 1.25; stroke-dasharray: 4 3; marker-end: url(#head-muted); }
+.strong { stroke-width: 2.5; }
+.loop { fill: none; stroke: var(--muted); stroke-width: 1.25; marker-end: url(#head-muted); }
+
+.hatch-bg { fill: var(--wash); }
+.hatch-line { stroke: var(--hatch); stroke-width: 2.5; }
+.lost-bg { fill: var(--signal-wash); }
+.lost-line { stroke: var(--signal); stroke-opacity: 0.4; stroke-width: 2.5; }
+.head-ink { fill: var(--ink); }
+.head-muted { fill: var(--muted); }
+.head-accent { fill: var(--accent); }
+.head-signal { fill: var(--signal); }
+.head-a { fill: var(--learner-a); }
+.head-b { fill: var(--learner-b); }
+.head-c { fill: var(--learner-c); }
+</style>
+<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="hatch-bg"/><path d="M 0 0 V 6" class="hatch-line"/></pattern><pattern id="lost" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="lost-bg"/><path d="M 0 0 V 6" class="lost-line"/></pattern><marker id="head-ink" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-ink"/></marker><marker id="head-muted" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-muted"/></marker><marker id="head-accent" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-accent"/></marker><marker id="head-signal" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-signal"/></marker><marker id="head-a" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-a"/></marker><marker id="head-b" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-b"/></marker><marker id="head-c" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-c"/></marker></defs>
+<rect width="960" height="440" rx="6" class="ground"/>
+<rect x="640.8" y="32" width="46.3" height="340" class="store"/>
+<path d="M 716.4 32 V 372" class="guide"/>
+<path d="M 414 32 V 372" class="guide"/>
+<text x="722.4" y="26" class="small muted">official, 3.781</text>
+<text x="634.8" y="26" class="small end muted">seeds</text>
+<text x="420" y="26" class="small muted">one replica, 3.585</text>
+<path d="M 360 372 H 900" class="axis"/>
+<path d="M 360 372 V 376 M 437.1 372 V 376 M 514.3 372 V 376 M 591.4 372 V 376 M 668.6 372 V 376 M 745.7 372 V 376 M 822.9 372 V 376 M 900 372 V 376" class="tick"/>
+<text x="360" y="392" class="small mid muted">3.55</text>
+<text x="437.1" y="392" class="small mid muted">3.60</text>
+<text x="514.3" y="392" class="small mid muted">3.65</text>
+<text x="591.4" y="392" class="small mid muted">3.70</text>
+<text x="668.6" y="392" class="small mid muted">3.75</text>
+<text x="745.7" y="392" class="small mid muted">3.80</text>
+<text x="822.9" y="392" class="small mid muted">3.85</text>
+<text x="900" y="392" class="small mid muted">3.90</text>
+<text x="630" y="416" class="small mid muted">held-out loss at step 4,000 (nats per token), eight replicas</text>
+<path d="M 360 56 H 438.5" class="rule"/>
+<circle cx="438.5" cy="56" r="5" class="dot-ink"/>
+<text x="348" y="60" class="small end">Carry, H = 25, F8 + zstd: the recipe</text>
+<text x="450.5" y="60" class="small">3.601</text>
+<path d="M 360 106 H 557.5" class="rule"/>
+<circle cx="557.5" cy="106" r="5" class="dot-muted"/>
+<text x="348" y="110" class="small end muted">Carry, H = 50, fp32</text>
+<text x="569.5" y="110" class="small muted">3.678</text>
+<path d="M 360 156 H 599.1" class="rule"/>
+<circle cx="599.1" cy="156" r="5" class="dot-muted"/>
+<text x="348" y="160" class="small end muted">Adaptive, H = 50, fp32</text>
+<text x="611.1" y="160" class="small muted">3.705</text>
+<path d="M 360 206 H 626.9" class="rule"/>
+<circle cx="626.9" cy="206" r="5" class="dot-muted"/>
+<text x="348" y="210" class="small end muted">Overwrite, H = 50, fp32</text>
+<text x="638.9" y="210" class="small muted">3.723</text>
+<path d="M 360 256 H 642.3" class="rule"/>
+<circle cx="642.3" cy="256" r="5" class="dot-muted"/>
+<text x="348" y="260" class="small end muted">Carry, H = 50, F8 + zstd</text>
+<text x="654.3" y="260" class="small muted">3.733</text>
+<path d="M 360 306 H 699.4" class="rule"/>
+<circle cx="699.4" cy="306" r="5" class="dot-muted"/>
+<text x="348" y="310" class="small end muted">Blend(0.5), H = 50, fp32</text>
+<text x="711.4" y="310" class="small muted">3.770</text>
+<path d="M 360 356 H 801.3" class="rule"/>
+<circle cx="801.3" cy="356" r="5" class="dot-muted"/>
+<text x="348" y="360" class="small end muted">Carry, H = 250, bf16</text>
+<text x="813.3" y="360" class="small muted">3.836</text>
+</svg>

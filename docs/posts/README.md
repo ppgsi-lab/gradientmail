@@ -1,8 +1,8 @@
 # Posts
 
-- [Pythia-14M on four rented GPUs and a bucket](00-pythia-14m-on-four-salad-gpus.md)
+- [Pre-training Pythia-14M on rented home GPUs](00-pythia-14m-on-four-salad-gpus.md)
 
-  A Salad training run, including failures and comparisons with the published checkpoints.
+  Training time, held-out loss and GPU cost for Pythia-14M on one to sixteen Salad GPUs communicating through a bucket, with the experimental protocol, published checkpoint comparisons and supporting measurements.
 
 - [MLX and PyTorch learners in one run](01-mlx-and-pytorch-in-one-run.md)
 

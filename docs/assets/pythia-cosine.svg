@@ -1,0 +1,145 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="440" viewBox="0 0 960 440" role="img" aria-label="Mean cosine between the deltas of a round, by tenth of the run, at H = 50. Every run starts near 0.9 and falls as the replicas diverge. With Carry it ends at 0.31 for 2 replicas, 0.38 for 4, 0.17 for 8 and 0.25 for 16. At 8 replicas Overwrite and Adaptive follow one curve to 0.11 and Blend(0.5) falls to 0.13 in the sixth tenth and to about 0.06 after.">
+<style>
+svg { --paper: #fefdfc; --wash: #f5f1ec; --rule: #dedad5; --hatch: #cfc8c0; --muted: #665f5a; --ink: #1c1714; --accent: #065f74; --accent-wash: #e4f1f5; --on-accent: #ffffff; --signal: #86262e; --signal-wash: #fbeae9; --learner-a: #556892; --learner-b: #ac853f; --learner-c: #598361; --learner-d: #825172; --serif: "Newsreader", Georgia, "Times New Roman", serif; --math: "Source Serif 4", "Noto Sans Math", Georgia, serif; --sans: "Source Sans 3", "Source Sans Pro", system-ui, -apple-system, "Segoe UI", sans-serif; --mono: "Source Code Pro", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+@media (prefers-color-scheme: dark) { svg { --paper: #191512; --wash: #241f1c; --rule: #413c38; --hatch: #544f4a; --muted: #b3ada6; --ink: #eeebe5; --accent: #6ebccb; --accent-wash: #192f35; --on-accent: #191512; --signal: #e38182; --signal-wash: #3d2323; --learner-a: #899ecb; --learner-b: #d6ad68; --learner-c: #80b38a; --learner-d: #bd88ab; } }
+@font-face { font-family: "Source Sans 3"; font-style: normal; font-weight: 400; src: url(data:font/woff2;base64,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) format("woff2"); }
+/* The classes figure sources draw with. build.py prepends the theme's colors and font families as
+   variables; a source sets no color or font of its own. */
+
+text { font-family: var(--sans); font-size: 12px; fill: var(--ink); }
+.m { font-family: var(--math); font-size: 16px; }
+.code { font-family: var(--mono); font-size: 12px; }
+.title { font-size: 15px; font-weight: 600; }
+.small { font-size: 11px; }
+.sub { font-size: 11px; }
+.big { font-size: 20px; }
+.b { font-weight: 600; }
+.i { font-style: italic; }
+.var { font-family: var(--math); font-style: italic; font-size: 1.2em; }
+.muted { fill: var(--muted); }
+.acc { fill: var(--accent); }
+.sig { fill: var(--signal); }
+.on-accent { fill: var(--on-accent); }
+.on-learner { fill: var(--paper); }
+.mid { text-anchor: middle; }
+.end { text-anchor: end; }
+.digit { font-size: 9.5px; font-weight: 600; fill: var(--paper); text-anchor: middle; }
+.halo { paint-order: stroke; stroke: var(--paper); stroke-width: 4px; stroke-linejoin: round; }
+
+.ground, .backing { fill: var(--paper); }
+.card { fill: var(--paper); stroke: var(--rule); stroke-width: 1.5; }
+.store { fill: var(--wash); }
+.store-card { fill: var(--wash); stroke: var(--rule); stroke-width: 1.5; }
+.elected { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.5; }
+.note { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.25; }
+.note-a { fill: var(--paper); stroke: var(--learner-a); stroke-width: 1.25; }
+.note-b { fill: var(--paper); stroke: var(--learner-b); stroke-width: 1.25; }
+.note-c { fill: var(--paper); stroke: var(--learner-c); stroke-width: 1.25; }
+.op { fill: var(--paper); stroke: var(--muted); stroke-width: 1.5; }
+.out { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.param { fill: var(--wash); stroke: var(--ink); stroke-width: 1.5; }
+.pill { fill: var(--paper); stroke: var(--rule); stroke-width: 1.25; }
+.chip { fill: var(--accent); }
+.tile, .layer, .slot-full { fill: var(--wash); stroke: var(--rule); stroke-width: 1; }
+.slot { fill: var(--paper); stroke: var(--rule); stroke-width: 1.25; }
+.tile-k { fill: var(--accent); }
+.picked { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.5; }
+.track { fill: var(--wash); }
+
+.sA { fill: var(--learner-a); }
+.sB { fill: var(--learner-b); }
+.sC { fill: var(--learner-c); }
+.sD { fill: var(--learner-d); }
+.wait { fill: url(#hatch); }
+.lost { fill: url(#lost); stroke: var(--signal); stroke-width: 1; }
+.xchg, .commit, .dot-acc, .badge-acc { fill: var(--accent); }
+.dot-ink, .badge, .close { fill: var(--ink); }
+.dot-sig { fill: var(--signal); }
+.dot-muted { fill: var(--muted); }
+.snap { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.round { fill: var(--paper); stroke: var(--accent); stroke-width: 1.25; }
+.miss { fill: none; stroke: var(--signal); stroke-width: 2.5; }
+.band { fill: var(--accent); }
+.ring { stroke: var(--paper); stroke-width: 1.5; }
+
+.rule { fill: none; stroke: var(--rule); stroke-width: 1; }
+.guide { fill: none; stroke: var(--rule); stroke-width: 1; stroke-dasharray: 4 4; }
+.axis, .tick { fill: none; stroke: var(--muted); stroke-width: 1; }
+.contour { fill: none; stroke: var(--hatch); stroke-width: 1; }
+.frame { fill: none; stroke: var(--rule); stroke-width: 1.5; }
+.valley { fill: none; stroke: var(--accent); stroke-width: 2; }
+.span { fill: none; stroke: var(--accent); stroke-width: 1; }
+.join { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+.batches { stroke: var(--accent); stroke-width: 0.75; stroke-opacity: 0.45; }
+.life-a { stroke: var(--learner-a); stroke-width: 2.5; }
+.life-b { stroke: var(--learner-b); stroke-width: 2.5; }
+.life-c { stroke: var(--learner-c); stroke-width: 2.5; }
+.life-s { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.line-a { fill: none; stroke: var(--learner-a); stroke-width: 1.25; }
+.line-b { fill: none; stroke: var(--learner-b); stroke-width: 1.25; }
+.line-c { fill: none; stroke: var(--learner-c); stroke-width: 1.25; }
+.line-d { fill: none; stroke: var(--learner-d); stroke-width: 1.25; }
+.dotted { fill: none; stroke: var(--muted); stroke-width: 1; stroke-dasharray: 1 3; stroke-linecap: round; }
+.line-ink { fill: none; stroke: var(--ink); stroke-width: 2; }
+.line-sig { fill: none; stroke: var(--signal); stroke-width: 2; }
+.line-muted { fill: none; stroke: var(--muted); stroke-width: 2; }
+.line-acc { fill: none; stroke: var(--accent); stroke-width: 2; }
+.thin { stroke-width: 1; stroke-opacity: 0.6; }
+
+.arrow { fill: none; stroke: var(--muted); stroke-width: 1.5; marker-end: url(#head-muted); }
+.arrow-ink { fill: none; stroke: var(--ink); stroke-width: 1.5; marker-end: url(#head-ink); }
+.arrow-acc { fill: none; stroke: var(--accent); stroke-width: 1.5; marker-end: url(#head-accent); }
+.arrow-sig { fill: none; stroke: var(--signal); stroke-width: 1.5; marker-end: url(#head-signal); }
+.arrow-a { fill: none; stroke: var(--learner-a); stroke-width: 1.5; marker-end: url(#head-a); }
+.arrow-b { fill: none; stroke: var(--learner-b); stroke-width: 1.5; marker-end: url(#head-b); }
+.arrow-c { fill: none; stroke: var(--learner-c); stroke-width: 1.5; marker-end: url(#head-c); }
+.reply { fill: none; stroke: var(--muted); stroke-width: 1.25; stroke-dasharray: 4 3; marker-end: url(#head-muted); }
+.strong { stroke-width: 2.5; }
+.loop { fill: none; stroke: var(--muted); stroke-width: 1.25; marker-end: url(#head-muted); }
+
+.hatch-bg { fill: var(--wash); }
+.hatch-line { stroke: var(--hatch); stroke-width: 2.5; }
+.lost-bg { fill: var(--signal-wash); }
+.lost-line { stroke: var(--signal); stroke-opacity: 0.4; stroke-width: 2.5; }
+.head-ink { fill: var(--ink); }
+.head-muted { fill: var(--muted); }
+.head-accent { fill: var(--accent); }
+.head-signal { fill: var(--signal); }
+.head-a { fill: var(--learner-a); }
+.head-b { fill: var(--learner-b); }
+.head-c { fill: var(--learner-c); }
+</style>
+<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="hatch-bg"/><path d="M 0 0 V 6" class="hatch-line"/></pattern><pattern id="lost" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="lost-bg"/><path d="M 0 0 V 6" class="lost-line"/></pattern><marker id="head-ink" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-ink"/></marker><marker id="head-muted" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-muted"/></marker><marker id="head-accent" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-accent"/></marker><marker id="head-signal" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-signal"/></marker><marker id="head-a" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-a"/></marker><marker id="head-b" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-b"/></marker><marker id="head-c" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-c"/></marker></defs>
+<rect width="960" height="440" rx="6" class="ground"/>
+<path d="M 96 305.6 H 700 M 96 239.2 H 700 M 96 172.8 H 700 M 96 106.4 H 700 M 96 40 H 700" class="rule"/>
+<text x="86" y="376" class="small end muted">0.0</text>
+<text x="86" y="309.6" class="small end muted">0.2</text>
+<text x="86" y="243.2" class="small end muted">0.4</text>
+<text x="86" y="176.8" class="small end muted">0.6</text>
+<text x="86" y="110.4" class="small end muted">0.8</text>
+<text x="86" y="44" class="small end muted">1.0</text>
+<text x="0" y="0" class="small mid muted" transform="translate(36 206) rotate(-90)">mean cosine between the deltas of a round</text>
+<path d="M 96 32 V 372 H 700" class="axis"/>
+<path d="M 96 372 V 376 M 156.4 372 V 376 M 216.8 372 V 376 M 277.2 372 V 376 M 337.6 372 V 376 M 398 372 V 376 M 458.4 372 V 376 M 518.8 372 V 376 M 579.2 372 V 376 M 639.6 372 V 376 M 700 372 V 376" class="tick"/>
+<text x="96" y="392" class="small mid muted">0%</text>
+<text x="216.8" y="392" class="small mid muted">20%</text>
+<text x="337.6" y="392" class="small mid muted">40%</text>
+<text x="458.4" y="392" class="small mid muted">60%</text>
+<text x="579.2" y="392" class="small mid muted">80%</text>
+<text x="700" y="392" class="small mid muted">100%</text>
+<text x="398" y="416" class="small mid muted">share of the run, by rounds</text>
+<path d="M 126.2 53.3 L 186.6 86.5 L 247 133 L 307.4 156.2 L 367.8 202.7 L 428.2 232.6 L 488.6 249.2 L 549 255.8 L 609.4 262.4 L 669.8 269.1" class="line-ink thin"/>
+<text x="679.8" y="273.1" class="small">2 nodes, Carry, 0.31</text>
+<path d="M 126.2 69.9 L 186.6 106.4 L 247 152.9 L 307.4 166.2 L 367.8 202.7 L 428.2 235.9 L 488.6 206 L 549 216 L 609.4 232.6 L 669.8 245.8" class="line-ink thin"/>
+<text x="679.8" y="249.8" class="small">4 nodes, Carry, 0.38</text>
+<path d="M 126.2 79.8 L 186.6 106.4 L 247 152.9 L 307.4 192.7 L 367.8 196 L 428.2 225.9 L 488.6 252.5 L 549 265.8 L 609.4 275.7 L 669.8 289" class="line-ink thin"/>
+<text x="679.8" y="293" class="small">16 nodes, Carry, 0.25</text>
+<path d="M 126.2 93.1 L 186.6 136.3 L 247 182.8 L 307.4 202.7 L 367.8 239.2 L 428.2 272.4 L 488.6 292.3 L 549 305.6 L 609.4 315.6 L 669.8 315.6" class="line-ink"/>
+<text x="679.8" y="316.6" class="small">8 nodes, Carry, 0.17</text>
+<path d="M 126.2 79.8 L 186.6 116.4 L 247 196 L 307.4 235.9 L 367.8 249.2 L 428.2 282.4 L 488.6 308.9 L 549 318.9 L 609.4 332.2 L 669.8 335.5" class="line-sig"/>
+<text x="679.8" y="333.5" class="small">8 nodes, Overwrite, 0.11</text>
+<path d="M 126.2 73.2 L 186.6 123 L 247 196 L 307.4 219.3 L 367.8 252.5 L 428.2 275.7 L 488.6 308.9 L 549 325.5 L 609.4 332.2 L 669.8 335.5" class="line-acc"/>
+<text x="679.8" y="347.5" class="small">8 nodes, Adaptive, 0.11</text>
+<path d="M 126.2 99.8 L 186.6 162.8 L 247 255.8 L 307.4 279 L 367.8 275.7 L 428.2 328.8 L 488.6 348.8 L 549 352.1 L 609.4 348.8 L 669.8 352.1" class="line-muted"/>
+<text x="679.8" y="361.1" class="small">8 nodes, Blend(0.5), 0.06</text>
+</svg>

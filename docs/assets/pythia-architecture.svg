@@ -1,0 +1,186 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640" viewBox="0 0 960 640" role="img" aria-label="Pythia-14M architecture. Token IDs enter a 50,304 by 128 embedding table, pass through six parallel-residual GPT-NeoX blocks and a final layer norm, then an independent output projection produces 50,304 next-token logits. Each block adds the input residual, causal attention on one normalized copy of the input, and an MLP on another normalized copy. Attention has four 32-dimensional heads; rotary embeddings act on the first eight query and key dimensions per head. The MLP expands from 128 to 512 dimensions and returns to 128 with GELU. The untied input and output tables contain 12.9 million of the model's 14.1 million parameters.">
+<style>
+svg { --paper: #fefdfc; --wash: #f5f1ec; --rule: #dedad5; --hatch: #cfc8c0; --muted: #665f5a; --ink: #1c1714; --accent: #065f74; --accent-wash: #e4f1f5; --on-accent: #ffffff; --signal: #86262e; --signal-wash: #fbeae9; --learner-a: #556892; --learner-b: #ac853f; --learner-c: #598361; --learner-d: #825172; --serif: "Newsreader", Georgia, "Times New Roman", serif; --math: "Source Serif 4", "Noto Sans Math", Georgia, serif; --sans: "Source Sans 3", "Source Sans Pro", system-ui, -apple-system, "Segoe UI", sans-serif; --mono: "Source Code Pro", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+@media (prefers-color-scheme: dark) { svg { --paper: #191512; --wash: #241f1c; --rule: #413c38; --hatch: #544f4a; --muted: #b3ada6; --ink: #eeebe5; --accent: #6ebccb; --accent-wash: #192f35; --on-accent: #191512; --signal: #e38182; --signal-wash: #3d2323; --learner-a: #899ecb; --learner-b: #d6ad68; --learner-c: #80b38a; --learner-d: #bd88ab; } }
+@font-face { font-family: "Source Sans 3"; font-style: normal; font-weight: 600; src: url(data:font/woff2;base64,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) format("woff2"); }
+@font-face { font-family: "Source Sans 3"; font-style: normal; font-weight: 400; src: url(data:font/woff2;base64,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) format("woff2"); }
+@font-face { font-family: "Source Serif 4"; font-style: italic; font-weight: 400; src: url(data:font/woff2;base64,d09GMgABAAAAAAPkABEAAAAAB9AAAAOIAAQBBgAAAAAAAAAAAAAAAAAAAAAAAAAAGUYaFBuBGhw2BmA/U1RBVFoANBEICoIEgWwBNgIkAwgLBgAEIAWFUgcgDAcbhgYoHoNt8/gIuMSUIUMYYrmPeP7/1/jtc+d9lfSxWUTRkMwq/IqoZlanQagQNVOKWGiEND+fZ71grDIjJWlHYib9FZLMwr7KOEMn6LjbYp+f/8vp3eYPeGM3CTMc+7Y1lk1rc/YTCCjseb4GLrEEAgp7AemyzYYzbq+REUOGyRGyR6/uUjCOZlZdPoccgsNmB3L/weZukJ2dLlhBdlFAFpBd4yQ7yHiCKOOmZRiCIZgGBLNl0g6lTJS0/EJeV88LdvA+LZoJ48qkRZjC/IT2zLRGeRHWVgz/lGUkVqgSpsj4qhe6SzaegCfQCUnbQ6s4bB2MUK/x/uGHY9Mf1ZhR2igBqnkQJOmB4yQQANizv7IN5ntkWvP/f5zuP1YNBPK93gE9QsS4DssIbIHfvCXOwHjw8KJRwkTY5XucFeuBG7UoDga5IhjoRGVK1oH6CkSREzBQ8PUIIPVoQ1N8NLgR5F4ukM7CDOLpEjoSswpcSCjqdt1GmYxbceCIrDeyd8cB3xXnMtKO3rzot/Kyssev5+1+v5VXmdRrryZ2Hjzm7Y/JTIraujfq4Nu3Un/1KmPfuUfZK3ya56YfHNXzMfP2jeEDMjonfNO+8H3nZxT9o97nzqYmy5lTaz2D/QsPnchffCE6tv4JNZ9M3rX1QkT4p5Ona9qq9ldrdweHC3ua7+1bFmh6T5dnVutkiXWV+uNktiL+Y/b9lOSGSr6hAclV9oaInaFhrts9004ugcfP3XQlAHbD0OKpvRxaPhZU/HecIL4CfrCX3wHw8/jm3e7DKsB+QxlVIHyuW68iiHC29tp9mw2pmgcnK7E9RlBWESBk1bQ3Omk+wDcAR4i17ghl2j+hc9w3odmUSmHEuVj5UbvyrIj1IERE4EUXLph5l0wQ+VfcaVMEFg379bRYGtkomR1oaYYr6DhMQBKky3QiabGNiNLAjucgcN51LpDWYXEKI4nEqRCDMfWq0DimTufPtWGkykCZykRiROmEiBDBFGFqOdifQ2nFsUGoPhq6OEwS8FAfA7QbKRzh1Jno4RWzNZBwrEx42WgsVrYiFapValOEJEYBzvRiOn2bSjUFYKrrvYGCyLQZTFXqNHKQ8Ov0FMU1i2kaGrmK2HAsUFSph0yDUC2aA3LlTJql2ajVxkmaI75OlSzMgF6PrN9UH8TEwEjSCTGYZMUREAx/GJ7QsvaPcS/+QK4G) format("woff2"); }
+@font-face { font-family: "Source Serif 4"; font-style: normal; font-weight: 400; src: url(data:font/woff2;base64,d09GMgABAAAAAAl0ABEAAAAAElwAAAkUAAQBBgAAAAAAAAAAAAAAAAAAAAAAAAAAGUYaFhuGChyCCAZgP1NUQVReAIEEEQgKjlCMCwE2AiQDaAs2AAQgBYVqByAMBxu1DyMRtouTGhrBPxNsY2YPrQmvPGPIncOpMYBx5+AVgy+uUuhWuwutwRPfZvWq+JA0JG2SMcbUyWRE/QR7TK+LRFbcGf49/T+bszm7mlMp7SmUMq1nZlVyTX6JfAJjwCU4DigD8g3wH/596H6vvljV8ejHqsBm8zC43c+3rFtVUycNcFSZgAON5ImOYMaj2TK1Qa6FYHmDGZlcLc973g8pAiQBQyW6beOmPfv37NqNmTJtTkBmw7H9O8ls2b9pB5md6w7uJoMDgKAkSSHxCgQQIAUAKILiIQjgMoBxtpQRfhDp2bFp/26SKxUMFSSxSFFPWwQFmrmCvLsanYDKDAzIajmTFGlmpsf/cYl/IM+/+raUhc1vMepbeSj7i9b692WPgIWJgs0/pkWfQYIgWvQe8Xuqso7W9keLPB4U4k8qx5/dOeS4lq8JtX7JLLFioRj6RiuxaKGFFILSTBLFAcDCxiAksKnAhfgvAb5JpI2NJHhcAoOSJIGLd3fzVvNXoPTCAAMYgpB+wnL+h/gULnXBCUnxOxRSFnGGyOSE/4Yw31JOBO3JDNqINXH5VJ9OkxcFDASLZvPeJpTlhCXR5rGKhdm4e88uMv+EYkb8nXs27KTH7kO79tMPKBhFLOx48DKn8OnHFDZHgZCMdjCIJOyb1uOCiJIraSpxKpaFUGvTI5GVyZo00KiXj/9fWRPNGB0vp2KD5nUpMJtrktUMknaG1DiWbWwNBmRJsbqJUybN51F8/wST+v82WD+JE2xUeUcvBnwsxB2GeracPuievQeOywY4smXrQTmA/C1uFDmI4lBLJyOwnWpUZlbJyqmgD8qk+h4CR74KSayEA8Pe82umGoskPj3pzTwWsI5NbGMPB/0T4hj49KA3cwByNxG92r23fetwd3VVl3dJF3TOTkdekqpxrMoqQ+SQ+XuC9gYtAxOAKTor8zJFFRYsjjWOrVAEmeadHRa16xOOY9uVTrXt2E7aqW+w/W49nbqU0+C0qa42bWqdRBd+VMaTnId7RTkSiaJSJ+/SQghhWOzoSnpMzgsOS5rAhXeQZbV4uCttb5l6q13xVrm5FR5usBLiHVbGOgipbII9SGu5Q4bH+G13+y2pU2yrX2J5praKXBiP4iwXr7Vc3jRUcl3xWotFUCi414ebzZckuqM8+5pnnunOnYUhd957IeFDXus9j4zu6F774LO5/OudGiW6/X43f2eX8cG517r56zNXlA+DheHrvNZrmnqee+86i8K6vJ0uvLA+Jd41F6iJ5/0KBcIe7khW7t/zxlcLZwUXROWEl2eWSK5rkPu1rM4/XIsfqbs+RPjgbqeLo8Ip6xXCPbLlaIjH3fyTz/Zo793wygksSVcOR+jOei5qfeXuB7zs5l88UYKXVojH0rs+RSTiSm5EzgsaNLzp7sTpe+a9d64Ir8fZHiUrv3KuZ6G2XpHY3gq4Q4NeHPKBJ+6Q6GE3f2X9aP9Bkb+6cVrCW18dE/TGY01YLI7tUcXN9XywUFgTSU7jervyC3o9Ut78EyxPcympx1QRnIikEDAGhGkV1NAgHB2JBhFabZEFQChaq3P35e60IKcSdkIpnIbkAx7sheQwCPzcE44l0rI7VktT5b2f/RFEDc3vyU7sphPvVIbO7MB5MAYOQ4SjEHgmjh69dPWBaBCmNQo1DcIxkg5iBhyFAL4lMfhaNk5RJDrJ7J7wf8gg2THMUktqn0As3Ns/pX/cTYthExDCiUj+NAReRSOMWqGmaZRu/i1WBQU6YmC8qhdZyuO45L6q4tYeqmENgyBRbzISraO19D8hOINIAYdT9eU2G/ucR/rySO8+hwVGV2fJyjW3UP49XpeyV7mTWd2P8R9E99bFoK8VzjOcLveXTcyq92/v0nVK5uUengq1l8332x4XNqKposGpf2wmJ8XX3aTvU1JiGsSQpLEOh7VmVCkeJPvn4N9ZvHnZbJ5NxK/zmoW1fqlK5ebsPWwjvXlAIO2TkkOnSDcn+0EpphQkp1fEiRZrBkeNXoiVAV8yrMwblJc3cE4EPUNApCIi9KZwVS4ijC2IiYEpvWM2Ft6LpL1sDxZ4y1gt9gF4dgF+eGpWyywyl+Ny1LZ0Z4FS4M0DuSnmngZH36oqR/+ehFlSMTr7wSXkA52UPWU1OJ2spmeySgZrumCs8SmYv0t/WN/9qM5OWLK42d9r8dFprYXrzcgmGSn4JQ/9729qJ+8E2NylPG8mOUtX8dBha56Pb2ppwTcSlMQPIzD6MPNmAPt2dkeynkpmb6wrSRBM5/y6GOV2TVtd2kJWtmApP+PO78ve6i7ITJf77eUqPWm3yAo2r/i9wZma9sQDRjTK0CpRrXWQ0+ibVVPrm+kkBll72AeAsY04QMjjEt6ZtTXeWeAhDpKLalCiAV/P+dX26+Wnb415i+OQBFNFWtZr30c5CargvzyXrGbVwP9ZqpYvK8SrIW0St0NIJ5CMlugc26RGv2NSrJHxvEJfPvhcCgyL53tPXqEjJ56BmQwXyOibFkQ8c8vjf/vQhgBGnJ0H/qtdUzXmt2SM9SXAuwMeWgPw3m1nXUVVPNQ6YB0HHBQAgc9U8YWQDMlmEGaDZzRkAd+AbqAnvPWu+hvddD09tJZ+mqafjKeTHqGLjqSfrKBK9pf1LFyyOssxJvW3L/8zjP/oSEL+jLSB9giQYRoJumL5sZLgmeZyIJupAJ4GSU1oy9NqSiUfq1kE/Khm6CNT1Gw2yl6uwyApOEnWgk9qG2hWR207SW2vdoCUdiMPSg5a3SFcHcd1+AxiAAMZgk/fCgxiYPqJbGQP69lEWhdzjAOMHcj04sNjfHoL6KO/vqUVhTDBMlyINnDB6stITg/xxVGmVrgB0wsJF5HCKqOMgWiYyuQDhPQ3OGO59dEbBlYpSq+nwBpV+hikv4BQs+Ey8swzSswIw6itvypikJ4o/anhFBTUCHZOpDJEn7dEJfLbF6U3mR0/g1mvSS4uKsIqq1oID8DcvfKYL4bu8UABgBlc0TAzDoK0CEe4hxDMhLnV0LSMMpAaoKVpbwV4p8LL9DWQEgdQesJ84uFC6RHA1EksRgSNfQbCSJXH2CbmN5uZL1MmPCqftNcMAAA=) format("woff2"); }
+/* The classes figure sources draw with. build.py prepends the theme's colors and font families as
+   variables; a source sets no color or font of its own. */
+
+text { font-family: var(--sans); font-size: 12px; fill: var(--ink); }
+.m { font-family: var(--math); font-size: 16px; }
+.code { font-family: var(--mono); font-size: 12px; }
+.title { font-size: 15px; font-weight: 600; }
+.small { font-size: 11px; }
+.sub { font-size: 11px; }
+.big { font-size: 20px; }
+.b { font-weight: 600; }
+.i { font-style: italic; }
+.var { font-family: var(--math); font-style: italic; font-size: 1.2em; }
+.muted { fill: var(--muted); }
+.acc { fill: var(--accent); }
+.sig { fill: var(--signal); }
+.on-accent { fill: var(--on-accent); }
+.on-learner { fill: var(--paper); }
+.mid { text-anchor: middle; }
+.end { text-anchor: end; }
+.digit { font-size: 9.5px; font-weight: 600; fill: var(--paper); text-anchor: middle; }
+.halo { paint-order: stroke; stroke: var(--paper); stroke-width: 4px; stroke-linejoin: round; }
+
+.ground, .backing { fill: var(--paper); }
+.card { fill: var(--paper); stroke: var(--rule); stroke-width: 1.5; }
+.store { fill: var(--wash); }
+.store-card { fill: var(--wash); stroke: var(--rule); stroke-width: 1.5; }
+.elected { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.5; }
+.note { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.25; }
+.note-a { fill: var(--paper); stroke: var(--learner-a); stroke-width: 1.25; }
+.note-b { fill: var(--paper); stroke: var(--learner-b); stroke-width: 1.25; }
+.note-c { fill: var(--paper); stroke: var(--learner-c); stroke-width: 1.25; }
+.op { fill: var(--paper); stroke: var(--muted); stroke-width: 1.5; }
+.out { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.param { fill: var(--wash); stroke: var(--ink); stroke-width: 1.5; }
+.pill { fill: var(--paper); stroke: var(--rule); stroke-width: 1.25; }
+.chip { fill: var(--accent); }
+.tile, .layer, .slot-full { fill: var(--wash); stroke: var(--rule); stroke-width: 1; }
+.slot { fill: var(--paper); stroke: var(--rule); stroke-width: 1.25; }
+.tile-k { fill: var(--accent); }
+.picked { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.5; }
+.track { fill: var(--wash); }
+
+.sA { fill: var(--learner-a); }
+.sB { fill: var(--learner-b); }
+.sC { fill: var(--learner-c); }
+.sD { fill: var(--learner-d); }
+.wait { fill: url(#hatch); }
+.lost { fill: url(#lost); stroke: var(--signal); stroke-width: 1; }
+.xchg, .commit, .dot-acc, .badge-acc { fill: var(--accent); }
+.dot-ink, .badge, .close { fill: var(--ink); }
+.dot-sig { fill: var(--signal); }
+.dot-muted { fill: var(--muted); }
+.snap { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.round { fill: var(--paper); stroke: var(--accent); stroke-width: 1.25; }
+.miss { fill: none; stroke: var(--signal); stroke-width: 2.5; }
+.band { fill: var(--accent); }
+.ring { stroke: var(--paper); stroke-width: 1.5; }
+
+.rule { fill: none; stroke: var(--rule); stroke-width: 1; }
+.guide { fill: none; stroke: var(--rule); stroke-width: 1; stroke-dasharray: 4 4; }
+.axis, .tick { fill: none; stroke: var(--muted); stroke-width: 1; }
+.contour { fill: none; stroke: var(--hatch); stroke-width: 1; }
+.frame { fill: none; stroke: var(--rule); stroke-width: 1.5; }
+.valley { fill: none; stroke: var(--accent); stroke-width: 2; }
+.span { fill: none; stroke: var(--accent); stroke-width: 1; }
+.join { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+.batches { stroke: var(--accent); stroke-width: 0.75; stroke-opacity: 0.45; }
+.life-a { stroke: var(--learner-a); stroke-width: 2.5; }
+.life-b { stroke: var(--learner-b); stroke-width: 2.5; }
+.life-c { stroke: var(--learner-c); stroke-width: 2.5; }
+.life-s { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.line-a { fill: none; stroke: var(--learner-a); stroke-width: 1.25; }
+.line-b { fill: none; stroke: var(--learner-b); stroke-width: 1.25; }
+.line-c { fill: none; stroke: var(--learner-c); stroke-width: 1.25; }
+.line-d { fill: none; stroke: var(--learner-d); stroke-width: 1.25; }
+.dotted { fill: none; stroke: var(--muted); stroke-width: 1; stroke-dasharray: 1 3; stroke-linecap: round; }
+.line-ink { fill: none; stroke: var(--ink); stroke-width: 2; }
+.line-sig { fill: none; stroke: var(--signal); stroke-width: 2; }
+.line-muted { fill: none; stroke: var(--muted); stroke-width: 2; }
+.line-acc { fill: none; stroke: var(--accent); stroke-width: 2; }
+.thin { stroke-width: 1; stroke-opacity: 0.6; }
+
+.arrow { fill: none; stroke: var(--muted); stroke-width: 1.5; marker-end: url(#head-muted); }
+.arrow-ink { fill: none; stroke: var(--ink); stroke-width: 1.5; marker-end: url(#head-ink); }
+.arrow-acc { fill: none; stroke: var(--accent); stroke-width: 1.5; marker-end: url(#head-accent); }
+.arrow-sig { fill: none; stroke: var(--signal); stroke-width: 1.5; marker-end: url(#head-signal); }
+.arrow-a { fill: none; stroke: var(--learner-a); stroke-width: 1.5; marker-end: url(#head-a); }
+.arrow-b { fill: none; stroke: var(--learner-b); stroke-width: 1.5; marker-end: url(#head-b); }
+.arrow-c { fill: none; stroke: var(--learner-c); stroke-width: 1.5; marker-end: url(#head-c); }
+.reply { fill: none; stroke: var(--muted); stroke-width: 1.25; stroke-dasharray: 4 3; marker-end: url(#head-muted); }
+.strong { stroke-width: 2.5; }
+.loop { fill: none; stroke: var(--muted); stroke-width: 1.25; marker-end: url(#head-muted); }
+
+.hatch-bg { fill: var(--wash); }
+.hatch-line { stroke: var(--hatch); stroke-width: 2.5; }
+.lost-bg { fill: var(--signal-wash); }
+.lost-line { stroke: var(--signal); stroke-opacity: 0.4; stroke-width: 2.5; }
+.head-ink { fill: var(--ink); }
+.head-muted { fill: var(--muted); }
+.head-accent { fill: var(--accent); }
+.head-signal { fill: var(--signal); }
+.head-a { fill: var(--learner-a); }
+.head-b { fill: var(--learner-b); }
+.head-c { fill: var(--learner-c); }
+</style>
+<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="hatch-bg"/><path d="M 0 0 V 6" class="hatch-line"/></pattern><pattern id="lost" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="lost-bg"/><path d="M 0 0 V 6" class="lost-line"/></pattern><marker id="head-ink" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-ink"/></marker><marker id="head-muted" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-muted"/></marker><marker id="head-accent" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-accent"/></marker><marker id="head-signal" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-signal"/></marker><marker id="head-a" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-a"/></marker><marker id="head-b" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-b"/></marker><marker id="head-c" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-c"/></marker></defs>
+<rect width="960" height="640" rx="6" class="ground"/>
+
+<text x="24" y="40" class="title">Pythia-14M</text>
+<text x="24" y="60" class="small muted">Six GPT-NeoX blocks, hidden width 128, context length 2,048 tokens.</text>
+
+<rect x="88" y="86" width="144" height="32" rx="6" class="card"/>
+<text x="160" y="107" class="mid">Input token IDs</text>
+<path d="M 160 118 V 140" class="arrow"/>
+<rect x="24" y="140" width="272" height="48" rx="6" class="param"/>
+<text x="160" y="160" class="b mid">Token embedding</text>
+<text x="160" y="178" class="small mid muted">50,304 × 128</text>
+
+<path d="M 160 188 V 216" class="arrow"/>
+<rect x="24" y="216" width="272" height="64" rx="6" class="op"/>
+<text x="160" y="242" class="b mid">Transformer block × 6</text>
+<text x="160" y="262" class="small mid muted">128-dimensional hidden states</text>
+<path d="M 296 248 H 352" class="guide"/>
+
+<path d="M 160 280 V 308" class="arrow"/>
+<rect x="24" y="308" width="272" height="36" rx="6" class="op"/>
+<text x="160" y="331" class="mid">Final layer norm</text>
+
+<path d="M 160 344 V 372" class="arrow"/>
+<rect x="24" y="372" width="272" height="48" rx="6" class="param"/>
+<text x="160" y="392" class="b mid">Output projection</text>
+<text x="160" y="410" class="small mid muted">128 → 50,304 · untied weights</text>
+<path d="M 160 420 V 446" class="arrow"/>
+<rect x="88" y="446" width="144" height="32" rx="6" class="out"/>
+<text x="160" y="467" class="mid">Next-token logits</text>
+
+<rect x="352" y="86" width="584" height="398" rx="6" class="frame"/>
+<text x="376" y="118" class="title">Inside one transformer block</text>
+<rect x="624" y="140" width="40" height="28" rx="6" class="card"/>
+<text x="644" y="159" class="m i mid">x</text>
+<path d="M 644 168 V 182 H 502 V 206" class="arrow"/>
+<path d="M 644 182 H 762 V 206" class="arrow"/>
+<path d="M 644 182 H 908 V 408 H 658" class="arrow"/>
+<text x="896" y="360" class="small end muted">residual</text>
+
+<rect x="398" y="206" width="208" height="32" rx="6" class="op"/>
+<text x="502" y="227" class="mid">Layer norm 1</text>
+<path d="M 502 238 V 262" class="arrow"/>
+<rect x="398" y="262" width="208" height="76" rx="6" class="op"/>
+<text x="502" y="284" class="b mid">Causal self-attention</text>
+<text x="502" y="304" class="small mid">4 heads × 32 dimensions</text>
+<text x="502" y="323" class="small mid muted">RoPE on 8 query/key dims per head</text>
+<path d="M 502 338 V 408 H 630" class="arrow"/>
+
+<rect x="658" y="206" width="208" height="32" rx="6" class="op"/>
+<text x="762" y="227" class="mid">Layer norm 2</text>
+<path d="M 762 238 V 262" class="arrow"/>
+<rect x="658" y="262" width="208" height="76" rx="6" class="op"/>
+<text x="762" y="286" class="b mid">MLP · GELU</text>
+<text x="762" y="310" class="mid">128 → 512 → 128</text>
+<path d="M 762 338 V 370 H 644 V 394" class="arrow"/>
+
+<rect x="630" y="394" width="28" height="28" rx="6" class="op"/>
+<text x="644" y="413" class="m mid">+</text>
+<path d="M 644 422 V 446" class="arrow"/>
+<text x="644" y="469" class="m mid"><tspan class="i">x</tspan> + attention(LN₁(<tspan class="i">x</tspan>)) + MLP(LN₂(<tspan class="i">x</tspan>))</text>
+
+<text x="24" y="518" class="title">The two vocabulary tables hold about 92% of the parameters</text>
+<text x="24" y="538" class="small muted">Each table has 6,438,912 weights. Input and output weights are separate.</text>
+<rect x="24" y="552" width="415.6" height="32" rx="6" class="param"/>
+<text x="231.8" y="573" class="small mid">Input embedding · 6.44M</text>
+<rect x="441.6" y="552" width="76.8" height="32" rx="6" class="card"/>
+<text x="480" y="573" class="small mid">1.19M</text>
+<rect x="520.4" y="552" width="415.6" height="32" rx="6" class="param"/>
+<text x="728.2" y="573" class="small mid">Output projection · 6.44M</text>
+<text x="480" y="602" class="small mid muted">blocks + final norm</text>
+</svg>

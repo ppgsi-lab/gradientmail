@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="440" viewBox="0 0 960 440" role="img" aria-label="Held-out loss at dataset step 4,000 against the number of replicas, at a global batch of 1,024 sequences. The recipe, Carry at H = 25 with F8 deltas, scores 3.559 with 2 replicas, 3.605 with 4, 3.601 with 8 and 3.749 with 16. Carry at H = 50 in fp32 scores 3.585 with one replica, 3.584 with 2, 3.689 with 4, 3.678 with 8 and 3.847 with 16. The official checkpoint scores 3.781 and the nine PolyPythia seeds 3.732 to 3.762.">
+<rect width="960" height="440" rx="6" class="ground"/>
+<rect x="96" y="154.5" width="804" height="24.9" class="store"/>
+<path d="M 96 138.8 H 900" class="guide"/>
+<text x="106" y="132.8" class="small muted">official pythia-14m, 3.781</text>
+<text x="106" y="193.4" class="small muted">nine PolyPythia seeds, 3.732 to 3.762</text>
+<path d="M 96 330.5 H 900 M 96 289 H 900 M 96 247.5 H 900 M 96 206 H 900 M 96 164.5 H 900 M 96 123 H 900 M 96 81.5 H 900 M 96 40 H 900" class="rule"/>
+<text x="86" y="376" class="small end muted">3.50</text>
+<text x="86" y="334.5" class="small end muted">3.55</text>
+<text x="86" y="293" class="small end muted">3.60</text>
+<text x="86" y="251.5" class="small end muted">3.65</text>
+<text x="86" y="210" class="small end muted">3.70</text>
+<text x="86" y="168.5" class="small end muted">3.75</text>
+<text x="86" y="127" class="small end muted">3.80</text>
+<text x="86" y="85.5" class="small end muted">3.85</text>
+<text x="86" y="44" class="small end muted">3.90</text>
+<text x="0" y="0" class="small mid muted" transform="translate(36 206) rotate(-90)">held-out loss at step 4,000 (nats per token)</text>
+<path d="M 96 32 V 372 H 900" class="axis"/>
+<path d="M 96 372 V 376 M 297 372 V 376 M 498 372 V 376 M 699 372 V 376 M 900 372 V 376" class="tick"/>
+<text x="96" y="392" class="small mid muted">1</text>
+<text x="297" y="392" class="small mid muted">2</text>
+<text x="498" y="392" class="small mid muted">4</text>
+<text x="699" y="392" class="small mid muted">8</text>
+<text x="900" y="392" class="small mid muted">16</text>
+<text x="498" y="416" class="small mid muted">replicas, each training 1,024 / n sequences per step</text>
+<path d="M 96 301.5 L 297 302.3 L 498 215.1 L 699 224.3 L 900 84" class="dotted"/>
+<path d="M 297 322.9 L 498 284.7 L 699 288.3 L 900 165" class="line-ink"/>
+<circle cx="96" cy="301.5" r="5" class="dot-muted"/>
+<text x="108" y="293.5" class="small muted">H = 50, fp32, 3.585</text>
+<circle cx="297" cy="302.3" r="5" class="dot-muted"/>
+<text x="309" y="294.3" class="small muted">3.584</text>
+<circle cx="498" cy="215.1" r="5" class="dot-muted"/>
+<text x="510" y="207.1" class="small muted">3.689</text>
+<circle cx="699" cy="224.3" r="5" class="dot-muted"/>
+<text x="711" y="216.3" class="small muted">3.678</text>
+<circle cx="900" cy="84" r="5" class="dot-muted"/>
+<text x="888" y="88" class="small end muted">H = 50, fp32, 3.847</text>
+<circle cx="297" cy="322.9" r="5" class="dot-ink"/>
+<text x="309" y="338.9" class="small">3.559</text>
+<circle cx="498" cy="284.7" r="5" class="dot-ink"/>
+<text x="510" y="300.7" class="small">3.605</text>
+<circle cx="699" cy="288.3" r="5" class="dot-ink"/>
+<text x="711" y="304.3" class="small">3.601</text>
+<circle cx="900" cy="165" r="5" class="dot-ink"/>
+<text x="888" y="169" class="small end">H = 25, F8, 3.749</text>
+</svg>

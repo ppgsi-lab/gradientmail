@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="440" viewBox="0 0 960 440" role="img" aria-label="Held-out loss at dataset step 4,000 against the number of replicas, at a global batch of 1,024 sequences. The recipe, Carry at H = 25 with F8 deltas, scores 3.559 with 2 replicas, 3.605 with 4, 3.601 with 8 and 3.749 with 16. Carry at H = 50 in fp32 scores 3.585 with one replica, 3.584 with 2, 3.689 with 4, 3.678 with 8 and 3.847 with 16. The official checkpoint scores 3.781 and the nine PolyPythia seeds 3.732 to 3.762.">
+<style>
+svg { --paper: #fefdfc; --wash: #f5f1ec; --rule: #dedad5; --hatch: #cfc8c0; --muted: #665f5a; --ink: #1c1714; --accent: #065f74; --accent-wash: #e4f1f5; --on-accent: #ffffff; --signal: #86262e; --signal-wash: #fbeae9; --learner-a: #556892; --learner-b: #ac853f; --learner-c: #598361; --learner-d: #825172; --serif: "Newsreader", Georgia, "Times New Roman", serif; --math: "Source Serif 4", "Noto Sans Math", Georgia, serif; --sans: "Source Sans 3", "Source Sans Pro", system-ui, -apple-system, "Segoe UI", sans-serif; --mono: "Source Code Pro", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+@media (prefers-color-scheme: dark) { svg { --paper: #191512; --wash: #241f1c; --rule: #413c38; --hatch: #544f4a; --muted: #b3ada6; --ink: #eeebe5; --accent: #6ebccb; --accent-wash: #192f35; --on-accent: #191512; --signal: #e38182; --signal-wash: #3d2323; --learner-a: #899ecb; --learner-b: #d6ad68; --learner-c: #80b38a; --learner-d: #bd88ab; } }
+@font-face { font-family: "Source Sans 3"; font-style: normal; font-weight: 400; src: url(data:font/woff2;base64,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) format("woff2"); }
+/* The classes figure sources draw with. build.py prepends the theme's colors and font families as
+   variables; a source sets no color or font of its own. */
+
+text { font-family: var(--sans); font-size: 12px; fill: var(--ink); }
+.m { font-family: var(--math); font-size: 16px; }
+.code { font-family: var(--mono); font-size: 12px; }
+.title { font-size: 15px; font-weight: 600; }
+.small { font-size: 11px; }
+.sub { font-size: 11px; }
+.big { font-size: 20px; }
+.b { font-weight: 600; }
+.i { font-style: italic; }
+.var { font-family: var(--math); font-style: italic; font-size: 1.2em; }
+.muted { fill: var(--muted); }
+.acc { fill: var(--accent); }
+.sig { fill: var(--signal); }
+.on-accent { fill: var(--on-accent); }
+.on-learner { fill: var(--paper); }
+.mid { text-anchor: middle; }
+.end { text-anchor: end; }
+.digit { font-size: 9.5px; font-weight: 600; fill: var(--paper); text-anchor: middle; }
+.halo { paint-order: stroke; stroke: var(--paper); stroke-width: 4px; stroke-linejoin: round; }
+
+.ground, .backing { fill: var(--paper); }
+.card { fill: var(--paper); stroke: var(--rule); stroke-width: 1.5; }
+.store { fill: var(--wash); }
+.store-card { fill: var(--wash); stroke: var(--rule); stroke-width: 1.5; }
+.elected { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.5; }
+.note { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.25; }
+.note-a { fill: var(--paper); stroke: var(--learner-a); stroke-width: 1.25; }
+.note-b { fill: var(--paper); stroke: var(--learner-b); stroke-width: 1.25; }
+.note-c { fill: var(--paper); stroke: var(--learner-c); stroke-width: 1.25; }
+.op { fill: var(--paper); stroke: var(--muted); stroke-width: 1.5; }
+.out { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.param { fill: var(--wash); stroke: var(--ink); stroke-width: 1.5; }
+.pill { fill: var(--paper); stroke: var(--rule); stroke-width: 1.25; }
+.chip { fill: var(--accent); }
+.tile, .layer, .slot-full { fill: var(--wash); stroke: var(--rule); stroke-width: 1; }
+.slot { fill: var(--paper); stroke: var(--rule); stroke-width: 1.25; }
+.tile-k { fill: var(--accent); }
+.picked { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.5; }
+.track { fill: var(--wash); }
+
+.sA { fill: var(--learner-a); }
+.sB { fill: var(--learner-b); }
+.sC { fill: var(--learner-c); }
+.sD { fill: var(--learner-d); }
+.wait { fill: url(#hatch); }
+.lost { fill: url(#lost); stroke: var(--signal); stroke-width: 1; }
+.xchg, .commit, .dot-acc, .badge-acc { fill: var(--accent); }
+.dot-ink, .badge, .close { fill: var(--ink); }
+.dot-sig { fill: var(--signal); }
+.dot-muted { fill: var(--muted); }
+.snap { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.round { fill: var(--paper); stroke: var(--accent); stroke-width: 1.25; }
+.miss { fill: none; stroke: var(--signal); stroke-width: 2.5; }
+.band { fill: var(--accent); }
+.ring { stroke: var(--paper); stroke-width: 1.5; }
+
+.rule { fill: none; stroke: var(--rule); stroke-width: 1; }
+.guide { fill: none; stroke: var(--rule); stroke-width: 1; stroke-dasharray: 4 4; }
+.axis, .tick { fill: none; stroke: var(--muted); stroke-width: 1; }
+.contour { fill: none; stroke: var(--hatch); stroke-width: 1; }
+.frame { fill: none; stroke: var(--rule); stroke-width: 1.5; }
+.valley { fill: none; stroke: var(--accent); stroke-width: 2; }
+.span { fill: none; stroke: var(--accent); stroke-width: 1; }
+.join { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+.batches { stroke: var(--accent); stroke-width: 0.75; stroke-opacity: 0.45; }
+.life-a { stroke: var(--learner-a); stroke-width: 2.5; }
+.life-b { stroke: var(--learner-b); stroke-width: 2.5; }
+.life-c { stroke: var(--learner-c); stroke-width: 2.5; }
+.life-s { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.line-a { fill: none; stroke: var(--learner-a); stroke-width: 1.25; }
+.line-b { fill: none; stroke: var(--learner-b); stroke-width: 1.25; }
+.line-c { fill: none; stroke: var(--learner-c); stroke-width: 1.25; }
+.line-d { fill: none; stroke: var(--learner-d); stroke-width: 1.25; }
+.dotted { fill: none; stroke: var(--muted); stroke-width: 1; stroke-dasharray: 1 3; stroke-linecap: round; }
+.line-ink { fill: none; stroke: var(--ink); stroke-width: 2; }
+.line-sig { fill: none; stroke: var(--signal); stroke-width: 2; }
+.line-muted { fill: none; stroke: var(--muted); stroke-width: 2; }
+.line-acc { fill: none; stroke: var(--accent); stroke-width: 2; }
+.thin { stroke-width: 1; stroke-opacity: 0.6; }
+
+.arrow { fill: none; stroke: var(--muted); stroke-width: 1.5; marker-end: url(#head-muted); }
+.arrow-ink { fill: none; stroke: var(--ink); stroke-width: 1.5; marker-end: url(#head-ink); }
+.arrow-acc { fill: none; stroke: var(--accent); stroke-width: 1.5; marker-end: url(#head-accent); }
+.arrow-sig { fill: none; stroke: var(--signal); stroke-width: 1.5; marker-end: url(#head-signal); }
+.arrow-a { fill: none; stroke: var(--learner-a); stroke-width: 1.5; marker-end: url(#head-a); }
+.arrow-b { fill: none; stroke: var(--learner-b); stroke-width: 1.5; marker-end: url(#head-b); }
+.arrow-c { fill: none; stroke: var(--learner-c); stroke-width: 1.5; marker-end: url(#head-c); }
+.reply { fill: none; stroke: var(--muted); stroke-width: 1.25; stroke-dasharray: 4 3; marker-end: url(#head-muted); }
+.strong { stroke-width: 2.5; }
+.loop { fill: none; stroke: var(--muted); stroke-width: 1.25; marker-end: url(#head-muted); }
+
+.hatch-bg { fill: var(--wash); }
+.hatch-line { stroke: var(--hatch); stroke-width: 2.5; }
+.lost-bg { fill: var(--signal-wash); }
+.lost-line { stroke: var(--signal); stroke-opacity: 0.4; stroke-width: 2.5; }
+.head-ink { fill: var(--ink); }
+.head-muted { fill: var(--muted); }
+.head-accent { fill: var(--accent); }
+.head-signal { fill: var(--signal); }
+.head-a { fill: var(--learner-a); }
+.head-b { fill: var(--learner-b); }
+.head-c { fill: var(--learner-c); }
+</style>
+<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="hatch-bg"/><path d="M 0 0 V 6" class="hatch-line"/></pattern><pattern id="lost" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="lost-bg"/><path d="M 0 0 V 6" class="lost-line"/></pattern><marker id="head-ink" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-ink"/></marker><marker id="head-muted" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-muted"/></marker><marker id="head-accent" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-accent"/></marker><marker id="head-signal" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-signal"/></marker><marker id="head-a" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-a"/></marker><marker id="head-b" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-b"/></marker><marker id="head-c" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-c"/></marker></defs>
+<rect width="960" height="440" rx="6" class="ground"/>
+<rect x="96" y="154.5" width="804" height="24.9" class="store"/>
+<path d="M 96 138.8 H 900" class="guide"/>
+<text x="106" y="132.8" class="small muted">official pythia-14m, 3.781</text>
+<text x="106" y="193.4" class="small muted">nine PolyPythia seeds, 3.732 to 3.762</text>
+<path d="M 96 330.5 H 900 M 96 289 H 900 M 96 247.5 H 900 M 96 206 H 900 M 96 164.5 H 900 M 96 123 H 900 M 96 81.5 H 900 M 96 40 H 900" class="rule"/>
+<text x="86" y="376" class="small end muted">3.50</text>
+<text x="86" y="334.5" class="small end muted">3.55</text>
+<text x="86" y="293" class="small end muted">3.60</text>
+<text x="86" y="251.5" class="small end muted">3.65</text>
+<text x="86" y="210" class="small end muted">3.70</text>
+<text x="86" y="168.5" class="small end muted">3.75</text>
+<text x="86" y="127" class="small end muted">3.80</text>
+<text x="86" y="85.5" class="small end muted">3.85</text>
+<text x="86" y="44" class="small end muted">3.90</text>
+<text x="0" y="0" class="small mid muted" transform="translate(36 206) rotate(-90)">held-out loss at step 4,000 (nats per token)</text>
+<path d="M 96 32 V 372 H 900" class="axis"/>
+<path d="M 96 372 V 376 M 297 372 V 376 M 498 372 V 376 M 699 372 V 376 M 900 372 V 376" class="tick"/>
+<text x="96" y="392" class="small mid muted">1</text>
+<text x="297" y="392" class="small mid muted">2</text>
+<text x="498" y="392" class="small mid muted">4</text>
+<text x="699" y="392" class="small mid muted">8</text>
+<text x="900" y="392" class="small mid muted">16</text>
+<text x="498" y="416" class="small mid muted">replicas, each training 1,024 / n sequences per step</text>
+<path d="M 96 301.5 L 297 302.3 L 498 215.1 L 699 224.3 L 900 84" class="dotted"/>
+<path d="M 297 322.9 L 498 284.7 L 699 288.3 L 900 165" class="line-ink"/>
+<circle cx="96" cy="301.5" r="5" class="dot-muted"/>
+<text x="108" y="293.5" class="small muted">H = 50, fp32, 3.585</text>
+<circle cx="297" cy="302.3" r="5" class="dot-muted"/>
+<text x="309" y="294.3" class="small muted">3.584</text>
+<circle cx="498" cy="215.1" r="5" class="dot-muted"/>
+<text x="510" y="207.1" class="small muted">3.689</text>
+<circle cx="699" cy="224.3" r="5" class="dot-muted"/>
+<text x="711" y="216.3" class="small muted">3.678</text>
+<circle cx="900" cy="84" r="5" class="dot-muted"/>
+<text x="888" y="88" class="small end muted">H = 50, fp32, 3.847</text>
+<circle cx="297" cy="322.9" r="5" class="dot-ink"/>
+<text x="309" y="338.9" class="small">3.559</text>
+<circle cx="498" cy="284.7" r="5" class="dot-ink"/>
+<text x="510" y="300.7" class="small">3.605</text>
+<circle cx="699" cy="288.3" r="5" class="dot-ink"/>
+<text x="711" y="304.3" class="small">3.601</text>
+<circle cx="900" cy="165" r="5" class="dot-ink"/>
+<text x="888" y="169" class="small end">H = 25, F8, 3.749</text>
+</svg>

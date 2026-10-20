@@ -1,0 +1,289 @@
+<div id="gm-data-flow">
+  <div class="gm-controls">
+    <div class="gm-choice" role="radiogroup" aria-labelledby="gm-delta-label">
+      <span id="gm-delta-label">Delta dtype</span>
+      <span class="gm-options">
+        <label><input type="radio" name="gm-delta" value="fp32">FP32</label>
+        <label><input type="radio" name="gm-delta" value="bf16">BF16</label>
+        <label><input type="radio" name="gm-delta" value="fp8">FP8</label>
+        <label><input type="radio" name="gm-delta" value="fp4" checked>FP4</label>
+      </span>
+    </div>
+    <div class="gm-choice" role="radiogroup" aria-labelledby="gm-commit-label">
+      <span id="gm-commit-label">Commit dtype</span>
+      <span class="gm-options">
+        <label><input type="radio" name="gm-commit" value="fp32">FP32</label>
+        <label><input type="radio" name="gm-commit" value="bf16">BF16</label>
+        <label><input type="radio" name="gm-commit" value="fp8" checked>FP8</label>
+        <label><input type="radio" name="gm-commit" value="fp4">FP4</label>
+      </span>
+    </div>
+    <div class="gm-choice" role="radiogroup" aria-labelledby="gm-zstd-label">
+      <span id="gm-zstd-label">Compression</span>
+      <span class="gm-options">
+        <label><input type="radio" name="gm-zstd" value="off" checked>off</label>
+        <label><input type="radio" name="gm-zstd" value="zstd">zstd</label>
+      </span>
+    </div>
+  </div>
+  <svg role="img" aria-labelledby="gm-df-title gm-df-desc">
+    <title id="gm-df-title">One round of an output-embedding fragment between four nodes and the mailbox</title>
+    <desc id="gm-df-desc">Nodes A to D train locally and upload their learner deltas to the mailbox. Node D also holds the synchronizer role: it downloads the four deltas, merges them, applies the outer step and uploads the commit. Nodes A to C then download the global commit update, or the fp32 weights when the commit publishes no update; node D's learner takes the commit from its synchronizer in memory.</desc>
+    <defs>
+      <marker id="gm-df-head-acc" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-acc"/></marker>
+      <marker id="gm-df-head-a" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-a"/></marker>
+      <marker id="gm-df-head-b" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-b"/></marker>
+      <marker id="gm-df-head-c" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-c"/></marker>
+      <marker id="gm-df-head-d" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" class="head-d"/></marker>
+    </defs>
+  </svg>
+</div>
+<style>
+  #gm-data-flow { margin: 38.4px 0; }
+  #gm-data-flow .gm-controls { display: flex; flex-wrap: wrap; gap: 14.4px 28.8px; margin-bottom: 9.6px; font-size: 14.4px; line-height: 19.2px; color: var(--muted); }
+  #gm-data-flow .gm-choice { display: flex; align-items: center; gap: 9.6px; }
+  #gm-data-flow .gm-options { display: inline-flex; padding: 2.4px; border: 1px solid var(--hatch); border-radius: 999px; }
+  #gm-data-flow .gm-options label { position: relative; padding: 2.4px 12px; border-radius: 999px; cursor: pointer; font-variant-numeric: tabular-nums; }
+  #gm-data-flow .gm-options label:hover { color: var(--ink); }
+  #gm-data-flow .gm-options label:has(:checked) { background: var(--ink); color: var(--paper); }
+  #gm-data-flow .gm-options label:has(:focus-visible) { outline: 2px solid var(--ink); outline-offset: 2px; }
+  #gm-data-flow .gm-options input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+  #gm-data-flow svg { display: block; width: 100%; height: auto; }
+  #gm-data-flow svg text { font-family: var(--sans); font-size: 12px; fill: var(--ink); font-variant-numeric: tabular-nums; }
+  #gm-data-flow .title { font-size: 15px; font-weight: 600; }
+  #gm-data-flow .small { font-size: 11px; }
+  #gm-data-flow .b { font-weight: 600; }
+  #gm-data-flow .muted { fill: var(--muted); }
+  #gm-data-flow .acc { fill: var(--accent); }
+  #gm-data-flow .on-accent { fill: var(--on-accent); }
+  #gm-data-flow .mid { text-anchor: middle; }
+  #gm-data-flow .end { text-anchor: end; }
+  #gm-data-flow .digit { font-size: 9.5px; font-weight: 600; fill: var(--paper); text-anchor: middle; }
+  #gm-data-flow .ground { fill: var(--paper); }
+  #gm-data-flow .card { fill: var(--paper); stroke: var(--rule); stroke-width: 1.5; }
+  #gm-data-flow .store-card { fill: var(--wash); stroke: var(--rule); stroke-width: 1.5; }
+  #gm-data-flow .elected { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.5; }
+  #gm-data-flow .note { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.25; }
+  #gm-data-flow .slot { fill: var(--paper); stroke: var(--rule); stroke-width: 1.25; }
+  #gm-data-flow .note-a { fill: var(--paper); stroke: var(--learner-a); stroke-width: 1.25; }
+  #gm-data-flow .note-b { fill: var(--paper); stroke: var(--learner-b); stroke-width: 1.25; }
+  #gm-data-flow .note-c { fill: var(--paper); stroke: var(--learner-c); stroke-width: 1.25; }
+  #gm-data-flow .note-d { fill: var(--paper); stroke: var(--learner-d); stroke-width: 1.25; }
+  #gm-data-flow :is(.chip, .xchg, .head-acc) { fill: var(--accent); }
+  #gm-data-flow .badge { fill: var(--ink); }
+  #gm-data-flow .badge-muted { fill: var(--muted); }
+  #gm-data-flow :is(.sA, .head-a) { fill: var(--learner-a); }
+  #gm-data-flow :is(.sB, .head-b) { fill: var(--learner-b); }
+  #gm-data-flow :is(.sC, .head-c) { fill: var(--learner-c); }
+  #gm-data-flow :is(.sD, .head-d) { fill: var(--learner-d); }
+  #gm-data-flow .rule { fill: none; stroke: var(--rule); stroke-width: 1; }
+  #gm-data-flow [class^="arrow-"] { fill: none; stroke-width: 1.5; }
+  #gm-data-flow .arrow-acc { stroke: var(--accent); marker-end: url(#gm-df-head-acc); }
+  #gm-data-flow .arrow-a { stroke: var(--learner-a); marker-end: url(#gm-df-head-a); }
+  #gm-data-flow .arrow-b { stroke: var(--learner-b); marker-end: url(#gm-df-head-b); }
+  #gm-data-flow .arrow-c { stroke: var(--learner-c); marker-end: url(#gm-df-head-c); }
+  #gm-data-flow .arrow-d { stroke: var(--learner-d); marker-end: url(#gm-df-head-d); }
+  #gm-data-flow .spin { fill: none; stroke: var(--muted); stroke-width: 1.25; stroke-linecap: round; stroke-linejoin: round; }
+</style>
+<script>
+(() => {
+  const root = document.getElementById('gm-data-flow');
+  const svg = root.querySelector('svg');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  const namespace = 'http://www.w3.org/2000/svg';
+  const numbers = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const mb = bytes => numbers.format(bytes / 1000000) + ' MB';
+  const formats = {
+    fp32: { label: 'FP32', update: [25755744, 19584834], commit: [51511496, 43487766] },
+    bf16: { label: 'BF16', update: [12877920, 8818826], commit: [90145160, 69536035] },
+    fp8: { label: 'FP8', update: [6439084, 5293135], commit: [83706324, 65978040] },
+    fp4: { label: 'FP4', update: [3420856, 3250967], commit: [80688096, 63935822] }
+  };
+  const weights = [25755744, 17195248];
+  const stages = ['Train', 'Upload deltas', 'Merge', 'Publish commit', 'Download update'];
+  const names = ['A', 'B', 'C', 'D'];
+  const wide = {
+    width: 960, height: 499,
+    mailbox: { x: 300, y: 140, w: 360 },
+    nodes: names.map((_, i) => ({ x: 24 + i * 236, y: 360, w: 204 })),
+    wires: names.map((_, i) => [[126 + i * 236, 359], [126 + i * 236, 306], [345 + i * 90, 306], [345 + i * 90, 253]]),
+    labels: names.map((_, i) => ({ x: (126 + i * 236 + 345 + i * 90) / 2, y: 298, anchor: 'mid' })),
+    note: { x: 684, y: 140, w: 252 },
+    footnote: [
+      'Delta sizes follow the tensor layout; commit sizes come from the round-456 replay. Control messages excluded; timing is schematic.',
+      'With zstd, a delta takes the measured size of the global commit update in its format, and FP32 weights that of the stored theta.'
+    ],
+    footY: 460
+  };
+  const narrow = {
+    width: 460, height: 766,
+    mailbox: { x: 24, y: 140, w: 412 },
+    nodes: [{ x: 24, y: 330 }, { x: 250, y: 330 }, { x: 24, y: 450 }, { x: 250, y: 450 }].map(node => ({ ...node, w: 186 })),
+    wires: [
+      [[117, 329], [117, 253]],
+      [[343, 329], [343, 253]],
+      [[190, 449], [190, 428], [222, 428], [222, 253]],
+      [[270, 449], [270, 428], [238, 428], [238, 253]]
+    ],
+    labels: [{ x: 125, y: 295, anchor: '' }, { x: 335, y: 295, anchor: 'end' }, { x: 182, y: 440, anchor: 'end' }, { x: 278, y: 440, anchor: '' }],
+    note: { x: 24, y: 542, w: 412 },
+    footnote: [
+      'Delta sizes follow the tensor layout; commit sizes come',
+      'from the round-456 replay. Control messages excluded;',
+      'timing is schematic. With zstd, a delta takes the',
+      'measured size of the global commit update in its format,',
+      'and FP32 weights that of the stored theta.'
+    ],
+    footY: 686
+  };
+  let stage = 0;
+  let progress = 0;
+  let lastTime = 0;
+  let layout = null;
+  let packets = [];
+  let spinners = [];
+  function add(tag, attributes, text) {
+    const node = document.createElementNS(namespace, tag);
+    for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, String(value));
+    if (text !== undefined) node.textContent = text;
+    svg.append(node);
+    return node;
+  }
+  const chosen = name => root.querySelector('input[name="' + name + '"]:checked').value;
+  const route = points => 'M ' + points.map(point => point.join(' ')).join(' L ');
+  function draw() {
+    const { width, height, mailbox, nodes, wires, labels, note, footnote, footY } = layout;
+    const delta = formats[chosen('gm-delta')];
+    const commit = formats[chosen('gm-commit')];
+    const quantized = commit !== formats.fp32;
+    const zstd = chosen('gm-zstd') === 'zstd' ? 1 : 0;
+    svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
+    svg.setAttribute('width', String(width));
+    svg.setAttribute('height', String(height));
+    svg.querySelectorAll(':scope > :not(title, desc, defs)').forEach(node => node.remove());
+    packets = [];
+    spinners = [];
+
+    add('rect', { width, height, rx: 6, class: 'ground' });
+    add('text', { x: 24, y: 40, class: 'title' }, 'One round of a fragment');
+    add('text', { x: 24, y: 60, class: 'small muted' }, 'Output embedding, 50,304 × 128. Decimal MB ' + (zstd ? 'after' : 'before') + ' zstd.');
+    stages.forEach((name, index) => {
+      const current = index === stage;
+      const x = width === wide.width ? 24 + index * 182.4 : 24 + index * 20;
+      add('circle', { cx: x + 7, cy: 96, r: 7, class: current ? 'badge' : 'badge-muted' });
+      add('text', { x: x + 7, y: 99.5, class: 'digit' }, index + 1);
+      if (width === wide.width) add('text', { x: x + 20, y: 100, class: current ? 'title' : 'title muted' }, name);
+    });
+    if (width !== wide.width) add('text', { x: 132, y: 100, class: 'title' }, stages[stage]);
+    add('path', { d: 'M 24 118 H ' + (width - 24), class: 'rule' });
+
+    wires.forEach((points, index) => {
+      add('path', { d: route(points), class: 'rule' });
+      const upload = stage === 1 || (stage === 3 && index === 3);
+      const download = (stage === 4 && index !== 3) || (stage === 2 && index === 3);
+      if (!upload && !download) return;
+      const learner = stage === 1;
+      const wire = add('path', { d: route(upload ? points : [...points].reverse()), class: learner ? 'arrow-' + names[index].toLowerCase() : 'arrow-acc' });
+      packets.push({ wire, packet: add('rect', { width: 12, height: 8, rx: 4, class: learner ? 's' + names[index] : 'xchg' }) });
+      const bytes = stage === 1 ? delta.update[zstd]
+        : stage === 2 ? 4 * delta.update[zstd]
+        : stage === 3 ? commit.commit[zstd]
+        : quantized ? commit.update[zstd] : weights[zstd];
+      const { x, y, anchor } = labels[index];
+      add('text', { x, y, class: 'small ' + anchor }, mb(bytes));
+    });
+
+    const center = mailbox.x + mailbox.w / 2;
+    add('rect', { x: mailbox.x, y: mailbox.y, width: mailbox.w, height: 112, rx: 6, class: 'store-card' });
+    add('text', { x: center, y: mailbox.y + 26, class: 'title mid' }, 'Mailbox');
+    add('text', { x: center, y: mailbox.y + 44, class: 'small mid muted' }, 'Hugging Face Storage Bucket');
+    add('text', { x: center - 68, y: mailbox.y + 73, class: 'small end muted' }, 'deltas');
+    names.forEach((name, index) => {
+      const held = stage === 2 || stage === 3;
+      const x = center - 60 + index * 46;
+      add('rect', { x, y: mailbox.y + 60, width: 40, height: 18, rx: 9, class: held ? 'note-' + name.toLowerCase() : 'slot' });
+      if (held) add('text', { x: x + 20, y: mailbox.y + 73, class: 'small mid' }, 'Δ' + name);
+    });
+    add('text', { x: center - 68, y: mailbox.y + 99, class: 'small end b acc' }, 'commit');
+    add('rect', { x: center - 60, y: mailbox.y + 86, width: 178, height: 18, rx: 9, class: 'note' });
+    add('text', { x: center + 29, y: mailbox.y + 99, class: 'small mid acc' }, stage === 4 ? 'version v + 1' : 'version v');
+
+    nodes.forEach((node, index) => {
+      const synchronizer = index === 3;
+      const training = stage === 0 || stage === 2 || stage === 3;
+      add('rect', { x: node.x, y: node.y, width: node.w, height: 68, rx: 6, class: synchronizer ? 'elected' : 'card' });
+      add('circle', { cx: node.x + 20, cy: node.y + 22, r: 4, class: 's' + names[index] });
+      add('text', { x: node.x + 30, y: node.y + 27, class: 'title' }, 'Node ' + names[index]);
+      if (synchronizer) {
+        add('rect', { x: node.x + node.w - 96, y: node.y + 13, width: 84, height: 18, rx: 9, class: 'chip' });
+        add('text', { x: node.x + node.w - 54, y: node.y + 26, class: 'small b mid on-accent' }, 'synchronizer');
+      }
+      const status = stage === 0 ? 'trains locally'
+        : stage === 1 ? 'puts its ' + delta.label + ' Δ'
+        : stage === 4 && synchronizer ? 'takes the commit in memory'
+        : stage === 4 ? (quantized ? 'gets the ' + commit.label + ' update' : 'gets the FP32 weights')
+        : 'keeps training';
+      add('text', { x: node.x + 16, y: node.y + 52, class: training ? 'small muted' : 'small' }, status);
+      if (training) {
+        const spinner = add('path', { d: 'M 0 -6 A 6 6 0 1 1 -6 0 M -9 3 L -6 0 L -3 3', class: 'spin', 'aria-hidden': 'true' });
+        spinners.push({ spinner, x: node.x + node.w - 22, y: node.y + 48 });
+      }
+    });
+
+    if (stage >= 2) {
+      const lines = stage === 2
+        ? [['gets 4 ' + delta.label + ' Δs · ' + mb(4 * delta.update[zstd]), 'small'], ['weighted mean, Nesterov outer step', 'small muted']]
+        : stage === 4
+        ? [['hands version v + 1 to its own learner', 'small'], ['in memory, without downloading it', 'small muted']]
+        : [['puts the commit · ' + mb(commit.commit[zstd]), 'small'],
+          ...(zstd && quantized
+            ? ['FP32 weights, master, momentum · ' + mb(commit.commit[1] - commit.update[1]), commit.label + ' global commit update · ' + mb(commit.update[1])]
+            : zstd
+            ? ['FP32 weights and momentum · ' + mb(commit.commit[1]), 'no separate global commit update']
+            : quantized
+            ? ['FP32 weights · 25.76 MB', 'FP32 master · 25.76 MB', 'FP32 momentum · 25.76 MB', commit.label + ' global commit update · ' + mb(commit.update[0])]
+            : ['FP32 weights · 25.76 MB', 'FP32 momentum · 25.76 MB', 'no separate global commit update']
+          ).map(line => [line, 'small muted'])];
+      add('rect', { x: note.x, y: note.y, width: note.w, height: 52 + (lines.length - 1) * 15, rx: 6, class: 'note' });
+      add('text', { x: note.x + 14, y: note.y + 22, class: 'small b acc' }, 'Node D as synchronizer');
+      lines.forEach(([line, style], index) => add('text', { x: note.x + 14, y: note.y + 40 + index * 15, class: style }, line));
+    }
+
+    footnote.forEach((line, index) => add('text', { x: 24, y: footY + index * 15, class: 'small muted' }, line));
+    paint();
+  }
+  function paint() {
+    const movement = reduced.matches ? 1 : progress;
+    packets.forEach(({ wire, packet }) => {
+      const point = wire.getPointAtLength(wire.getTotalLength() * movement);
+      packet.setAttribute('x', String(point.x - 6));
+      packet.setAttribute('y', String(point.y - 4));
+    });
+    spinners.forEach(({ spinner, x, y }) => spinner.setAttribute('transform', 'translate(' + x + ' ' + y + ') rotate(' + (reduced.matches ? 0 : progress * 720) + ')'));
+  }
+  function frame(now) {
+    if (lastTime) progress += (now - lastTime) / 2400;
+    lastTime = now;
+    if (progress >= 1) {
+      stage = (stage + 1) % stages.length;
+      progress -= 1;
+      draw();
+    }
+    paint();
+    requestAnimationFrame(frame);
+  }
+  function resize() {
+    const next = root.clientWidth < 600 ? narrow : wide;
+    if (next !== layout) {
+      layout = next;
+      draw();
+    }
+  }
+  root.querySelectorAll('input').forEach(input => input.addEventListener('change', draw));
+  document.addEventListener('visibilitychange', () => { lastTime = 0; });
+  reduced.addEventListener('change', draw);
+  new ResizeObserver(resize).observe(root);
+  resize();
+  requestAnimationFrame(frame);
+})();
+</script>

@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="440" viewBox="0 0 960 440" role="img" aria-label="Training time against the number of replicas, both on logarithmic scales. One replica takes 7 h 52 min. The recipe takes 4 h 08 min with 2, 2 h 09 min with 4, 1 h 12 min with 8, 37 min with 16; Carry at H = 50 takes 4 h 35 min with 2, 2 h 15 min with 4, 1 h 09 min with 8, 36 min with 16. The dashed line is the ideal, the single-replica time divided by the replica count.">
+<rect width="960" height="440" rx="6" class="ground"/>
+<path d="M 96 349 H 900 M 96 277.5 H 900 M 96 206 H 900 M 96 134.5 H 900 M 96 63 H 900" class="rule"/>
+<text x="86" y="353" class="small end muted">30 min</text>
+<text x="86" y="281.5" class="small end muted">1 h</text>
+<text x="86" y="210" class="small end muted">2 h</text>
+<text x="86" y="138.5" class="small end muted">4 h</text>
+<text x="86" y="67" class="small end muted">8 h</text>
+<text x="0" y="0" class="small mid muted" transform="translate(36 206) rotate(-90)">training time, first unit to last commit</text>
+<path d="M 96 32 V 372 H 900" class="axis"/>
+<path d="M 96 372 V 376 M 297 372 V 376 M 498 372 V 376 M 699 372 V 376 M 900 372 V 376" class="tick"/>
+<text x="96" y="392" class="small mid muted">1</text>
+<text x="297" y="392" class="small mid muted">2</text>
+<text x="498" y="392" class="small mid muted">4</text>
+<text x="699" y="392" class="small mid muted">8</text>
+<text x="900" y="392" class="small mid muted">16</text>
+<text x="498" y="416" class="small mid muted">replicas</text>
+<path d="M 96 64.7 L 297 136.2 L 498 207.7 L 699 279.2 L 900 350.7" class="guide"/>
+<text x="888" y="368.7" class="small end muted">ideal, 7 h 52 min / n</text>
+<path d="M 96 64.7 L 297 120.5 L 498 193.9 L 699 263.1 L 900 330.2" class="dotted"/>
+<circle cx="96" cy="64.7" r="5" class="dot-muted"/>
+<circle cx="297" cy="120.5" r="5" class="dot-muted"/>
+<circle cx="498" cy="193.9" r="5" class="dot-muted"/>
+<circle cx="699" cy="263.1" r="5" class="dot-muted"/>
+<circle cx="900" cy="330.2" r="5" class="dot-muted"/>
+<path d="M 96 64.7 L 297 131.1 L 498 198.5 L 699 258.7 L 900 327.4" class="line-ink"/>
+<circle cx="96" cy="64.7" r="5" class="dot-ink"/>
+<text x="108" y="56.7" class="small">7 h 52 min</text>
+<circle cx="297" cy="131.1" r="5" class="dot-ink"/>
+<text x="309" y="123.1" class="small">4 h 08 min, 95%</text>
+<circle cx="498" cy="198.5" r="5" class="dot-ink"/>
+<text x="510" y="190.5" class="small">2 h 09 min, 91%</text>
+<circle cx="699" cy="258.7" r="5" class="dot-ink"/>
+<text x="711" y="250.7" class="small">1 h 12 min, 82%</text>
+<circle cx="900" cy="327.4" r="5" class="dot-ink"/>
+<text x="888" y="349.4" class="small end">37 min, 80%</text>
+</svg>

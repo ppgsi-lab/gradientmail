@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="520" viewBox="0 0 960 520" role="img" aria-label="Mean local training cross-entropy in nats per token against dataset step for 1, 2, 4, 8 and 16 replicas. A legend identifies every curve. One replica uses H = 50 and fp32; the distributed runs use H = 25 and F8 with zstd. The view shows loss below 5 after the initial drop. Dots mark the last logged 100-step bin, centered at step 3,950. At that bin: 1 replica 3.602; 2 replicas 3.590; 4 replicas 3.625; 8 replicas 3.673; 16 replicas 3.823. These are training losses, not held-out evaluation losses.">
+<rect width="960" height="520" rx="6" class="ground"/>
+<text x="24" y="36" class="title">Training loss over 4,000 dataset steps</text>
+<text x="24" y="58" class="small muted">Mean local cross-entropy in nats per token; lower is better.</text>
+<g aria-label="Legend">
+<path d="M 88 86 L 118 86" class="dotted strong"/>
+<text x="128" y="90" class="small">1 replica</text>
+<path d="M 248 86 L 278 86" class="line-a strong"/>
+<text x="288" y="90" class="small">2 replicas</text>
+<path d="M 408 86 L 438 86" class="line-b strong"/>
+<text x="448" y="90" class="small">4 replicas</text>
+<path d="M 568 86 L 598 86" class="line-c strong"/>
+<text x="608" y="90" class="small">8 replicas</text>
+<path d="M 728 86 L 758 86" class="line-d strong"/>
+<text x="768" y="90" class="small">16 replicas</text>
+</g>
+<text x="24" y="118" class="small muted">1 replica: H = 50, fp32. Other runs: H = 25, F8 + zstd.</text>
+<path d="M 88 405 H 768 M 88 369.2 H 768 M 88 333.3 H 768 M 88 297.4 H 768 M 88 261.6 H 768 M 88 225.7 H 768 M 88 189.9 H 768 M 88 154 H 768" class="rule"/>
+<path d="M 88 154 V 414 H 768" class="axis"/>
+<text x="76" y="409" class="small end muted">3.6</text>
+<text x="76" y="373.2" class="small end muted">3.8</text>
+<text x="76" y="337.3" class="small end muted">4.0</text>
+<text x="76" y="301.4" class="small end muted">4.2</text>
+<text x="76" y="265.6" class="small end muted">4.4</text>
+<text x="76" y="229.7" class="small end muted">4.6</text>
+<text x="76" y="193.9" class="small end muted">4.8</text>
+<text x="76" y="158" class="small end muted">5.0</text>
+<text x="0" y="0" class="small mid muted" transform="translate(28 284) rotate(-90)">Training loss</text>
+<path d="M 140.3 414 V 418 M 244.9 414 V 418 M 349.5 414 V 418 M 454.2 414 V 418 M 558.8 414 V 418 M 663.4 414 V 418 M 768 414 V 418" class="tick"/>
+<text x="140.3" y="434" class="small mid muted">1,000</text>
+<text x="244.9" y="434" class="small mid muted">1,500</text>
+<text x="349.5" y="434" class="small mid muted">2,000</text>
+<text x="454.2" y="434" class="small mid muted">2,500</text>
+<text x="558.8" y="434" class="small mid muted">3,000</text>
+<text x="663.4" y="434" class="small mid muted">3,500</text>
+<text x="768" y="434" class="small mid muted">4,000</text>
+<text x="428" y="464" class="small mid muted">Dataset step</text>
+<text x="808" y="328" class="small muted">Last logged bin</text>
+<g role="list" aria-label="Training loss curves">
+<g role="listitem" aria-label="1 replica">
+<path d="M 108.9 156 L 129.8 188.2 L 150.8 222.5 L 171.7 261.6 L 192.6 290.3 L 213.5 308.9 L 234.5 323.8 L 255.4 333.8 L 276.3 343.2 L 297.2 350 L 318.2 356.6 L 339.1 361.1 L 360 366.3 L 380.9 370.6 L 401.8 374 L 422.8 377.2 L 443.7 380.3 L 464.6 382.6 L 485.5 385.7 L 506.5 389.1 L 527.4 389.8 L 548.3 392.5 L 569.2 393.7 L 590.2 395.5 L 611.1 397.5 L 632 398 L 652.9 400 L 673.8 400.6 L 694.8 401.8 L 715.7 403.2 L 736.6 404.1 L 757.5 404.7" class="dotted strong"/>
+<path d="M 757.5 404.7 L 788 404.7 L 800 435" class="dotted thin"/>
+<circle cx="757.5" cy="404.7" r="5" class="dot-muted"/>
+<text x="808" y="439" class="small">1 replica · 3.602</text>
+</g>
+<g role="listitem" aria-label="2 replicas">
+<path d="M 108.9 163 L 129.8 195.8 L 150.8 228.8 L 171.7 269.1 L 192.6 299.4 L 213.5 318.8 L 234.5 334 L 255.4 344.2 L 276.3 353.4 L 297.2 360.4 L 318.2 366.8 L 339.1 371 L 360 376 L 380.9 380.1 L 401.8 383.2 L 422.8 386.2 L 443.7 388.9 L 464.6 390.9 L 485.5 393.6 L 506.5 396.4 L 527.4 397 L 548.3 399.1 L 569.2 399.8 L 590.2 401.4 L 611.1 403.2 L 632 403.2 L 652.9 404.9 L 673.8 404.9 L 694.8 405.8 L 715.7 407.2 L 736.6 406.6 L 757.5 406.8" class="line-a strong"/>
+<path d="M 757.5 406.8 L 788 406.8 L 800 462" class="line-a thin"/>
+<circle cx="757.5" cy="406.8" r="5" class="sA"/>
+<text x="808" y="466" class="small">2 replicas · 3.590</text>
+</g>
+<g role="listitem" aria-label="4 replicas">
+<path d="M 150.8 176.2 L 171.7 211.7 L 192.6 249 L 213.5 279.5 L 234.5 302.1 L 255.4 316.6 L 276.3 329.7 L 297.2 339.2 L 318.2 347.1 L 339.1 353.4 L 360 359.8 L 380.9 364.7 L 401.8 368.3 L 422.8 372 L 443.7 376.2 L 464.6 379 L 485.5 382.1 L 506.5 385 L 527.4 386.2 L 548.3 389.1 L 569.2 390.2 L 590.2 392.1 L 611.1 393.9 L 632 394.3 L 652.9 395.5 L 673.8 396.2 L 694.8 398 L 715.7 399.7 L 736.6 400 L 757.5 400.6" class="line-b strong"/>
+<path d="M 757.5 400.6 L 788 400.6 L 800 408" class="line-b thin"/>
+<circle cx="757.5" cy="400.6" r="5" class="sB"/>
+<text x="808" y="412" class="small">4 replicas · 3.625</text>
+</g>
+<g role="listitem" aria-label="8 replicas">
+<path d="M 150.8 163.1 L 171.7 192.2 L 192.6 226.3 L 213.5 258.4 L 234.5 284.2 L 255.4 301.4 L 276.3 316.3 L 297.2 326.7 L 318.2 335.5 L 339.1 342.3 L 360 349.3 L 380.9 355 L 401.8 359.7 L 422.8 363.6 L 443.7 367.7 L 464.6 370.4 L 485.5 374 L 506.5 377.6 L 527.4 378.7 L 548.3 381.7 L 569.2 382.8 L 590.2 384.4 L 611.1 385.8 L 632 385.3 L 652.9 386.9 L 673.8 387.6 L 694.8 389.1 L 715.7 390.9 L 736.6 391.6 L 757.5 391.9" class="line-c strong"/>
+<path d="M 757.5 391.9 L 788 391.9 L 800 381" class="line-c thin"/>
+<circle cx="757.5" cy="391.9" r="5" class="sC"/>
+<text x="808" y="385" class="small">8 replicas · 3.673</text>
+</g>
+<g role="listitem" aria-label="16 replicas">
+<path d="M 213.5 166.7 L 234.5 192.7 L 255.4 220.2 L 276.3 244.7 L 297.2 263 L 318.2 278.3 L 339.1 289 L 360 298.5 L 380.9 307.1 L 401.8 313.8 L 422.8 319.3 L 443.7 325.2 L 464.6 329.2 L 485.5 333.8 L 506.5 339 L 527.4 341 L 548.3 345.3 L 569.2 347.1 L 590.2 349.8 L 611.1 352.3 L 632 353.6 L 652.9 356.6 L 673.8 357.9 L 694.8 360 L 715.7 362.2 L 736.6 363.4 L 757.5 365" class="line-d strong"/>
+<path d="M 757.5 365 L 788 365 L 800 354" class="line-d thin"/>
+<circle cx="757.5" cy="365" r="5" class="sD"/>
+<text x="808" y="358" class="small">16 replicas · 3.823</text>
+</g>
+</g>
+<text x="24" y="496" class="small muted">100-step bins. Dots mark the last logged bin at step 3,950. Initial loss above 5 is outside the view.</text>
+</svg>

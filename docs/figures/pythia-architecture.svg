@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640" viewBox="0 0 960 640" role="img" aria-label="Pythia-14M architecture. Token IDs enter a 50,304 by 128 embedding table, pass through six parallel-residual GPT-NeoX blocks and a final layer norm, then an independent output projection produces 50,304 next-token logits. Each block adds the input residual, causal attention on one normalized copy of the input, and an MLP on another normalized copy. Attention has four 32-dimensional heads; rotary embeddings act on the first eight query and key dimensions per head. The MLP expands from 128 to 512 dimensions and returns to 128 with GELU. The untied input and output tables contain 12.9 million of the model's 14.1 million parameters.">
+<rect width="960" height="640" rx="6" class="ground"/>
+
+<text x="24" y="40" class="title">Pythia-14M</text>
+<text x="24" y="60" class="small muted">Six GPT-NeoX blocks, hidden width 128, context length 2,048 tokens.</text>
+
+<rect x="88" y="86" width="144" height="32" rx="6" class="card"/>
+<text x="160" y="107" class="mid">Input token IDs</text>
+<path d="M 160 118 V 140" class="arrow"/>
+<rect x="24" y="140" width="272" height="48" rx="6" class="param"/>
+<text x="160" y="160" class="b mid">Token embedding</text>
+<text x="160" y="178" class="small mid muted">50,304 × 128</text>
+
+<path d="M 160 188 V 216" class="arrow"/>
+<rect x="24" y="216" width="272" height="64" rx="6" class="op"/>
+<text x="160" y="242" class="b mid">Transformer block × 6</text>
+<text x="160" y="262" class="small mid muted">128-dimensional hidden states</text>
+<path d="M 296 248 H 352" class="guide"/>
+
+<path d="M 160 280 V 308" class="arrow"/>
+<rect x="24" y="308" width="272" height="36" rx="6" class="op"/>
+<text x="160" y="331" class="mid">Final layer norm</text>
+
+<path d="M 160 344 V 372" class="arrow"/>
+<rect x="24" y="372" width="272" height="48" rx="6" class="param"/>
+<text x="160" y="392" class="b mid">Output projection</text>
+<text x="160" y="410" class="small mid muted">128 → 50,304 · untied weights</text>
+<path d="M 160 420 V 446" class="arrow"/>
+<rect x="88" y="446" width="144" height="32" rx="6" class="out"/>
+<text x="160" y="467" class="mid">Next-token logits</text>
+
+<rect x="352" y="86" width="584" height="398" rx="6" class="frame"/>
+<text x="376" y="118" class="title">Inside one transformer block</text>
+<rect x="624" y="140" width="40" height="28" rx="6" class="card"/>
+<text x="644" y="159" class="m i mid">x</text>
+<path d="M 644 168 V 182 H 502 V 206" class="arrow"/>
+<path d="M 644 182 H 762 V 206" class="arrow"/>
+<path d="M 644 182 H 908 V 408 H 658" class="arrow"/>
+<text x="896" y="360" class="small end muted">residual</text>
+
+<rect x="398" y="206" width="208" height="32" rx="6" class="op"/>
+<text x="502" y="227" class="mid">Layer norm 1</text>
+<path d="M 502 238 V 262" class="arrow"/>
+<rect x="398" y="262" width="208" height="76" rx="6" class="op"/>
+<text x="502" y="284" class="b mid">Causal self-attention</text>
+<text x="502" y="304" class="small mid">4 heads × 32 dimensions</text>
+<text x="502" y="323" class="small mid muted">RoPE on 8 query/key dims per head</text>
+<path d="M 502 338 V 408 H 630" class="arrow"/>
+
+<rect x="658" y="206" width="208" height="32" rx="6" class="op"/>
+<text x="762" y="227" class="mid">Layer norm 2</text>
+<path d="M 762 238 V 262" class="arrow"/>
+<rect x="658" y="262" width="208" height="76" rx="6" class="op"/>
+<text x="762" y="286" class="b mid">MLP · GELU</text>
+<text x="762" y="310" class="mid">128 → 512 → 128</text>
+<path d="M 762 338 V 370 H 644 V 394" class="arrow"/>
+
+<rect x="630" y="394" width="28" height="28" rx="6" class="op"/>
+<text x="644" y="413" class="m mid">+</text>
+<path d="M 644 422 V 446" class="arrow"/>
+<text x="644" y="469" class="m mid"><tspan class="i">x</tspan> + attention(LN₁(<tspan class="i">x</tspan>)) + MLP(LN₂(<tspan class="i">x</tspan>))</text>
+
+<text x="24" y="518" class="title">The two vocabulary tables hold about 92% of the parameters</text>
+<text x="24" y="538" class="small muted">Each table has 6,438,912 weights. Input and output weights are separate.</text>
+<rect x="24" y="552" width="415.6" height="32" rx="6" class="param"/>
+<text x="231.8" y="573" class="small mid">Input embedding · 6.44M</text>
+<rect x="441.6" y="552" width="76.8" height="32" rx="6" class="card"/>
+<text x="480" y="573" class="small mid">1.19M</text>
+<rect x="520.4" y="552" width="415.6" height="32" rx="6" class="param"/>
+<text x="728.2" y="573" class="small mid">Output projection · 6.44M</text>
+<text x="480" y="602" class="small mid muted">blocks + final norm</text>
+</svg>

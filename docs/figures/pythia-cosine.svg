@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="440" viewBox="0 0 960 440" role="img" aria-label="Mean cosine between the deltas of a round, by tenth of the run, at H = 50. Every run starts near 0.9 and falls as the replicas diverge. With Carry it ends at 0.31 for 2 replicas, 0.38 for 4, 0.17 for 8 and 0.25 for 16. At 8 replicas Overwrite and Adaptive follow one curve to 0.11 and Blend(0.5) falls to 0.13 in the sixth tenth and to about 0.06 after.">
+<rect width="960" height="440" rx="6" class="ground"/>
+<path d="M 96 305.6 H 700 M 96 239.2 H 700 M 96 172.8 H 700 M 96 106.4 H 700 M 96 40 H 700" class="rule"/>
+<text x="86" y="376" class="small end muted">0.0</text>
+<text x="86" y="309.6" class="small end muted">0.2</text>
+<text x="86" y="243.2" class="small end muted">0.4</text>
+<text x="86" y="176.8" class="small end muted">0.6</text>
+<text x="86" y="110.4" class="small end muted">0.8</text>
+<text x="86" y="44" class="small end muted">1.0</text>
+<text x="0" y="0" class="small mid muted" transform="translate(36 206) rotate(-90)">mean cosine between the deltas of a round</text>
+<path d="M 96 32 V 372 H 700" class="axis"/>
+<path d="M 96 372 V 376 M 156.4 372 V 376 M 216.8 372 V 376 M 277.2 372 V 376 M 337.6 372 V 376 M 398 372 V 376 M 458.4 372 V 376 M 518.8 372 V 376 M 579.2 372 V 376 M 639.6 372 V 376 M 700 372 V 376" class="tick"/>
+<text x="96" y="392" class="small mid muted">0%</text>
+<text x="216.8" y="392" class="small mid muted">20%</text>
+<text x="337.6" y="392" class="small mid muted">40%</text>
+<text x="458.4" y="392" class="small mid muted">60%</text>
+<text x="579.2" y="392" class="small mid muted">80%</text>
+<text x="700" y="392" class="small mid muted">100%</text>
+<text x="398" y="416" class="small mid muted">share of the run, by rounds</text>
+<path d="M 126.2 53.3 L 186.6 86.5 L 247 133 L 307.4 156.2 L 367.8 202.7 L 428.2 232.6 L 488.6 249.2 L 549 255.8 L 609.4 262.4 L 669.8 269.1" class="line-ink thin"/>
+<text x="679.8" y="273.1" class="small">2 nodes, Carry, 0.31</text>
+<path d="M 126.2 69.9 L 186.6 106.4 L 247 152.9 L 307.4 166.2 L 367.8 202.7 L 428.2 235.9 L 488.6 206 L 549 216 L 609.4 232.6 L 669.8 245.8" class="line-ink thin"/>
+<text x="679.8" y="249.8" class="small">4 nodes, Carry, 0.38</text>
+<path d="M 126.2 79.8 L 186.6 106.4 L 247 152.9 L 307.4 192.7 L 367.8 196 L 428.2 225.9 L 488.6 252.5 L 549 265.8 L 609.4 275.7 L 669.8 289" class="line-ink thin"/>
+<text x="679.8" y="293" class="small">16 nodes, Carry, 0.25</text>
+<path d="M 126.2 93.1 L 186.6 136.3 L 247 182.8 L 307.4 202.7 L 367.8 239.2 L 428.2 272.4 L 488.6 292.3 L 549 305.6 L 609.4 315.6 L 669.8 315.6" class="line-ink"/>
+<text x="679.8" y="316.6" class="small">8 nodes, Carry, 0.17</text>
+<path d="M 126.2 79.8 L 186.6 116.4 L 247 196 L 307.4 235.9 L 367.8 249.2 L 428.2 282.4 L 488.6 308.9 L 549 318.9 L 609.4 332.2 L 669.8 335.5" class="line-sig"/>
+<text x="679.8" y="333.5" class="small">8 nodes, Overwrite, 0.11</text>
+<path d="M 126.2 73.2 L 186.6 123 L 247 196 L 307.4 219.3 L 367.8 252.5 L 428.2 275.7 L 488.6 308.9 L 549 325.5 L 609.4 332.2 L 669.8 335.5" class="line-acc"/>
+<text x="679.8" y="347.5" class="small">8 nodes, Adaptive, 0.11</text>
+<path d="M 126.2 99.8 L 186.6 162.8 L 247 255.8 L 307.4 279 L 367.8 275.7 L 428.2 328.8 L 488.6 348.8 L 549 352.1 L 609.4 348.8 L 669.8 352.1" class="line-muted"/>
+<text x="679.8" y="361.1" class="small">8 nodes, Blend(0.5), 0.06</text>
+</svg>
