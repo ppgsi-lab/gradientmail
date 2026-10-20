@@ -266,6 +266,49 @@ def describe_run_round():
             assert values(theta["bias"]) == pytest.approx([0.8, 0.2])
             assert clock.now() < WINDOW
 
+    def when_the_grace_window_is_fixed():
+        def it_closes_at_the_end_of_the_window_from_the_first_round(clock: FakeClock):
+            rig = Rig(MemoryMailbox(), clock, replace(algorithm(quorum=1), grace_seconds=2.0))
+
+            async def scenario():
+                await rig.create_run()
+                syncer = rig.syncer()
+                # No estimates yet: the adaptive window would be zero.
+                state = await syncer.recover()
+                await rig.alive("a", "b")
+                await rig.publish("a", 0, (0.0, 1.0))
+                await completed(syncer.run_round(state))
+                [record] = await rig.committed()
+                return record
+
+            record = asyncio.run(scenario())
+
+            assert [p.learner for p in record.participants] == ["a"]
+            assert record.grace_seconds == pytest.approx(2.0)
+            assert clock.now() == pytest.approx(2.0)
+
+        def it_closes_early_once_every_live_learner_reported(clock: FakeClock):
+            rig = Rig(MemoryMailbox(), clock, replace(algorithm(quorum=1), grace_seconds=2.0))
+
+            async def scenario():
+                await rig.create_run()
+                syncer = rig.syncer()
+                state = await syncer.recover()
+                await rig.alive("a", "b")
+                await rig.publish("a", 0, (0.0, 1.0), tokens=2)
+                task = asyncio.create_task(syncer.run_round(state))
+                await spin(lambda: clock.now() >= 0.5 or task.done())
+                await rig.publish("b", 0, (1.0, 0.0), tokens=1)
+                await spin(task.done)
+                [record] = await rig.committed()
+                return record, await rig.theta_of(record)
+
+            record, theta = asyncio.run(scenario())
+
+            assert [p.learner for p in record.participants] == ["a", "b"]
+            assert values(theta["bias"]) == pytest.approx([0.8, 0.2])
+            assert 0.5 <= record.grace_seconds < 2.0
+
     def when_a_learners_lease_expires():
         def it_closes_without_it(clock: FakeClock):
             rig = Rig(MemoryMailbox(), clock, algorithm(quorum=2))
@@ -469,7 +512,8 @@ def describe_recover():
             assert state.round == 0
             assert [fragment.version for fragment in state.fragments] == [0, 0]
             assert [fragment.theta for fragment in state.fragments] == list(INIT)
-            assert values(state.fragments[0].outer["momentum.bias"]) == [0.0, 0.0]
+            # No outer state yet: the outer step takes a missing momentum as zero.
+            assert [fragment.outer for fragment in state.fragments] == [{}, {}]
             assert state.estimates == Estimates()
 
     def when_restarted_after_a_commit():

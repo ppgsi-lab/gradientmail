@@ -5,7 +5,8 @@ process when the caller does not, joins the run before returning so the model ho
 global parameters by the time training starts, and then runs the learner's communication loop
 and the syncer on two daemon threads. Every session takes part in closing rounds; which one
 does the work is settled through the mailbox (``syncer`` module), so a run has no separate
-process to operate.
+process to operate. The node that closes a round hands the commit to its own learner in
+memory; only the other nodes download it.
 """
 
 import asyncio
@@ -24,7 +25,7 @@ from gradientmail.events import Callback, SyncerStopped, combined, log_events
 from gradientmail.learner import Learner
 from gradientmail.learner import align as align_newest
 from gradientmail.mailbox import Mailbox
-from gradientmail.protocol import Exchange, ProtocolError
+from gradientmail.protocol import Exchange, LocalCommits, ProtocolError
 from gradientmail.syncer import Syncer
 
 __all__ = ["Session", "align"]
@@ -125,6 +126,7 @@ class Session:
         if learner_id is None:
             learner_id = default_learner_id()
         on_event = combined(*callbacks)
+        local = LocalCommits()
         self._learner = Learner(
             adapter=adapter,
             algorithm=algorithm,
@@ -135,6 +137,7 @@ class Session:
             lease_every=lease_every,
             lease_timeout=lease_timeout,
             compression=compression,
+            local=local,
             on_event=on_event,
         )
         self._syncer = Syncer(
@@ -145,6 +148,7 @@ class Session:
             poll_interval=poll_interval,
             lease_timeout=lease_timeout,
             compression=compression,
+            local=local,
             on_event=on_event,
         )
         self._failure: BaseException | None = None

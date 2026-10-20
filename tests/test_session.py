@@ -18,6 +18,7 @@ import pytest
 
 import gradientmail as gm
 from gradientmail import events
+from gradientmail.algorithms import Precision
 from gradientmail.clock import MonotonicClock
 from gradientmail.protocol import Exchange, ProtocolError
 
@@ -307,6 +308,43 @@ def describe_session():
             assert all(record.update is not None for record in records)
             # close() set the model to the newest version of every fragment, whether a learner
             # rebuilt it from an update or fetched it.
+            newest = {record.fragment: record for record in records[: rounds_seen + 1]}
+            for record in newest.values():
+                theta = asyncio.run(exchange.fetch(record.theta))
+                assert theta is not None
+                assert {name: model.tensors[name] for name in theta} == dict(theta)
+
+    def when_the_node_closes_the_rounds_it_trains_for():
+        @pytest.mark.parametrize("commit_dtype", [None, "F4"])
+        def it_aligns_with_its_own_commits_without_reading_them_back(commit_dtype: Precision):
+            class ReadLog(gm.MemoryMailbox):
+                def __init__(self) -> None:
+                    super().__init__()
+                    self.read: list[str] = []
+
+                async def get(self, key: str) -> bytes | None:
+                    self.read.append(key)
+                    return await super().get(key)
+
+            mailbox = ReadLog()
+            algorithm = gm.DiLoCo(sync_every=4, fragments=2, commit_dtype=commit_dtype)
+            model = gm.MemoryAdapter({"a": f32(1.0, 2.0), "b": f32(3.0, 4.0)})
+            with gm.Session(
+                model, algorithm=algorithm, mailbox=mailbox, poll_interval=0.01
+            ) as session:
+                deadline = time.monotonic() + 20.0
+                while session.rounds_seen < 3:
+                    assert time.monotonic() < deadline, "the model never received round 3"
+                    train_step(model, (1,))
+                    session.step(samples=1)
+                    time.sleep(0.001)
+            rounds_seen = session.rounds_seen
+
+            # The node's learner and syncer share the process: the commits it holds are the ones
+            # its own syncer made, never fetched from the store, theta and update alike.
+            assert [key for key in mailbox.read if key.startswith("blobs/rounds/")] == []
+            exchange = Exchange(mailbox, clock=MonotonicClock())
+            records = asyncio.run(exchange.rounds_after(-1))
             newest = {record.fragment: record for record in records[: rounds_seen + 1]}
             for record in newest.values():
                 theta = asyncio.run(exchange.fetch(record.theta))

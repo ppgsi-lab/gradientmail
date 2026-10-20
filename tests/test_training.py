@@ -18,10 +18,10 @@ import threading
 import time
 from array import array
 from collections.abc import Generator, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from gradientmail.adapters import MemoryAdapter
-from gradientmail.algorithms.diloco import DiLoCo, WeightedMean
+from gradientmail.algorithms.diloco import Carry, DiLoCo, WeightedMean
 from gradientmail.clock import MonotonicClock
 from gradientmail.learner import Learner
 from gradientmail.mailbox import Mailbox
@@ -296,6 +296,20 @@ def rounds(records: Sequence[RoundRecord]) -> list[int]:
     return [record.round for record in records]
 
 
+def dropped(records: Sequence[RoundRecord]) -> Sequence[tuple[str, int, int]]:
+    """``(learner, round, steps)`` wherever a learner's snapshot of a fragment carries fewer
+    steps than it took since its previous snapshot of that fragment, or since it joined."""
+    previous: dict[tuple[str, int], int] = {}
+    lost = []
+    for record in records:
+        for p in record.participants:
+            since = p.local_step - previous.get((p.learner, record.fragment), 0)
+            if p.steps != since:
+                lost.append((p.learner, record.round, since - p.steps))
+            previous[p.learner, record.fragment] = p.local_step
+    return lost
+
+
 def describe_training_run():
     def when_quorum_is_both_and_merge_is_weighted_mean_with_lr_1_and_no_momentum():
         def it_sets_every_fragment_to_the_token_weighted_average(mailbox: Mailbox):
@@ -343,6 +357,22 @@ def describe_training_run():
                 (schedule.fragment_of(r), schedule.version_after(r), schedule.step_of(r))
                 for r in rounds(records)
             ]
+
+    def when_the_alignment_carries():
+        def it_drops_no_step_and_stays_on_the_trajectory(mailbox: Mailbox):
+            # Between a snapshot and its commit a learner keeps training; overwriting drops
+            # those steps, carrying keeps them for the fragment's next snapshot, so every step
+            # a learner takes is in exactly one of its snapshots. The trajectory holds because a
+            # published fragment is still its anchor plus the counted steps times the constant.
+            config = replace(algorithm(quorum=2), alignment=Carry())
+            tape = Tape(mailbox)
+            with training(mailbox, config):
+                tape.records_at_least(8)
+
+            records = tape.records()
+            assert dropped(records) == []
+            assert [record.rejected for record in records] == [()] * len(records)
+            assert deviations(tape, records) == []
 
     def when_a_learner_dies_mid_run():
         def it_continues_on_quorum_and_the_learner_rejoins_within_one_cycle(mailbox: Mailbox):

@@ -108,10 +108,14 @@ same run must use the same unit.
 
 By default, training continues during exchange. Aligning with a committed
 fragment replaces that fragment's local parameters, including updates made while
-its contribution was in flight. `gm.DiLoCo(..., overlap_steps=0)` makes every
-learner wait for the commit instead; a larger bound lets it train that many
-steps past a publish first, and `mixing` blends what it trained meanwhile with
-the commit instead of replacing it.
+its contribution was in flight: `alignment=gm.Overwrite()`. `gm.Carry()` adds
+what the learner trained since its snapshot to the commit instead, and its next
+snapshot carries those steps, so none is dropped; `gm.Blend(0.5)` keeps that
+share of the local parameters, blended with the commit; `gm.Adaptive()` carries
+while the round's deltas agree, by the mean cosine every commit records, and
+overwrites once they do not, fragment by fragment.
+`gm.DiLoCo(..., overlap_steps=0)` makes every learner wait for the commit
+instead; a larger bound lets it train that many steps past a publish first.
 
 Closing the session waits for the learner's rounds in flight to commit and sets
 the model to the newest committed parameters. Steps trained since a fragment's
@@ -132,8 +136,12 @@ without the outer momentum.](../assets/in-flight.svg)
 
 `quorum_size` defaults to `1`, allowing a round to proceed with one contribution.
 A larger quorum seeks more contributions before merging, at the cost of more
-waiting; live membership also affects when a round may close. A crashed learner
-stops counting as live after its lease expires.
+waiting; live membership also affects when a round may close, and
+`grace_seconds` fixes how long a round keeps collecting after quorum. `follow`
+is how many others' snapshots in a round make a learner publish ahead of its
+schedule: one short of the quorum by default, `1` for the first learner to
+reach a round to set the pace, or `0` to publish on schedule only, as standard
+DiLoCo does. A crashed learner stops counting as live after its lease expires.
 
 This design targets independent machines, uneven hardware, and networks where
 per-step gradient exchange is expensive. DDP remains a suitable choice for

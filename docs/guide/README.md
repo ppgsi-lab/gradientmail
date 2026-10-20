@@ -12,7 +12,7 @@ A collection of explanations for understanding distributed training.
 
 3. [DiLoCo and its variants](03-diloco-and-its-variants.md)
 
-   Local steps with an outer optimizer, fragments, and rounds that do not wait for every worker.
+   Local steps with an outer optimizer, fragments, rounds that do not wait for every worker, and the configuration of each variant.
 
 4. [GradientMail](04-gradientmail.md)
 

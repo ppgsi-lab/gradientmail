@@ -11,7 +11,7 @@ to the session's ``callbacks``. ``S3Mailbox`` is resolved on first access and ra
 from typing import TYPE_CHECKING
 
 from gradientmail.adapters import Adapter, Backend, MemoryAdapter, MissingExtra
-from gradientmail.algorithms import Algorithm
+from gradientmail.algorithms import Adaptive, Algorithm, Blend, Carry, Overwrite
 from gradientmail.algorithms.diloco import ByBytes, DiLoCo, Rda, Strided, WeightedMean
 from gradientmail.events import Callback, Event, log_events
 from gradientmail.mailbox import Mailbox, MailboxUnavailable
@@ -25,10 +25,13 @@ if TYPE_CHECKING:
 
 __all__ = [
     "Adapter",
+    "Adaptive",
     "Algorithm",
     "Backend",
+    "Blend",
     "ByBytes",
     "Callback",
+    "Carry",
     "DiLoCo",
     "Event",
     "Mailbox",
@@ -36,6 +39,7 @@ __all__ = [
     "MemoryAdapter",
     "MemoryMailbox",
     "MissingExtra",
+    "Overwrite",
     "Rda",
     "RunConfigMismatch",
     "Schema",

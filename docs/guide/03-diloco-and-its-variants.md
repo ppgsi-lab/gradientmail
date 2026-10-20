@@ -35,6 +35,43 @@ Exchanging updates every $H$ steps reduces communication frequency. The workers
 still meet at synchronization rounds, and increasing $H$ allows more divergence.
 See the [DiLoCo paper](https://arxiv.org/html/2311.08105v3).
 
+### In GradientMail
+
+The paper's experiments run 8 workers, each on its own shard of the data, with
+$H = 500$ (50 to 2,000 in the ablation), outer learning rate 0.7 and momentum
+0.9. Every worker takes part in every outer step and resumes from the same
+$\Theta$.
+
+```python
+gm.DiLoCo(
+    sync_every=500,          # H
+    fragments=1,             # the whole model in one round
+    in_flight=1,
+    overlap_steps=0,         # wait for the outer step before training on
+    quorum_size=8,           # every worker
+    merge=gm.WeightedMean(),
+    outer_lr=0.7,
+    outer_momentum=0.9,
+)
+```
+
+With one fragment, a round every $H$ steps carries the whole model.
+`overlap_steps=0` makes `step()` wait, once a round is published, until its
+commit has been applied, so every worker resumes from the same parameters.
+`quorum_size` equal to the number of workers makes a round wait for all of
+them. The weighted mean weighs each contribution by its tokens squared over its
+steps, which with equal batches and $H$ steps each is the paper's plain
+average.
+
+Three things are not in the paper. A worker that crashes is waited for until
+its lease expires and is then left out, where DiLoCo would stop. A worker
+publishes ahead of its schedule once the others' snapshots in a round are one
+short of the quorum (`follow`, below), so the last worker of a round may
+contribute a step or so fewer than $H$; nothing turns that off. And
+GradientMail does not shard the data: which batches a node trains on is the
+training loop's business, for instance through the
+[Shared Queue](../patterns/00-shared-queue.md) pattern.
+
 ## Streaming DiLoCo
 
 Synchronizing the entire model occasionally can still cause large communication
@@ -49,6 +86,43 @@ reduces peak bandwidth requirements and overlaps communication with computation.
 The workers still participate in coordinated synchronization rounds, so a failed
 worker can interrupt progress.
 See the [Streaming DiLoCo paper](https://arxiv.org/html/2501.18512v1).
+
+### In GradientMail
+
+The paper keeps three transformer blocks per fragment, dealt in a strided
+pattern (fragment $p$ holds every $P$-th block from the $p$-th), synchronizes
+each fragment every $H = 100$ steps at its own offset, overlaps the exchange
+with $\tau = 1$ inner step (up to 5 is advised), then sets the fragment to
+$\alpha\,\theta + (1 - \alpha)\,\tilde\theta$, the local parameters blended
+with the outer step's result, with $\alpha = 0.5$. Outer gradients travel in
+4 bits. Every replica takes part in every fragment's exchange; the outer
+optimizer is Nesterov with learning rate 0.4.
+
+```python
+gm.DiLoCo(
+    sync_every=100,          # H, per fragment
+    fragments=8,             # P: 24 blocks, three per fragment
+    partition=gm.Strided(),
+    in_flight=1,
+    overlap_steps=1,         # τ: train on for a step, then wait for the commit
+    alignment=gm.Blend(0.5), # α
+    delta_dtype="F4",        # 4-bit outer gradients
+    quorum_size=2,           # every replica
+    merge=gm.WeightedMean(),
+    outer_lr=0.4,
+    outer_momentum=0.9,
+)
+```
+
+Round $r$ targets fragment $r \bmod P$ at step
+$\lfloor r / P \rfloor \cdot H + \lfloor ((r \bmod P) + 1) \cdot H / P \rfloor$:
+each fragment once every $H$ steps, at offsets $H / P$ apart, the paper's
+$t_p$. `overlap_steps` bounds the overlap rather than fixing it: a learner
+trains at most $\tau$ steps past a publish and then waits for the commit, which
+it applies as soon as it lands. `gm.Blend(0.5)` is $\alpha$. `delta_dtype="F4"`
+sends each delta at four bits per element in the MX layout, with a scale per
+block of 32; the paper's format is E3M0, four bits with no block scale. The
+paper does not state the outer momentum; 0.9 is DiLoCo's.
 
 ## Decoupled DiLoCo
 
@@ -82,6 +156,94 @@ continues, but the workers stay in lockstep, so A and B still wait for C.
 Decoupled DiLoCo: no worker waits; each publishes fragments as it goes, and
 the syncer closes a round as soon as two of the three have contributed,
 sometimes all three.](../assets/sync-patterns.svg)
+
+### In GradientMail
+
+The defaults are this paper's. Its main experiments run 8 learners with
+$P = H = 24$, a fragment every step, two fragments in flight ($\tau = 2$),
+quorum $K = 1$ with a grace window of up to a step, contributions weighted by
+$c^{tokens} \cdot c^{tokens} / c^{steps}$, RDA as the merge for every tensor
+but the embeddings, which use the weighted mean, and a learner that overwrites
+its fragment with the syncer's ($\alpha = 0$, which the paper found best beyond
+two learners). The paper states no outer hyperparameters.
+
+```python
+gm.DiLoCo(sync_every=24, fragments=24)
+```
+
+which is
+
+```python
+gm.DiLoCo(
+    sync_every=24,
+    fragments=24,
+    in_flight=2,               # τ
+    overlap_steps=None,        # never wait
+    alignment=gm.Overwrite(),  # α = 0
+    quorum_size=1,             # K
+    grace_seconds=None,        # the window estimated from the round timings
+    merge=gm.Rda(),            # weighted mean for names containing "embed"
+    outer_lr=0.7,
+    outer_momentum=0.9,
+)
+```
+
+The grace window comes from exponential moving averages of the step time the
+learners report, the time a round takes to reach quorum and the time a commit
+takes: half the slack those leave within $\tau$ rounds, never more than one
+round, and zero while any estimate is missing. The outer learning rate and
+momentum are DiLoCo's.
+
+Two things differ from the paper's system. There is no syncer process: every
+node closes rounds, elected by a claim per round, and liveness is a lease each
+node renews, where the paper runs one syncer shard per learner and reads
+metadata the learners send every step. And learners push one snapshot per
+round into the mailbox, where the paper's syncer pulls the learners'
+parameters.
+
+## Local SGD
+
+Averaging the learners' parameters at every round, with no outer momentum, is
+Local SGD (FedAvg):
+
+```python
+gm.DiLoCo(sync_every=H, fragments=P, outer_lr=1.0, outer_momentum=0.0, merge=gm.WeightedMean())
+```
+
+Each commit is then the token-weighted average of the fragments the learners
+published, which [`examples/synthetic.py`](../../examples/synthetic.py) prints
+next to the expected value.
+
+## The parameters by mechanism
+
+| Mechanism | Parameter | DiLoCo | Streaming | Decoupled |
+|---|---|---|---|---|
+| Inner steps per exchange of a fragment | `sync_every` | $H$ | $H$ | $H$ |
+| Fragments | `fragments`, `partition` | 1 | $P$, strided | $P$, by bytes |
+| Rounds a learner publishes ahead of the last commit it applied | `in_flight` | 1 | 1 | $\tau$ |
+| Steps trained past a publish before waiting | `overlap_steps` | 0 | $\tau$ | `None` |
+| What the commit does to the steps since the snapshot | `alignment` | `Overwrite()` | `Blend(α)` | `Overwrite()` |
+| Snapshots that close a round | `quorum_size` | all | all | $K$ |
+| Collecting after quorum | `grace_seconds` | — | — | estimated |
+| Merge of the deltas | `merge` | `WeightedMean()` | `WeightedMean()` | `Rda()` |
+| Outer optimizer | `outer_lr`, `outer_momentum` | 0.7, 0.9 | 0.4, — | — |
+| Precision of the deltas | `delta_dtype` | model's | 4-bit | model's (the paper's int4 is not implemented) |
+
+`gm.Carry()`, which sets the fragment to the commit plus every step trained
+since the snapshot, is the delay-corrected merge of
+[LOSCAR-SGD](https://arxiv.org/abs/2605.20866), which proves that the average
+of the local models then evolves as if nothing had overlapped and finds it
+ahead of overwriting by the most when communication is slow against the local
+window; there it corrects a plain average, here the outer step's result.
+
+What is in none of the papers is GradientMail's own: `gm.Adaptive()`, which
+carries while the mean cosine between a round's deltas is high and overwrites
+once it is low, fragment by fragment; `follow`, how many
+others' snapshots in a round make a learner publish ahead of its schedule;
+`grace_seconds` as a fixed window; `flush_on_close`; `commit_dtype`; the
+formats of the outer state, `master_dtype`, `momentum_dtype` and
+`residual_dtype`; `global_batch_size`; and the mailbox itself in place of all-reduce or a
+syncer. The next chapter covers how to choose among them.
 
 ---
 

@@ -18,7 +18,16 @@ import pytest
 from fakes import FakeClock, SlowMailbox, TrippedMailbox
 
 from gradientmail.adapters import MemoryAdapter
-from gradientmail.algorithms import Algorithm, Estimates, Participant, RoundSchedule
+from gradientmail.algorithms import (
+    Adaptive,
+    Algorithm,
+    Blend,
+    Carry,
+    Estimates,
+    Overwrite,
+    Participant,
+    RoundSchedule,
+)
 from gradientmail.algorithms.diloco import DiLoCo
 from gradientmail.events import (
     Callback,
@@ -76,8 +85,8 @@ FRESH = LearnerState(
 NOBODY = Publishers(-1, frozenset())
 
 
-def due(state: LearnerState, *, quorum: int = 1, publishers: Publishers = NOBODY) -> int | None:
-    return due_round(state, SCHEDULE, quorum=quorum, publishers=publishers)
+def due(state: LearnerState, *, follow: int = 1, publishers: Publishers = NOBODY) -> int | None:
+    return due_round(state, SCHEDULE, follow=follow, publishers=publishers)
 
 
 def other_snapshot(round: int, learner: str) -> SnapshotDraft:
@@ -163,6 +172,7 @@ def commit(
     theta: Mapping[str, TensorBytes],
     participants: tuple[Participant, ...] = (),
     update: Mapping[str, TensorBytes] | None = None,
+    cosine: float | None = None,
 ) -> None:
     """The syncer's side of round ``round``: a committed record pointing at ``theta``."""
     draft = RoundRecordDraft(
@@ -172,7 +182,7 @@ def commit(
         version=SCHEDULE.version_after(round),
         participants=participants,
         rejected=(),
-        cosine=None,
+        cosine=cosine,
         quorum_seconds=0.0,
         grace_seconds=0.0,
         estimates=Estimates(),
@@ -232,14 +242,22 @@ def describe_due_round():
             assert due(overwritten) is None
             assert due(advanced(overwritten, 8, 0.1)) == 2
 
-    def when_the_round_is_one_snapshot_short_of_quorum():
+    def when_that_many_others_have_published_the_round():
         def it_is_due_with_the_steps_trained_so_far():
             early = replace(FRESH, local_step=1, steps=(1, 1))
             two_others = frozenset({"learner-b", "learner-c"})
 
-            assert due(early, quorum=3, publishers=Publishers(0, two_others)) == 0
-            assert due(early, quorum=3, publishers=Publishers(0, frozenset({"learner-b"}))) is None
-            assert due(early, quorum=3, publishers=Publishers(1, two_others)) is None
+            assert due(early, follow=2, publishers=Publishers(0, two_others)) == 0
+            assert due(early, follow=2, publishers=Publishers(0, frozenset({"learner-b"}))) is None
+            assert due(early, follow=1, publishers=Publishers(0, frozenset({"learner-b"}))) == 0
+            assert due(early, follow=2, publishers=Publishers(1, two_others)) is None
+
+        def it_waits_for_its_schedule_with_follow_zero():
+            early = replace(FRESH, local_step=1, steps=(1, 1))
+            two_others = frozenset({"learner-b", "learner-c"})
+
+            assert due(early, follow=0, publishers=Publishers(0, two_others)) is None
+            assert due(advanced(early, 9, 0.1), follow=0, publishers=Publishers(0, two_others)) == 0
 
 
 def describe_overdue():
@@ -258,24 +276,44 @@ def describe_applied():
     def it_resets_only_that_fragments_counters():
         before = replace(FRESH, local_step=7, steps=(7, 7), tokens=(21, 21))
 
-        after = applied(before, round=1, fragment=1, version=1)
+        after = applied(
+            before, round=1, fragment=1, version=1, participant=None, alignment=Overwrite()
+        )
 
         assert after == replace(
             before, steps=(7, 0), tokens=(21, 0), applied_version=(0, 1), rounds_seen=1
         )
 
-    def when_the_algorithm_mixes():
+    def when_the_alignment_blends():
         def it_keeps_that_share_of_the_steps_the_commit_did_not_incorporate():
+            before = replace(FRESH, local_step=7, steps=(7, 7), tokens=(21, 21))
+            mine = Participant("learner-a", 5, 5, 15, 45.0)
+            blend = Blend(0.5)
+
+            took_part = applied(
+                before, round=1, fragment=1, version=1, participant=mine, alignment=blend
+            )
+            left_out = applied(
+                before, round=1, fragment=1, version=1, participant=None, alignment=blend
+            )
+
+            assert (took_part.steps, took_part.tokens) == ((7, 1), (21, 3))
+            assert (left_out.steps, left_out.tokens) == ((7, 3), (21, 10))
+
+    def when_the_alignment_carries():
+        def it_keeps_every_step_the_commit_did_not_incorporate():
             before = replace(FRESH, local_step=7, steps=(7, 7), tokens=(21, 21))
             mine = Participant("learner-a", 5, 5, 15, 45.0)
 
             took_part = applied(
-                before, round=1, fragment=1, version=1, participant=mine, mixing=0.5
+                before, round=1, fragment=1, version=1, participant=mine, alignment=Carry()
             )
-            left_out = applied(before, round=1, fragment=1, version=1, participant=None, mixing=0.5)
+            left_out = applied(
+                before, round=1, fragment=1, version=1, participant=None, alignment=Carry()
+            )
 
-            assert (took_part.steps, took_part.tokens) == ((7, 1), (21, 3))
-            assert (left_out.steps, left_out.tokens) == ((7, 3), (21, 10))
+            assert (took_part.steps, took_part.tokens) == ((7, 2), (21, 6))
+            assert (left_out.steps, left_out.tokens) == ((7, 7), (21, 21))
 
 
 def describe_learner():
@@ -350,13 +388,13 @@ def describe_learner():
 
             assert taken < 4
 
-    def when_the_algorithm_mixes():
+    def when_the_alignment_blends():
         def it_blends_the_commit_with_the_local_parameters_and_keeps_the_commit_as_anchor(
             clock: FakeClock,
         ):
             mailbox = MemoryMailbox()
             exchange = Exchange(mailbox, clock=clock)
-            algorithm = DiLoCo(sync_every=4, fragments=2, in_flight=2, mixing=0.5)
+            algorithm = DiLoCo(sync_every=4, fragments=2, in_flight=2, alignment=Blend(0.5))
             trained, adapter = started(mailbox, clock, algorithm=algorithm)
             try:
                 # Local training moved "a" before any round; round 0 commits it elsewhere.
@@ -372,6 +410,169 @@ def describe_learner():
             assert asyncio.run(exchange.fetch(snapshot(exchange, 2).payload)) == {
                 "a": f32(3.5, 7.5)
             }
+
+    def when_the_alignment_carries():
+        def it_adds_what_it_trained_since_its_snapshot_to_the_commit(clock: FakeClock):
+            mailbox = MemoryMailbox()
+            exchange = Exchange(mailbox, clock=clock)
+            algorithm = DiLoCo(sync_every=4, fragments=2, in_flight=2, alignment=Carry())
+            trained, adapter = started(mailbox, clock, algorithm=algorithm)
+            try:
+                # Round 0 goes out at step 2 with "a" at (3, 5); training then moves it on by
+                # (1, 2) before the commit, which incorporates the snapshot, lands elsewhere.
+                adapter.apply({"a": f32(3.0, 5.0)})
+                step_until(trained, 3, lambda: len(asyncio.run(exchange.snapshots(0))) == 1)
+                adapter.apply({"a": f32(4.0, 7.0)})
+                commit(exchange, 0, A1, participants=(Participant("learner-a", 2, 2, 6, 18.0),))
+                step_until(trained, 3, lambda: len(asyncio.run(exchange.snapshots(2))) == 1)
+                carried = adapter.tensors["a"]
+            finally:
+                trained.close()
+
+            # The commit plus the (1, 2) trained since the snapshot; the next snapshot of "a"
+            # counts every step since the one the commit incorporated, and its delta is that
+            # (1, 2) against the commit.
+            assert carried == f32(11.0, 22.0)
+            next_of_a = snapshot(exchange, 2)
+            assert (next_of_a.steps, next_of_a.tokens) == (
+                next_of_a.local_step - 2,
+                3 * (next_of_a.local_step - 2),
+            )
+            assert asyncio.run(exchange.fetch(next_of_a.payload)) == {"a": f32(-1.0, -2.0)}
+
+        def when_the_commit_that_took_its_snapshot_was_swept_before_it_fetched_it():
+            def it_aligns_with_the_next_version_as_a_participant(clock: FakeClock):
+                mailbox = MemoryMailbox()
+                exchange = Exchange(mailbox, clock=clock)
+                algorithm = DiLoCo(sync_every=4, fragments=2, in_flight=2, alignment=Carry())
+                seen: list[Event] = []
+                trained, adapter = joined(mailbox, clock, algorithm=algorithm, on_event=seen.append)
+                # Round 0 goes out at step 2 with "a" at (3, 5); its commit incorporates that
+                # snapshot but its payload is gone by the time this learner polls.
+                adapter.apply({"a": f32(3.0, 5.0)})
+                for _ in range(2):
+                    trained.step(samples=3)
+                adapter.apply({"a": f32(4.0, 7.0)})
+                commit(exchange, 0, A1, participants=(Participant("learner-a", 2, 2, 6, 18.0),))
+                [record] = asyncio.run(exchange.rounds_after(-1))
+                asyncio.run(mailbox.delete([record.theta.key]))
+                asyncio.run(trained.poll())
+                trained.step(samples=3)
+                unaligned = adapter.tensors["a"]
+                # The next version of "a" is committed without this learner.
+                commit(exchange, 2, A2)
+                asyncio.run(trained.poll())
+                trained.step(samples=3)
+
+                # Carried over the round-0 snapshot, not the anchor: the (1, 2) trained since
+                # it, not the (3, 5) since (1, 2), which round 0 already incorporated.
+                assert unaligned == f32(4.0, 7.0)
+                assert adapter.tensors["a"] == f32(101.0, 202.0)
+                aligned = [e for e in seen if isinstance(e, FragmentAligned)]
+                assert [(e.round, e.fragment, e.lag_steps) for e in aligned] == [(2, 0, 2)]
+
+        def when_it_took_no_part_in_the_round():
+            def it_adds_everything_it_trained_since_the_anchor(clock: FakeClock):
+                mailbox = MemoryMailbox()
+                exchange = Exchange(mailbox, clock=clock)
+                algorithm = DiLoCo(sync_every=4, fragments=2, in_flight=2, alignment=Carry())
+                trained, adapter = started(mailbox, clock, algorithm=algorithm)
+                try:
+                    # Local training moved "a" from its anchor (1, 2) before any round; round 0
+                    # commits it elsewhere without this learner.
+                    adapter.apply({"a": f32(3.0, 5.0)})
+                    commit(exchange, 0, A1)
+                    step_until(trained, 3, lambda: len(asyncio.run(exchange.snapshots(2))) == 1)
+                    carried = adapter.tensors["a"]
+                finally:
+                    trained.close()
+
+                assert carried == f32(12.0, 23.0)
+                next_of_a = snapshot(exchange, 2)
+                assert (next_of_a.steps, next_of_a.tokens) == (
+                    next_of_a.local_step,
+                    3 * next_of_a.local_step,
+                )
+                assert asyncio.run(exchange.fetch(next_of_a.payload)) == {"a": f32(-2.0, -3.0)}
+
+        def when_the_commit_incorporated_a_snapshot_from_before_a_restart():
+            def it_adds_everything_it_trained_since_the_anchor_and_counts_it(clock: FakeClock):
+                mailbox = MemoryMailbox()
+                exchange = Exchange(mailbox, clock=clock)
+                algorithm = DiLoCo(sync_every=4, fragments=2, in_flight=2, alignment=Carry())
+                trained, adapter = started(mailbox, clock, algorithm=algorithm)
+                try:
+                    # Local training moved "a" from its anchor (1, 2); round 0 commits it with
+                    # a snapshot of this learner's name from before a restart, 4 steps and 40
+                    # tokens this process never trained.
+                    adapter.apply({"a": f32(3.0, 5.0)})
+                    before = Participant("learner-a", 5, 4, 40, 400.0)
+                    commit(exchange, 0, A1, participants=(before,))
+                    step_until(trained, 3, lambda: len(asyncio.run(exchange.snapshots(2))) == 1)
+                    carried = adapter.tensors["a"]
+                finally:
+                    trained.close()
+
+                # As when it took no part: the next snapshot's steps and tokens are this
+                # process's own, with nothing of the old snapshot's subtracted.
+                assert carried == f32(12.0, 23.0)
+                next_of_a = snapshot(exchange, 2)
+                assert (next_of_a.steps, next_of_a.tokens) == (
+                    next_of_a.local_step,
+                    3 * next_of_a.local_step,
+                )
+                assert asyncio.run(exchange.fetch(next_of_a.payload)) == {"a": f32(-2.0, -3.0)}
+
+    def when_the_alignment_is_adaptive():
+        def it_overwrites_once_the_deltas_disagree_and_carries_once_they_agree_again(
+            clock: FakeClock,
+        ):
+            mailbox = MemoryMailbox()
+            exchange = Exchange(mailbox, clock=clock)
+            algorithm = DiLoCo(sync_every=4, fragments=2, in_flight=2, alignment=Adaptive())
+            trained, adapter = joined(mailbox, clock, algorithm=algorithm)
+            # Local training moved "a" from its anchor (1, 2); round 0's deltas disagreed.
+            adapter.apply({"a": f32(3.0, 5.0)})
+            commit(exchange, 0, A1, cosine=0.3)
+            asyncio.run(trained.poll())
+            trained.step(samples=3)
+            overwritten = adapter.tensors["a"]
+            # Training moved on by (1, 2); round 2's deltas agreed.
+            adapter.apply({"a": f32(11.0, 22.0)})
+            commit(exchange, 2, A2, cosine=0.9)
+            asyncio.run(trained.poll())
+            trained.step(samples=3)
+            carried = adapter.tensors["a"]
+            # Moved on by (1, 2) again, (2, 4) since the anchor, none of it in any commit;
+            # round 4's cosine falls between the thresholds, so the fragment keeps carrying.
+            adapter.apply({"a": f32(102.0, 204.0)})
+            commit(exchange, 4, {"a": f32(1000.0, 2000.0)}, cosine=0.5)
+            asyncio.run(trained.poll())
+            trained.step(samples=3)
+            kept = adapter.tensors["a"]
+
+            assert overwritten == f32(10.0, 20.0)
+            assert carried == f32(101.0, 202.0)
+            assert kept == f32(1002.0, 2004.0)
+
+        def when_several_rounds_of_a_fragment_land_before_one_poll():
+            def it_applies_their_cosines_in_order(clock: FakeClock):
+                mailbox = MemoryMailbox()
+                exchange = Exchange(mailbox, clock=clock)
+                algorithm = DiLoCo(sync_every=4, fragments=2, in_flight=2, alignment=Adaptive())
+                trained, adapter = joined(mailbox, clock, algorithm=algorithm)
+                # Local training moved "a" from its anchor (1, 2). Round 0's deltas disagreed
+                # and round 2's fell between the thresholds; both are committed by the time
+                # this learner polls, so only round 2's version is fetched.
+                adapter.apply({"a": f32(3.0, 5.0)})
+                commit(exchange, 0, A1, cosine=0.3)
+                commit(exchange, 1, B1)
+                commit(exchange, 2, A2, cosine=0.5)
+                asyncio.run(trained.poll())
+                trained.step(samples=3)
+
+                # Overwriting since round 0, kept through round 2's cosine.
+                assert adapter.tensors["a"] == f32(100.0, 200.0)
 
     def when_a_commit_carries_an_update():
         def it_rebuilds_theta_from_the_version_it_holds_instead_of_fetching_it(clock: FakeClock):

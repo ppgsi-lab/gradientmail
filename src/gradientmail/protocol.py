@@ -92,6 +92,7 @@ import hashlib
 import json
 import logging
 import re
+import threading
 import time
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
@@ -212,6 +213,36 @@ class Superseded:
 
 
 type CommitOutcome = Committed | Superseded
+
+
+class LocalCommits:
+    """The fragments this process committed, for its own learner to take instead of fetching
+    them back from the store.
+
+    ``Exchange.commit`` fills the fragment's slot before it writes the round record, so a learner
+    that lists the record finds the slot filled. The slot names the theta payload it holds, so
+    a commit that lost the record write to another node's is never taken. One slot per fragment,
+    holding the tensors the syncer keeps as its state anyway.
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._slots: dict[int, tuple[int, str, Mapping[str, TensorBytes]]] = {}
+
+    def put(self, fragment: int, version: int, key: str, theta: Mapping[str, TensorBytes]) -> None:
+        with self._lock:
+            self._slots[fragment] = (version, key, theta)
+
+    def take(self, record: RoundRecord) -> Mapping[str, TensorBytes] | None:
+        """``record``'s theta when this process committed it. A slot older than ``record``, or
+        as old but holding another payload, can no longer be asked for and is dropped."""
+        with self._lock:
+            slot = self._slots.get(record.fragment)
+            if slot is None or slot[0] > record.version:
+                return None
+            del self._slots[record.fragment]
+            version, key, theta = slot
+            return theta if (version, key) == (record.version, record.theta.key) else None
 
 
 class ProtocolError(ValueError):
@@ -476,13 +507,22 @@ class Exchange:
 
     Every operation runs through ``retrying``: a ``MailboxUnavailable`` is retried with
     backoff on ``clock``; anything else propagates. ``compression`` is the codec this exchange
-    writes payloads with; it reads payloads in any.
+    writes payloads with; it reads payloads in any. ``local`` receives every fragment it
+    commits.
     """
 
-    def __init__(self, mailbox: Mailbox, *, clock: Clock, compression: Compression = "off") -> None:
+    def __init__(
+        self,
+        mailbox: Mailbox,
+        *,
+        clock: Clock,
+        compression: Compression = "off",
+        local: LocalCommits | None = None,
+    ) -> None:
         self._mailbox = mailbox
         self._clock = clock
         self._compression = compression
+        self._local = local
 
     async def manifest(self) -> Manifest | None:
         data = await self._retry(partial(self._mailbox.get, MANIFEST_KEY))
@@ -646,6 +686,8 @@ class Exchange:
             if update is None
             else CommitUpdate(await self._publish(blob_key, update), theta_digest(theta))
         )
+        if self._local is not None:
+            self._local.put(draft.fragment, draft.version, theta_ref.key, theta)
         record = RoundRecord(
             round=draft.round,
             step=draft.step,

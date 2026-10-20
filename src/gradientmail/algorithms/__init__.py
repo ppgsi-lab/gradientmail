@@ -2,7 +2,7 @@
 
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
-from typing import Protocol, Self, assert_never, runtime_checkable
+from typing import Protocol, Self, assert_never, overload, runtime_checkable
 
 from gradientmail.adapters import Backend, Value
 from gradientmail.serialization import (
@@ -17,11 +17,16 @@ from gradientmail.serialization import (
 )
 
 __all__ = [
+    "Adaptive",
     "Aggregator",
     "Algorithm",
+    "Alignment",
+    "Blend",
+    "Carry",
     "Contribution",
     "Estimates",
     "FragmentState",
+    "Overwrite",
     "Participant",
     "Precision",
     "RoundResult",
@@ -34,6 +39,78 @@ __all__ = [
 type Precision = DType | Quantized | None
 """How a tensor travels in a payload: in a parameter dtype, quantized with its scales beside
 it, or, with ``None``, in its own dtype."""
+
+
+@dataclass(frozen=True)
+class Overwrite:
+    """Aligning sets the fragment to the commit, ``Θ``: the steps trained since the learner's
+    snapshot in the round are dropped, as in the DiLoCo papers."""
+
+
+@dataclass(frozen=True)
+class Blend:
+    """Streaming DiLoCo's alpha: aligning sets the fragment to ``mixing·θ + (1 - mixing)·Θ``,
+    and the fragment's counters keep that share of the steps the commit did not incorporate."""
+
+    mixing: float
+
+    def __post_init__(self) -> None:
+        if not 0.0 <= self.mixing < 1.0:
+            raise ValueError(f"mixing must be in [0, 1), got {self.mixing}")
+
+
+@dataclass(frozen=True)
+class Carry:
+    """Aligning sets the fragment to ``Θ + (θ - θ_snapshot)``: the commit plus everything
+    trained since the snapshot the commit incorporated, or since the anchor when the learner
+    took no part in the round. The counters keep those steps, so the next snapshot carries
+    them and no step is dropped. LOSCAR-SGD's delay-corrected merge (arXiv 2605.20866),
+    applied to the outer step's result instead of a plain average."""
+
+
+@dataclass(frozen=True, init=False)
+class Adaptive:
+    """``Carry`` while the learners agree and ``Overwrite`` while they do not, fragment by
+    fragment: aligning with a commit whose round's deltas had a mean cosine of
+    ``carry_above`` or more carries, from then on, and one of less than ``overwrite_below``
+    overwrites; between the two the fragment keeps doing what it did, and a round with one
+    contribution, which has no cosine, changes nothing. Every fragment starts by carrying.
+    ``Adaptive(threshold)`` switches at one value; the default, 0.6 over 0.4, keeps a
+    fragment from flapping on a cosine that hovers around a single one."""
+
+    carry_above: float
+    overwrite_below: float
+
+    @overload
+    def __init__(self, threshold: float, /) -> None: ...
+    @overload
+    def __init__(self, *, carry_above: float = 0.6, overwrite_below: float = 0.4) -> None: ...
+    def __init__(
+        self,
+        threshold: float | None = None,
+        /,
+        *,
+        carry_above: float | None = None,
+        overwrite_below: float | None = None,
+    ) -> None:
+        if threshold is not None and (carry_above is not None or overwrite_below is not None):
+            raise ValueError("pass a threshold or carry_above and overwrite_below, not both")
+        if threshold is not None:
+            above = below = threshold
+        else:
+            above = 0.6 if carry_above is None else carry_above
+            below = 0.4 if overwrite_below is None else overwrite_below
+        if not -1.0 <= below <= above <= 1.0:
+            raise ValueError(
+                "thresholds must satisfy -1 <= overwrite_below <= carry_above <= 1, got "
+                f"{below} and {above}"
+            )
+        object.__setattr__(self, "carry_above", above)
+        object.__setattr__(self, "overwrite_below", below)
+
+
+type Alignment = Overwrite | Blend | Carry | Adaptive
+"""What aligning a fragment with its commit does to the steps trained meanwhile."""
 
 
 @dataclass(frozen=True)
@@ -70,8 +147,10 @@ class RoundSchedule:
 class FragmentState:
     """A fragment as last committed: its version, the published anchor and the outer state.
 
-    ``outer`` holds ``momentum.<name>`` in F32 and ``master.<name>`` in F32 when the published
-    tensor is not the master: the schema dtype is not F32, or commits carry an update.
+    ``outer`` is the aggregator's: DiLoCo's holds ``momentum.<name>``, and ``master.<name>``
+    or ``residual.<name>`` when the published tensor does not hold the master (DiLoCo's
+    ``master_dtype``, ``momentum_dtype`` and ``residual_dtype``). It is empty for a fragment
+    never committed.
     """
 
     version: int
@@ -199,12 +278,25 @@ class Algorithm(Protocol):
         """An aggregator for the fragment holding ``names``, computing in ``backend``."""
         ...
 
-    def quorum(self) -> int: ...
+    def quorum(self) -> int:
+        """Accepted snapshots enough to close a round, short of every live learner reporting."""
+        ...
 
     @property
-    def mixing(self) -> float:
-        """The share of its local parameters a learner keeps when it aligns a fragment with a
-        commit: ``mixing·θ + (1 - mixing)·Θ``, in ``[0, 1)``."""
+    def follow(self) -> int | None:
+        """Other learners' snapshots in a round that make a learner publish its own at once,
+        ahead of its schedule; ``None`` for one short of the quorum."""
+        ...
+
+    @property
+    def grace_seconds(self) -> float | None:
+        """Seconds a closer keeps collecting after quorum, unless every live learner has
+        reported; ``None`` for a window estimated from the round timings."""
+        ...
+
+    @property
+    def alignment(self) -> Alignment:
+        """What aligning a fragment with its commit does to the steps trained meanwhile."""
         ...
 
     @property

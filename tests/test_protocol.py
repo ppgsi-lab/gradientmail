@@ -24,6 +24,7 @@ from gradientmail.protocol import (
     Committed,
     CommitUpdate,
     Exchange,
+    LocalCommits,
     Manifest,
     ManifestDraft,
     PayloadCorrupt,
@@ -248,6 +249,54 @@ def describe_commit():
             assert isinstance(lost, Superseded)
             assert lost.record == won.record == records[0]
             assert theta == THETA
+
+        def it_hands_the_losers_learner_nothing(clock: FakeClock):
+            store = MemoryMailbox()
+            local = LocalCommits()
+
+            async def scenario():
+                await Exchange(store, clock=clock).commit(round_draft(0), THETA, OUTER)
+                return await Exchange(store, clock=clock, local=local).commit(
+                    round_draft(0), {"bias": f32(3.0, 4.0)}, OUTER
+                )
+
+            lost = asyncio.run(scenario())
+
+            assert isinstance(lost, Superseded)
+            assert local.take(lost.record) is None
+
+    def when_the_process_hands_its_commits_to_its_learner():
+        def it_holds_theta_before_the_record_can_be_listed(clock: FakeClock):
+            local = LocalCommits()
+            taken: list[Mapping[str, TensorBytes] | None] = []
+
+            class Recorded(MemoryMailbox):
+                async def put_if_absent(self, key: str, data: bytes) -> bool:
+                    if key.startswith("rounds/"):
+                        taken.append(local.take(decode_round_record(data)))
+                    return await super().put_if_absent(key, data)
+
+            exchange = Exchange(Recorded(), clock=clock, local=local)
+            asyncio.run(exchange.commit(round_draft(0), THETA, OUTER))
+
+            assert taken == [THETA]
+
+        def it_keeps_a_newer_version_from_a_learner_asking_for_an_older_one(clock: FakeClock):
+            local = LocalCommits()
+            exchange = Exchange(MemoryMailbox(), clock=clock, local=local)
+            later = {"bias": f32(5.0, 6.0)}
+
+            async def scenario():
+                first = await exchange.commit(round_draft(0), THETA, OUTER)
+                # Round 2 commits the same fragment again, as version 2.
+                second = await exchange.commit(round_draft(2), later, OUTER)
+                return first.record, second.record
+
+            first, second = asyncio.run(scenario())
+
+            assert local.take(first) is None
+            assert local.take(second) == later
+            assert local.take(second) is None
 
 
 def describe_claims():

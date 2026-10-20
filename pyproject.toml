@@ -60,3 +60,6 @@ select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 project-includes = ["src"]
 python-version = "3.12"
 search-path = ["src"]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["gradientmail.algorithms.Overwrite"]

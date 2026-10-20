@@ -14,11 +14,16 @@ from typing import Self, assert_never
 
 from gradientmail.adapters import Backend, Value
 from gradientmail.algorithms import (
+    Adaptive,
     Aggregator,
     Algorithm,
+    Alignment,
+    Blend,
+    Carry,
     Contribution,
     Estimates,
     FragmentState,
+    Overwrite,
     Participant,
     RoundResult,
     RoundSchedule,
@@ -28,10 +33,14 @@ from gradientmail.algorithms import (
 from gradientmail.serialization import DType, ParameterSpec, Quantized, Schema, TensorBytes
 
 __all__ = [
+    "Adaptive",
+    "Blend",
     "ByBytes",
+    "Carry",
     "DiLoCo",
     "DiLoCoAggregator",
     "Merge",
+    "Overwrite",
     "Partition",
     "Rda",
     "Strided",
@@ -98,13 +107,35 @@ class DiLoCo(Algorithm):
     ``overlap_steps`` bounds how far training runs ahead of a published round: once a round a
     learner published that many steps ago is still not aligned with, its ``step()`` waits for
     the round's commit. ``0`` is standard DiLoCo's barrier. ``None``, the default, never waits:
-    training goes on and the commit overwrites the steps taken meanwhile.
+    training goes on, and what the commit does to the steps taken meanwhile is ``alignment``.
 
-    ``mixing`` is Streaming DiLoCo's alpha: aligning a fragment sets it to ``mixing·θ + (1 -
-    mixing)·Θ``, the local parameters blended with the commit, instead of the commit alone. The
-    published Θ stays the anchor, so the next delta carries that share of the local progress the
-    commit did not include, and the fragment's counters keep the same share of their steps and
-    tokens. In the paper's Figure 8, at ten overlapped steps, 0.5 loses a third of what 0 loses.
+    ``alignment`` is what aligning a fragment with its commit does to the steps trained since
+    the snapshot the commit incorporated. ``Overwrite()``, the default and the papers' rule,
+    sets the fragment to Θ and drops them; a learner trains on between its snapshot and the
+    commit for as long as the round takes to close, a dozen steps of every fifty in the
+    Pythia-14M run of four nodes. ``Blend(mixing)`` is Streaming DiLoCo's alpha: the fragment
+    becomes ``mixing·θ + (1 - mixing)·Θ`` and the counters keep that share of those steps; in
+    the paper's Figure 8, at ten overlapped steps, 0.5 loses a third of what 0 loses.
+    ``Carry()`` sets the fragment to ``Θ + (θ - θ_snapshot)`` and keeps every one of those
+    steps for the next snapshot, so nothing is dropped. ``Adaptive()`` carries while the
+    learners agree and overwrites while they do not, fragment by fragment, judged by the mean
+    cosine between the round's deltas that every commit records: carrying from a round at
+    ``carry_above`` (0.6) or more, overwriting from one under ``overwrite_below`` (0.4), or
+    both at ``Adaptive(threshold)``. The published Θ is the anchor either way.
+
+    ``follow`` is how many other learners' snapshots in a round make a learner publish its own
+    at once, ahead of its schedule, with the steps it has, so that the round does not close
+    without it: ``1`` makes the first learner to reach a round set the pace for all; ``None``,
+    the default, is one short of ``quorum_size``, the round being about to close; ``0`` never
+    publishes ahead of schedule, standard DiLoCo's pace, every learner training its full
+    ``sync_every`` steps while the round waits. A positive value is never more than the other
+    live learners, nor less than one.
+
+    ``quorum_size`` is how many accepted snapshots close a round short of every live learner
+    reporting, and ``grace_seconds`` how long the closer keeps collecting after that, unless
+    every live learner has reported: ``None``, the default, estimates the window from the
+    round timings (``grace_window``). ``quorum_size=1`` with a fixed window closes every round
+    with whoever reports within it of the first snapshot.
 
     ``global_batch_size`` fixes the batch the live learners share: each trains on its share,
     so a learner joining shrinks the others' batches instead of growing the global batch.
@@ -120,8 +151,20 @@ class DiLoCo(Algorithm):
     ``commit_dtype`` makes every commit publish, beside theta, ``Θ_new - Θ_old`` in that
     format: a learner holding the old version downloads the update instead of theta and
     rebuilds theta from it, checking the result against the record. The published theta is
-    ``Θ_old`` plus the dequantized update, so the rounding stays in the fp32 master and the
-    next round corrects it. ``None`` publishes theta alone.
+    ``Θ_old`` plus the dequantized update, so the rounding stays in the master and the next
+    round corrects it. ``None`` publishes theta alone.
+
+    ``master_dtype`` is the dtype the outer step accumulates the parameters in, and
+    ``momentum_dtype`` the format its momentum is kept in; ``None``, the default for both, is
+    each parameter's own dtype, so a bf16 model's outer state is bf16. A bf16 master rounds
+    away any step under half an ulp of the parameter, 2**-9 to 2**-8 of it, as training the
+    model in bf16 does each inner step; ``"F32"`` keeps it. When the published theta does not
+    hold the master (a commit update, or a master wider than the parameter), the commit stores
+    the master in ``master_dtype``, or, with ``residual_dtype``, only the master minus the
+    published theta in that format: the residual is what the update and the rounding left
+    out, a fraction of a step, so ``"BF16"`` halves an fp32 master's bytes at a rounding of at
+    most 2**-8 of the residual. The outer step continues from the state as stored, so a node
+    that takes over a round continues from the same state.
 
     ``flush_on_close`` makes a closing learner publish the steps trained since each fragment's
     last round as final snapshots, and a round of final snapshots alone commits the closing
@@ -138,8 +181,10 @@ class DiLoCo(Algorithm):
     fragments: int
     in_flight: int = 2
     overlap_steps: int | None = None
-    mixing: float = 0.0
+    alignment: Alignment = Overwrite()
+    follow: int | None = None
     quorum_size: int = 1
+    grace_seconds: float | None = None
     outer_lr: float = 0.7
     outer_momentum: float = 0.9
     merge: Merge = Rda()
@@ -147,6 +192,9 @@ class DiLoCo(Algorithm):
     global_batch_size: int | None = None
     delta_dtype: DType | Quantized | None = None
     commit_dtype: DType | Quantized | None = None
+    master_dtype: DType | None = None
+    momentum_dtype: DType | Quantized | None = None
+    residual_dtype: DType | Quantized | None = None
     flush_on_close: bool = False
 
     def __post_init__(self) -> None:
@@ -158,10 +206,12 @@ class DiLoCo(Algorithm):
             )
         if self.overlap_steps is not None and self.overlap_steps < 0:
             raise ValueError(f"overlap_steps must be at least 0, got {self.overlap_steps}")
-        if not 0.0 <= self.mixing < 1.0:
-            raise ValueError(f"mixing must be in [0, 1), got {self.mixing}")
+        if self.follow is not None and self.follow < 0:
+            raise ValueError(f"follow must be at least 0, got {self.follow}")
         if self.quorum_size < 1:
             raise ValueError(f"quorum_size must be at least 1, got {self.quorum_size}")
+        if self.grace_seconds is not None and self.grace_seconds < 0.0:
+            raise ValueError(f"grace_seconds must be at least 0, got {self.grace_seconds}")
         if self.global_batch_size is not None and self.global_batch_size < 1:
             raise ValueError(f"global_batch_size must be at least 1, got {self.global_batch_size}")
 
@@ -205,13 +255,28 @@ class DiLoCo(Algorithm):
                 case _:
                     assert_never(self.partition)
 
+        def alignment() -> Mapping[str, object]:
+            match self.alignment:
+                case Overwrite():
+                    return {"kind": "overwrite"}
+                case Blend(mixing=mixing):
+                    return {"kind": "blend", "mixing": mixing}
+                case Carry():
+                    return {"kind": "carry"}
+                case Adaptive(carry_above=above, overwrite_below=below):
+                    return {"kind": "adaptive", "carry_above": above, "overwrite_below": below}
+                case _:
+                    assert_never(self.alignment)
+
         return {
             "sync_every": self.sync_every,
             "fragments": self.fragments,
             "in_flight": self.in_flight,
             "overlap_steps": self.overlap_steps,
-            "mixing": self.mixing,
+            "alignment": alignment(),
+            "follow": self.follow,
             "quorum_size": self.quorum_size,
+            "grace_seconds": self.grace_seconds,
             "outer_lr": self.outer_lr,
             "outer_momentum": self.outer_momentum,
             "merge": merge(),
@@ -219,6 +284,9 @@ class DiLoCo(Algorithm):
             "global_batch_size": self.global_batch_size,
             "delta_dtype": self.delta_dtype,
             "commit_dtype": self.commit_dtype,
+            "master_dtype": self.master_dtype,
+            "momentum_dtype": self.momentum_dtype,
+            "residual_dtype": self.residual_dtype,
             "flush_on_close": self.flush_on_close,
         }
 
@@ -256,6 +324,15 @@ class DiLoCo(Algorithm):
                 case other:
                     raise ValueError(f"{key!r} must be an integer or null, got {other!r}")
 
+        def optional_number(key: str) -> float | None:
+            match data.get(key):
+                case None:
+                    return None
+                case int() | float() as value:
+                    return float(value)
+                case other:
+                    raise ValueError(f"{key!r} must be a number or null, got {other!r}")
+
         def optional_dtype(key: str) -> DType | Quantized | None:
             match data.get(key):
                 case None:
@@ -266,6 +343,15 @@ class DiLoCo(Algorithm):
                     raise ValueError(
                         f"{key!r} must be F32, F16, BF16, F8_E4M3, F4 or null, got {other!r}"
                     )
+
+        def optional_parameter_dtype(key: str) -> DType | None:
+            match data.get(key):
+                case None:
+                    return None
+                case "F32" | "F16" | "BF16" as value:
+                    return value
+                case other:
+                    raise ValueError(f"{key!r} must be F32, F16, BF16 or null, got {other!r}")
 
         def merge() -> Merge:
             found = data.get("merge")
@@ -291,13 +377,32 @@ class DiLoCo(Algorithm):
                 case _:
                     raise ValueError(f"unrecognized partition {dict(found)!r}")
 
+        def alignment() -> Alignment:
+            found = data.get("alignment")
+            if not isinstance(found, Mapping):
+                raise ValueError(f"'alignment' must be an object, got {found!r}")
+            fields = ("kind", "mixing", "carry_above", "overwrite_below")
+            match tuple(found.get(field) for field in fields):
+                case "overwrite", None, None, None:
+                    return Overwrite()
+                case "blend", int() | float() as mixing, None, None:
+                    return Blend(float(mixing))
+                case "carry", None, None, None:
+                    return Carry()
+                case "adaptive", None, int() | float() as above, int() | float() as below:
+                    return Adaptive(carry_above=float(above), overwrite_below=float(below))
+                case _:
+                    raise ValueError(f"unrecognized alignment {dict(found)!r}")
+
         return cls(
             sync_every=integer("sync_every"),
             fragments=integer("fragments"),
             in_flight=integer("in_flight"),
             overlap_steps=optional_integer("overlap_steps"),
-            mixing=number("mixing"),
+            alignment=alignment(),
+            follow=optional_integer("follow"),
             quorum_size=integer("quorum_size"),
+            grace_seconds=optional_number("grace_seconds"),
             outer_lr=number("outer_lr"),
             outer_momentum=number("outer_momentum"),
             merge=merge(),
@@ -305,6 +410,9 @@ class DiLoCo(Algorithm):
             global_batch_size=optional_integer("global_batch_size"),
             delta_dtype=optional_dtype("delta_dtype"),
             commit_dtype=optional_dtype("commit_dtype"),
+            master_dtype=optional_parameter_dtype("master_dtype"),
+            momentum_dtype=optional_dtype("momentum_dtype"),
+            residual_dtype=optional_dtype("residual_dtype"),
             flush_on_close=boolean("flush_on_close"),
         )
 
@@ -315,9 +423,11 @@ class DiLoCoAggregator(Aggregator):
 
     The contributions are the deltas the learners computed against the published ``theta``,
     which is the anchor as is, so a learner whose bytes did not change contributes an exactly
-    zero delta. The fp32 master lives in ``outer["master.<name>"]`` when the published tensor
-    is not the master, that is when the schema dtype is not F32 or commits carry an update,
-    and the fp32 momentum in ``outer["momentum.<name>"]``. With a ``commit_dtype`` the
+    zero delta. ``outer["momentum.<name>"]`` holds the momentum at ``momentum_dtype``, and is
+    absent, zero, for a fragment never committed. When the published tensor does not hold the
+    master (commits carry an update, or ``master_dtype`` is wider than the parameter's),
+    ``outer`` also holds ``master.<name>`` in ``master_dtype`` or, with ``residual_dtype``,
+    ``residual.<name>``, the master minus the published tensor. With a ``commit_dtype`` the
     published theta is the anchor plus the update as it dequantizes, so what the update lost
     stays in the master. Pure for one backend: equal inputs give equal bytes.
 
@@ -357,14 +467,47 @@ class DiLoCoAggregator(Aggregator):
                 gram[i][j] += deltas[i].dot(deltas[j])
             anchor = load(state.theta[name])
             delta = merged(name, deltas)
-            stored = state.outer.get(f"master.{name}")
-            master = anchor if stored is None else load(stored)
-            momentum = load(state.outer[f"momentum.{name}"])
-            if final:
-                return anchor, master - delta, momentum
-            return anchor, *nesterov(
-                master, momentum, delta, lr=self.config.outer_lr, beta=self.config.outer_momentum
+            master = held(name, anchor)
+            momentum = (
+                decoded(
+                    self.backend,
+                    state.outer,
+                    f"momentum.{name}",
+                    shapes[name],
+                    self.config.momentum_dtype,
+                )
+                if f"momentum.{name}" in state.outer
+                else anchor * 0.0
             )
+            if final:
+                master = master - delta
+            else:
+                master, momentum = nesterov(
+                    master,
+                    momentum,
+                    delta,
+                    lr=self.config.outer_lr,
+                    beta=self.config.outer_momentum,
+                )
+            # Values compute in fp32: only a narrower master is rounded to its dtype.
+            dtype = master_dtypes[name]
+            return anchor, master if dtype == "F32" else load(master.to_bytes(dtype)), momentum
+
+        def held(name: str, anchor: Value) -> Value:
+            """The master the last commit left: stored as is, rebuilt from its residual over the
+            anchor, or the anchor itself when that holds it."""
+            if (stored := state.outer.get(f"master.{name}")) is not None:
+                return load(stored)
+            if f"residual.{name}" not in state.outer:
+                return anchor
+            residual = decoded(
+                self.backend,
+                state.outer,
+                f"residual.{name}",
+                shapes[name],
+                self.config.residual_dtype,
+            )
+            return anchor + residual
 
         def published(name: str, anchor: Value, master: Value) -> TensorBytes:
             if self.config.commit_dtype is None:
@@ -374,10 +517,31 @@ class DiLoCoAggregator(Aggregator):
             moved = decoded(self.backend, entries, name, shapes[name], self.config.commit_dtype)
             return (anchor + moved).to_bytes(dtypes[name])
 
+        def kept(
+            name: str, master: Value, momentum: Value, theta: TensorBytes
+        ) -> Mapping[str, TensorBytes]:
+            """The outer state of ``name``: the momentum, and the master unless ``theta``
+            holds it, as F32 holds F16 and BF16 exactly."""
+            entries = encoded(
+                f"momentum.{name}", momentum, dtypes[name], self.config.momentum_dtype
+            )
+            if self.config.commit_dtype is None and dtypes[name] in (master_dtypes[name], "F32"):
+                return entries
+            if self.config.residual_dtype is None:
+                return {**entries, f"master.{name}": master.to_bytes(master_dtypes[name])}
+            residual = encoded(
+                f"residual.{name}", master - load(theta), dtypes[name], self.config.residual_dtype
+            )
+            return {**entries, **residual}
+
         load = self.backend.load
         final = all(c.final for c in contributions)
         weights = [weight(c.tokens, c.steps) for c in contributions]
         dtypes: Mapping[str, DType] = {spec.name: spec.dtype for spec in self.schema.parameters}
+        master_dtypes: Mapping[str, DType] = {
+            name: dtype if self.config.master_dtype is None else self.config.master_dtype
+            for name, dtype in dtypes.items()
+        }
         shapes = {spec.name: spec.shape for spec in self.schema.parameters}
         count = len(contributions)
         pairs = [(i, j) for i in range(count) for j in range(i, count)]
@@ -388,21 +552,17 @@ class DiLoCoAggregator(Aggregator):
             name: published(name, anchor, master)
             for name, (anchor, master, _) in stepped_by_name.items()
         }
-        momenta = {
-            f"momentum.{name}": momentum.to_bytes("F32")
-            for name, (_, _, momentum) in stepped_by_name.items()
-        }
-        masters = {
-            f"master.{name}": master.to_bytes("F32")
-            for name, (_, master, _) in stepped_by_name.items()
-            if dtypes[name] != "F32" or self.config.commit_dtype is not None
+        outer = {
+            key: tensor
+            for name, (_, master, momentum) in stepped_by_name.items()
+            for key, tensor in kept(name, master, momentum, theta[name]).items()
         }
         participants = tuple(
             Participant(c.learner, c.local_step, c.steps, c.tokens, w)
             for c, w in zip(contributions, weights, strict=True)
         )
         return RoundResult(
-            FragmentState(state.version + 1, theta, {**momenta, **masters}),
+            FragmentState(state.version + 1, theta, outer),
             participants,
             mean_cosine(gram),
             update if self.config.commit_dtype is not None else None,

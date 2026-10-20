@@ -6,12 +6,16 @@ from itertools import pairwise
 
 import pytest
 
-from gradientmail.algorithms import layout
+from gradientmail.algorithms import Alignment, layout
 from gradientmail.algorithms.diloco import (
+    Adaptive,
+    Blend,
     ByBytes,
+    Carry,
     DiLoCo,
     Estimates,
     Merge,
+    Overwrite,
     Partition,
     Rda,
     Strided,
@@ -218,10 +222,31 @@ def describe_diloco():
             DiLoCo(sync_every=100, fragments=2, overlap_steps=-1)
 
     @pytest.mark.parametrize("mixing", [-0.1, 1.0])
-    def it_rejects_mixing_outside_the_unit_interval(mixing: float):
+    def it_rejects_a_blend_outside_the_unit_interval(mixing: float):
         with pytest.raises(ValueError):
-            DiLoCo(sync_every=100, fragments=2, mixing=mixing)
+            Blend(mixing)
 
+    def it_takes_one_adaptive_threshold_or_two():
+        assert Adaptive(0.5) == Adaptive(carry_above=0.5, overwrite_below=0.5)
+        assert Adaptive() == Adaptive(carry_above=0.6, overwrite_below=0.4)
+        with pytest.raises(ValueError):
+            Adaptive(carry_above=0.4, overwrite_below=0.6)
+        with pytest.raises(ValueError):
+            Adaptive(0.5, carry_above=0.6)
+
+    def it_rejects_a_negative_follow():
+        with pytest.raises(ValueError):
+            DiLoCo(sync_every=100, fragments=2, follow=-1)
+
+    def it_rejects_a_negative_grace_window():
+        with pytest.raises(ValueError):
+            DiLoCo(sync_every=100, fragments=2, grace_seconds=-1.0)
+
+    @pytest.mark.parametrize(
+        "alignment",
+        [Overwrite(), Blend(0.5), Carry(), Adaptive(carry_above=0.7, overwrite_below=0.3)],
+        ids=["overwrite", "blend", "carry", "adaptive"],
+    )
     @pytest.mark.parametrize(
         "merge", [WeightedMean(), Rda("tok_embeddings")], ids=["weighted_mean", "rda"]
     )
@@ -235,6 +260,7 @@ def describe_diloco():
     @pytest.mark.parametrize("overlap_steps", [None, 0], ids=["unbounded", "barrier"])
     @pytest.mark.parametrize("flush_on_close", [False, True], ids=["drop_tail", "flush_tail"])
     def it_round_trips_through_json(
+        alignment: Alignment,
         merge: Merge,
         partition: Partition,
         global_batch_size: int | None,
@@ -247,8 +273,10 @@ def describe_diloco():
             fragments=8,
             in_flight=3,
             overlap_steps=overlap_steps,
-            mixing=0.5,
+            alignment=alignment,
+            follow=1,
             quorum_size=2,
+            grace_seconds=2.5,
             outer_lr=1.0,
             outer_momentum=0.0,
             merge=merge,
@@ -256,6 +284,9 @@ def describe_diloco():
             global_batch_size=global_batch_size,
             delta_dtype=delta_dtype,
             commit_dtype="F8_E4M3",
+            master_dtype="F32",
+            momentum_dtype="BF16",
+            residual_dtype="F8_E4M3",
             flush_on_close=flush_on_close,
         )
 
@@ -265,6 +296,18 @@ def describe_diloco():
 
     def it_rejects_an_unknown_delta_dtype_in_json():
         encoded = {**DiLoCo(sync_every=100, fragments=2).to_json(), "delta_dtype": "INT8"}
+
+        with pytest.raises(ValueError):
+            DiLoCo.from_json(encoded)
+
+    def it_rejects_a_quantized_master_dtype_in_json():
+        encoded = {**DiLoCo(sync_every=100, fragments=2).to_json(), "master_dtype": "F8_E4M3"}
+
+        with pytest.raises(ValueError):
+            DiLoCo.from_json(encoded)
+
+    def it_rejects_an_unknown_alignment_in_json():
+        encoded = {**DiLoCo(sync_every=100, fragments=2).to_json(), "alignment": {"kind": "mix"}}
 
         with pytest.raises(ValueError):
             DiLoCo.from_json(encoded)

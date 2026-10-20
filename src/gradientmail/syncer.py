@@ -50,7 +50,8 @@ payloads are fetched as their snapshots appear, overlapping the wait.
 
 Grace
 -----
-After quorum the closer keeps collecting for
+After quorum the closer keeps collecting for the algorithm's ``grace_seconds`` when it fixes
+one, otherwise for
 ``min(0.5 · max(ahead·ξ_step - (ξ_quorum + ξ_sync), 0), ξ_round)`` seconds, ``ξ_round`` being the
 round's gap of steps times the step duration learners report and ``ahead`` the steps a learner
 trains before it would stall, ``in_flight`` rounds of them or the algorithm's ``overlap_steps``
@@ -62,17 +63,19 @@ estimate lags one round when the closer changes, since a commit's duration is kn
 the node that made it. The window is zero while any estimate is missing (the first round of a
 run) and ends early once every live learner has reported. With ``in_flight`` 1 the slack is
 negative, since reaching quorum alone takes about a round, and the window stays zero: rounds
-close at quorum and a learner late for a round is left out of it, though its next snapshot
-carries the steps anyway. ``in_flight`` 2 leaves about half a round. The realized
+close at quorum and a learner late for a round is left out of it; whether its next snapshot
+carries the steps is the algorithm's ``alignment``. ``in_flight`` 2 leaves about half a round.
+A fixed window ends early the same way and applies from the first round. The realized
 ``quorum_seconds`` and ``grace_seconds`` are in every round record. A snapshot that arrives
 after the close is not counted and is swept with the round.
 
 Recovery
 --------
 ``recover`` lists ``rounds/`` and takes the newest record per fragment: its theta payload is
-the anchor and its outer payload holds the fp32 momentum and, when the published tensor is not
-the master (F16 and BF16 schemas, commits that carry an update), the fp32 master; a fragment
-never committed starts from the manifest's Θ⁰ with zero momentum. The
+the anchor and its outer payload holds the momentum and, when the published tensor does not
+hold the master (commits that carry an update, a master wider than the parameter), the master
+or its residual, in the algorithm's formats; a fragment never committed starts from the
+manifest's Θ⁰ with no outer state, which the outer step takes as zero momentum. The
 next round is the one after the last record and the timing estimates are the last record's.
 Nothing else is persisted, so a crash
 before the record write recomputes the round from the snapshots still in the store and a crash
@@ -97,7 +100,6 @@ deleted; ``rounds/`` is the tape of the run.
 """
 
 import asyncio
-import math
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -133,6 +135,7 @@ from gradientmail.lease import Liveness
 from gradientmail.mailbox import Mailbox
 from gradientmail.protocol import (
     Exchange,
+    LocalCommits,
     Manifest,
     PayloadCorrupt,
     PayloadRef,
@@ -182,8 +185,9 @@ class Syncer:
     by default the installed one (torch, then MLX); constructing a syncer with neither installed
     raises ``MissingExtra``. Round records are byte-identical across restarts on one backend;
     another backend may differ in the last bit. ``compression`` is the codec this node's
-    commits are stored with. ``on_event`` receives every event the syncer reports (``events``
-    module), on the thread running ``run``.
+    commits are stored with; ``local``, when given, receives every fragment this node commits,
+    for the learner in the same process. ``on_event`` receives every event the syncer reports
+    (``events`` module), on the thread running ``run``.
     """
 
     def __init__(
@@ -197,13 +201,14 @@ class Syncer:
         poll_interval: float = 0.5,
         lease_timeout: float = 120.0,
         compression: Compression = "off",
+        local: LocalCommits | None = None,
         on_event: Callback = log_events,
     ) -> None:
         self._algorithm = algorithm
         self._learner_id = learner_id
         self._backend = backend if backend is not None else default_backend()
         self._clock = clock if clock is not None else MonotonicClock()
-        self._exchange = Exchange(mailbox, clock=self._clock, compression=compression)
+        self._exchange = Exchange(mailbox, clock=self._clock, compression=compression, local=local)
         self._poll_interval = poll_interval
         self._on_event = on_event
         self._liveness = Liveness(lease_timeout)
@@ -257,7 +262,7 @@ class Syncer:
         """Rebuild a closer's state from the store.
 
         Every fragment comes from its newest round record (theta and outer payloads), or from the
-        manifest's Θ⁰ with zero momentum when it was never committed. The next round is the one
+        manifest's Θ⁰ with no outer state when it was never committed. The next round is the one
         after the last record; the timing estimates are that record's.
         """
 
@@ -270,13 +275,7 @@ class Syncer:
         async def fragment_state(fragment: int) -> FragmentState:
             record = newest.get(fragment)
             if record is None:
-                momentum = {
-                    f"momentum.{name}": TensorBytes(
-                        "F32", shapes[name], bytes(4 * math.prod(shapes[name]))
-                    )
-                    for name in run.manifest.plan[fragment]
-                }
-                return FragmentState(0, await required(run.manifest.init[fragment]), momentum)
+                return FragmentState(0, await required(run.manifest.init[fragment]), {})
             return FragmentState(
                 record.version, await required(record.theta), await required(record.outer)
             )
@@ -285,7 +284,6 @@ class Syncer:
         records = await self._exchange.rounds_after(-1)
         # Records come in round order, so the last one per fragment wins.
         newest = {record.fragment: record for record in records}
-        shapes = {spec.name: spec.shape for spec in run.manifest.schema.parameters}
         count = len(run.manifest.plan)
         async with asyncio.TaskGroup() as group:
             loads = [group.create_task(fragment_state(p)) for p in range(count)]
@@ -427,11 +425,16 @@ class Syncer:
             await poll()
         quorum_at = self._clock.now()
 
-        deadline = quorum_at + grace_window(
-            state.estimates,
-            run.schedule.in_flight,
-            run.schedule.gap(round),
-            run.schedule.overlap_steps,
+        fixed = self._algorithm.grace_seconds
+        deadline = quorum_at + (
+            grace_window(
+                state.estimates,
+                run.schedule.in_flight,
+                run.schedule.gap(round),
+                run.schedule.overlap_steps,
+            )
+            if fixed is None
+            else fixed
         )
         while (now := self._clock.now()) < deadline and not reported():
             await self._clock.sleep(min(self._poll_interval, deadline - now))

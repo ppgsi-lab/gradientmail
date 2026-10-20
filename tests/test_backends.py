@@ -14,7 +14,13 @@ from hypothesis import assume, given
 from hypothesis import strategies as st
 
 from gradientmail.adapters import Backend, Value
-from gradientmail.algorithms import Aggregator, Contribution, FragmentState, Participant
+from gradientmail.algorithms import (
+    Aggregator,
+    Contribution,
+    FragmentState,
+    Participant,
+    Precision,
+)
 from gradientmail.algorithms.diloco import (
     DiLoCo,
     DiLoCoAggregator,
@@ -98,10 +104,17 @@ def aggregator(
     merge: Merge,
     lr: float,
     momentum: float,
+    master_dtype: DType | None = None,
 ) -> Aggregator:
     schema = Schema(tuple(ParameterSpec(name, dtype, (2,)) for name in sorted(names)))
     config = DiLoCo(
-        sync_every=10, fragments=1, in_flight=1, outer_lr=lr, outer_momentum=momentum, merge=merge
+        sync_every=10,
+        fragments=1,
+        in_flight=1,
+        outer_lr=lr,
+        outer_momentum=momentum,
+        merge=merge,
+        master_dtype=master_dtype,
     )
     return config.aggregator(schema, names, backend)
 
@@ -432,24 +445,85 @@ def describe_close_round():
                     floats(results[0].theta[name]), rel=1e-6
                 )
 
-    def it_keeps_an_fp32_master_for_bf16_schemas(backend: Backend):
+    def when_the_schema_is_bf16():
         anchor = bf16(0x3F80, 0x3F80)  # 1.0
         one_ulp_below = bf16(0x3F7F, 0x3F7F)  # 1 - 2**-8
         one_ulp = bf16(0x3B80, 0x3B80)  # 2**-8: the delta of a learner at one_ulp_below
         contributions = [contribution("a", {"w": one_ulp}, tokens=1)]
-        close = aggregator(backend, "BF16", ["w"], merge=WeightedMean(), lr=0.25, momentum=0.0)
-        state = FragmentState(0, {"w": anchor}, {"momentum.w": f32(0, 0)})
 
-        after_one = close.close_round(state, contributions).state
-        after_two = close.close_round(after_one, contributions).state
-        after_three = close.close_round(after_two, contributions).state
+        def it_accumulates_the_outer_state_in_bf16_by_default(backend: Backend):
+            close = aggregator(backend, "BF16", ["w"], merge=WeightedMean(), lr=0.25, momentum=0.0)
+            state = FragmentState(0, {"w": anchor}, {})
+            for _ in range(3):
+                state = close.close_round(state, contributions).state
 
-        assert set(after_one.outer) == {"master.w", "momentum.w"}
-        assert after_one.theta["w"] == anchor
-        assert floats(after_one.outer["master.w"]) == [1 - 2**-10, 1 - 2**-10]
-        assert after_two.theta["w"] == anchor
-        assert after_three.theta["w"] == one_ulp_below
-        assert floats(after_three.outer["master.w"]) == [1 - 3 * 2**-10] * 2
+            # Each step of 2**-10 is under half a bf16 ulp at 1.0: the published master keeps
+            # none of them.
+            assert state.theta["w"] == anchor
+            assert set(state.outer) == {"momentum.w"}
+            assert state.outer["momentum.w"].dtype == "BF16"
+
+        def it_keeps_an_fp32_master_when_asked(backend: Backend):
+            close = aggregator(
+                backend,
+                "BF16",
+                ["w"],
+                merge=WeightedMean(),
+                lr=0.25,
+                momentum=0.0,
+                master_dtype="F32",
+            )
+            state = FragmentState(0, {"w": anchor}, {"momentum.w": f32(0, 0)})
+
+            after_one = close.close_round(state, contributions).state
+            after_two = close.close_round(after_one, contributions).state
+            after_three = close.close_round(after_two, contributions).state
+
+            assert set(after_one.outer) == {"master.w", "momentum.w"}
+            assert after_one.theta["w"] == anchor
+            assert floats(after_one.outer["master.w"]) == [1 - 2**-10, 1 - 2**-10]
+            assert after_two.theta["w"] == anchor
+            assert after_three.theta["w"] == one_ulp_below
+            assert floats(after_three.outer["master.w"]) == [1 - 3 * 2**-10] * 2
+
+    def when_the_fragment_was_never_committed():
+        def it_starts_from_zero_momentum(backend: Backend):
+            contributions = [contribution("a", {"w": f32(1, 0)}, tokens=1)]
+            close = aggregator(backend, "F32", ["w"], merge=WeightedMean(), lr=0.7, momentum=0.9)
+            zero = FragmentState(0, {"w": f32(1, 1)}, {"momentum.w": f32(0, 0)})
+
+            fresh = close.close_round(FragmentState(0, {"w": f32(1, 1)}, {}), contributions)
+
+            assert fresh == close.close_round(zero, contributions)
+
+    def when_the_momentum_is_quantized():
+        def it_continues_from_the_momentum_as_it_dequantizes(backend: Backend):
+            config = DiLoCo(
+                sync_every=10,
+                fragments=1,
+                in_flight=1,
+                outer_lr=1.0,
+                outer_momentum=0.5,
+                merge=WeightedMean(),
+                momentum_dtype="F8_E4M3",
+            )
+            close = config.aggregator(Schema((ParameterSpec("w", "F32", (2,)),)), ["w"], backend)
+            state = FragmentState(0, {"w": f32(0, 0)}, {})
+
+            # m = Δ = (1, 0.3); 0.3 lies between E4M3's 0.28125 and 0.3125 at a scale of one.
+            first = close.close_round(state, [contribution("a", {"w": f32(1, 0.3)}, tokens=1)])
+            second = close.close_round(first.state, [contribution("a", {"w": f32(0, 0)}, tokens=1)])
+
+            assert set(first.state.outer) == {"momentum.w", "momentum.w.scale"}
+            assert first.state.outer["momentum.w"].dtype == "F8_E4M3"
+            # With Δ = 0 the step is lr·β²·m: what the second round moved by is the stored m.
+            moved = [
+                b - a
+                for a, b in zip(
+                    floats(first.state.theta["w"]), floats(second.state.theta["w"]), strict=True
+                )
+            ]
+            assert moved == pytest.approx([-0.25, -0.25 * 0.3125], rel=1e-6)
 
     def it_records_the_mean_cosine_between_the_deltas_over_the_fragment(backend: Backend):
         names = ["u", "v"]
@@ -500,6 +574,34 @@ def describe_close_round():
             assert first.update is not None and set(first.update) == {"w", "w.scale"}
             assert floats(second.state.theta["w"]) == [5.0, 7.0]
 
+        @pytest.mark.parametrize(
+            ("residual_dtype", "entries"),
+            [("BF16", {"residual.w"}), ("F8_E4M3", {"residual.w", "residual.w.scale"})],
+        )
+        def it_can_keep_the_master_as_its_residual_over_the_anchor(
+            backend: Backend, residual_dtype: Precision, entries: set[str]
+        ):
+            state = FragmentState(version=0, theta={"w": f32(0, 0)}, outer={})
+            config = DiLoCo(
+                sync_every=10,
+                fragments=1,
+                in_flight=1,
+                outer_lr=1.0,
+                outer_momentum=0.0,
+                merge=WeightedMean(),
+                commit_dtype="F4",
+                residual_dtype=residual_dtype,
+            )
+            close = config.aggregator(Schema((ParameterSpec("w", "F32", (2,)),)), ["w"], backend)
+
+            # As above, the master (5, 7) is published as (4, 6): the residual is (1, 1).
+            first = close.close_round(state, [contribution("a", {"w": f32(-5, -7)}, tokens=1)])
+            second = close.close_round(first.state, [contribution("a", {"w": f32(0, 0)}, tokens=1)])
+
+            assert set(first.state.outer) == {"momentum.w"} | entries
+            assert first.state.outer["residual.w"].dtype == residual_dtype
+            assert floats(second.state.theta["w"]) == [5.0, 7.0]
+
     def when_a_learner_did_not_move():
         def it_contributes_a_zero_delta(backend: Backend):
             published = bf16(0x3F80, 0x3F80)
@@ -509,7 +611,9 @@ def describe_close_round():
                 theta={"w": published},
                 outer={"master.w": master, "momentum.w": f32(0, 0)},
             )
-            close = aggregator(backend, "BF16", ["w"], merge=Rda(), lr=0.7, momentum=0.9)
+            close = aggregator(
+                backend, "BF16", ["w"], merge=Rda(), lr=0.7, momentum=0.9, master_dtype="F32"
+            )
 
             new_state = close.close_round(
                 state, [contribution("idle", {"w": bf16(0x0000, 0x0000)}, tokens=1)]
@@ -517,7 +621,7 @@ def describe_close_round():
 
             assert new_state.theta["w"] == published
             assert new_state.outer["master.w"] == master
-            assert floats(new_state.outer["momentum.w"]) == [0.0, 0.0]
+            assert read(backend, new_state.outer["momentum.w"]) == [0.0, 0.0]
 
     def when_every_contribution_is_final():
         def it_moves_by_the_merged_delta_and_keeps_the_momentum(backend: Backend):
