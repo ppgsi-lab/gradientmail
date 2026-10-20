@@ -56,11 +56,39 @@ fp32, are a fragment each and the blocks share the other two, and a node publish
 every 12 or 13 steps, about 1 MB/s to the bucket to be in every round. ``--quorum`` is three
 of four: a node that cannot keep up is left out of the rounds
 rather than stalling them, and its share of each batch does not reach the model; in two smoke
-runs one Salad node uploaded at about 60 KB/s and never got a snapshot in. So before joining,
-each node times a PUT the size of that fragment and refuses to train under ``--min-upload``
-MB/s (default 2, twice the round's need): such a node fails fast, and the run is restarted on
-another compute instead of comparing three nodes' data against the official four. The library
-logs every upload, alignment and commit at INFO on each node's console.
+runs one Salad node uploaded at about 60 KB/s and never got a snapshot in. ``--follow`` is
+how many others' snapshots in a round make a node publish ahead of its schedule (one short
+of the quorum by default; 1 lets the first node to reach a round set the pace; 0 never
+publishes early), ``--grace``
+fixes the seconds a round keeps collecting after quorum, and ``--alignment`` is what the
+commit does to the steps a node trained since its snapshot: ``overwrite`` drops them, the
+papers' rule and what the four-node run did, which cost it 22% of its steps; ``carry`` keeps
+them all; ``blend:0.5`` keeps that share; ``adaptive`` carries while the round's deltas agree
+(mean cosine 0.6 or more, as every commit records) and overwrites once they do not (under
+0.4), fragment by fragment, with ``adaptive:0.5`` switching at one value and
+``adaptive:0.4:0.6`` setting the two. ``--delta-dtype`` and ``--commit-dtype`` send the deltas
+and the commits' updates in ``BF16``, ``F8_E4M3`` or ``F4`` instead of fp32, a half, a quarter
+or an eighth of the bytes, and ``--compression zstd`` shuffles and compresses each node's
+payloads on top of that.
+
+Salad nodes are home computers on whatever uplink their owner has: of the nodes rented for
+these runs, uplinks ran from 0.7 to 27 MB/s and one node's downlink starved its GPU at a
+quarter of the others' pace. So the compute carries a health check, ``healthy``: before a node
+is admitted, it downloads 26 MB of the dataset from the Hub and uploads 26 MB, an embedding
+fragment, to the bucket. A node under ``PYTHIA_MIN_MBPS`` (default 20 megabits per second) in
+either direction twice in a row is lost to Skyward, which buys another and runs ``train`` on
+it; a learner that arrives mid-run joins at the newest commit and claims units like the rest.
+Skyward keeps probing every two minutes, but a node that has passed answers at once from then
+on, so the run's traffic is its own. The function travels to the nodes as bytecode, so
+``sky run`` must run on their Python, 3.12. Skyward also replaces a node that takes over four
+minutes to be allocated or to install its environment (``PYTHIA_BOOTSTRAP_TIMEOUT``, 240
+seconds; a node on a good link takes 40) or over two to start its worker: a slow install is
+a slow link. The image, ``PYTHIA_BOOTSTRAP_TIMEOUT`` and ``PYTHIA_NODES`` with it, names the
+compute, so ``compare`` reaches a run's compute only with the values the run was launched
+with. Once every node holds the run's parameters, a barrier releases them at one instant of
+the bucket's clock, so training starts together instead of the first node up training alone
+while the rest boot. The library logs every upload, alignment and commit at INFO on each
+node's console.
 
 Once: S3 credentials for the Hub (Settings → Access Tokens → the token's menu → Generate S3
 credentials) as the ``hf`` profile in ``~/.aws/credentials``, ``GRADIENTMAIL_HF_NAMESPACE`` set
@@ -78,17 +106,24 @@ file's model, optimizer and data against ``compare --only reference --step 128``
 attributing a gap to the synchronisation. The fourth is the floor: one node's quarter of each
 batch, without the others. The compute stays up between runs (``delete_on_exit=False``);
 ``sky compute delete`` ends it. A prefix holds one run; start another under a new prefix.
+``PYTHIA_NODES`` sets how many nodes train (default 4). Each trains ``1024 / n`` sequences
+a step, so with eight a step takes about half as long, a fragment is due twice as often, and
+a node needs twice the upload rate to be in every round:
+
+    PYTHIA_NODES=8 PYTHIA_MIN_MBPS=40 sky run examples/pythia.py train --node all \\
+        --steps 4000 --prefix pythia-14m-8n-carry --quorum 7 --alignment carry
+
 ``evaluate`` and ``compare`` only read the bucket and the Hub, so they also run here:
 
     cd examples && AWS_PROFILE=hf uv run --frozen --with huggingface_hub \\
         --with ../../skyward python -c "import pythia; print(pythia.compare())"
 
-``--rank`` and ``--nodes`` stand in for the node's own position when running off Skyward.
+``--rank`` and ``--nodes`` together stand in for the node's own position when running off
+Skyward.
 """
 
 from __future__ import annotations
 
-import asyncio
 import configparser
 import contextlib
 import logging
@@ -107,10 +142,18 @@ if TYPE_CHECKING:
     import torch
     from torch import Tensor, nn
 
+    from gradientmail.algorithms import Alignment
+    from gradientmail.compression import Compression
     from gradientmail.mailbox import Mailbox
+    from gradientmail.serialization import DType, Quantized
 
 NAMESPACE = os.environ.get("GRADIENTMAIL_HF_NAMESPACE", "")
 ENDPOINT = f"https://s3.hf.co/{NAMESPACE}"
+NODES = int(os.environ.get("PYTHIA_NODES", "4"))
+MIN_MBPS = float(os.environ.get("PYTHIA_MIN_MBPS", "20"))
+HEALTH_EVERY = 120.0
+BOOTSTRAP_TIMEOUT = int(os.environ.get("PYTHIA_BOOTSTRAP_TIMEOUT", "240"))
+BUCKET = "gradientmail"
 MODEL = "EleutherAI/pythia-14m"
 DATASET = "datasets/EleutherAI/pile-standard-pythia-preshuffled"
 SHARD_BYTES = 30_000_000_000
@@ -156,34 +199,70 @@ def s3_credentials() -> dict[str, str]:
     return {name: os.environ.get(name, "") for name in names}
 
 
-def upload_rate(box: Mailbox, rank: int) -> float:
-    """MB/s of one PUT the size of the embedding fragment to the bucket, deleted afterwards."""
-    key = f"preflight/node-{rank}.bin"
-    data = os.urandom(VOCAB * DIM * 4)
+def healthy(info: sky.Info) -> bool | str:
+    """Whether this node's network carries the run: ``MIN_MBPS`` or more both downloading the
+    dataset from the Hub and uploading an embedding fragment to the bucket. Skyward runs it on
+    the node, with the image's credentials, before admitting it and every ``HEALTH_EVERY``
+    seconds after; a node that has passed answers at once from then on. The verdict is the
+    reason a failing node is replaced for."""
+    if os.environ.get("PYTHIA_HEALTHY"):
+        return True
+    import urllib.request
 
-    async def measured() -> float:
-        await box.delete([key])
-        started = time.monotonic()
-        await box.put_if_absent(key, data)
-        seconds = time.monotonic() - started
-        await box.delete([key])
-        return len(data) / seconds / 1e6
+    import boto3
+    from botocore.config import Config
 
-    return asyncio.run(measured())
+    size = VOCAB * DIM * 4
+    request = urllib.request.Request(
+        f"https://huggingface.co/{DATASET}/resolve/main/document-00000-of-00020.bin",
+        headers={"Range": f"bytes=0-{size - 1}"},
+    )
+    started = time.monotonic()
+    with urllib.request.urlopen(request, timeout=60) as response:
+        received = len(response.read())
+    down = received * 8 / (time.monotonic() - started) / 1e6
+    s3 = boto3.client(
+        "s3",
+        endpoint_url=ENDPOINT,
+        region_name="us-east-1",
+        config=Config(request_checksum_calculation="when_required"),
+    )
+    key = f"health/{info.node}.bin"
+    started = time.monotonic()
+    s3.put_object(Bucket=BUCKET, Key=key, Body=os.urandom(size))
+    up = size * 8 / (time.monotonic() - started) / 1e6
+    s3.delete_object(Bucket=BUCKET, Key=key)
+    verdict = f"{down:.0f} Mbit/s down, {up:.0f} Mbit/s up, {MIN_MBPS:.0f} required"
+    print(f"health: {verdict}", flush=True)
+    if min(down, up) < MIN_MBPS:
+        return verdict
+    os.environ["PYTHIA_HEALTHY"] = "1"
+    return True
 
 
 gpu = sky.app(
-    provider=sky.Salad(priority="high"),
+    provider=sky.Salad(priority="high", min_download_mbps=300, min_upload_mbps=200),
     accelerator=sky.accelerators.RTX_3090(),
-    nodes=4,
+    nodes=NODES,
     image=sky.Image(
         python="3.12",
-        pip=["torch", "huggingface_hub", "safetensors~=0.8", "boto3~=1.36"],
+        pip=["torch", "huggingface_hub", "safetensors~=0.8", "boto3~=1.36", "zstandard>=0.23"],
         includes=["../src/gradientmail"],
-        env={**s3_credentials(), "GRADIENTMAIL_HF_NAMESPACE": NAMESPACE},
-        bootstrap_timeout=1800,
+        env={
+            **s3_credentials(),
+            "GRADIENTMAIL_HF_NAMESPACE": NAMESPACE,
+            "PYTHIA_NODES": str(NODES),
+        },
+        bootstrap_timeout=BOOTSTRAP_TIMEOUT,
     ),
-    options=sky.Options(ready_timeout=1800),
+    options=sky.Options(
+        provision_timeout=240.0,
+        worker_timeout=120.0,
+        ready_timeout=1800,
+        health_checker=sky.HealthChecker(
+            healthy, interval=HEALTH_EVERY, timeout=120.0, consecutive_failures=2
+        ),
+    ),
     delete_on_exit=False,
 )
 
@@ -212,25 +291,34 @@ class Pythia:
 
 @gpu
 def train(
-    bucket: str = "gradientmail",
+    bucket: str = BUCKET,
     prefix: str = "pythia-14m",
     steps: int = 4000,
     sync_every: int = 50,
     fragments: int = 4,
     quorum: int = 3,
+    follow: int | None = None,
+    grace: float | None = None,
+    alignment: str = "overwrite",
+    delta_dtype: str = "",
+    commit_dtype: str = "",
+    compression: str = "off",
     micro_batch: int = 8,
-    min_upload: float = 2.0,
     unit: int = 20,
     solo: bool = False,
     rank: int = -1,
     nodes: int = 0,
 ) -> dict[str, float]:
     """Re-train Pythia-14M from step 0 to STEPS across the run's nodes, in units of UNIT steps
-    claimed from the bucket; --solo trains one node's fixed slice alone."""
+    claimed from the bucket; --solo trains one node's fixed slice alone. --alignment is
+    overwrite, carry, blend:<mixing> or adaptive; --delta-dtype and --commit-dtype send deltas
+    and commits in F32, F16, BF16, F8_E4M3 or F4 (the parameters' own dtype by default);
+    --compression zstd compresses this node's payloads."""
     import torch
 
     import gradientmail as gm
     from gradientmail.adapters.torch import TorchBackend
+    from gradientmail.patterns.barrier import Barrier
     from gradientmail.patterns.shared_queue import shared_queue
 
     logging.basicConfig(
@@ -253,17 +341,6 @@ def train(
     optimizer = nano.adamw(model, device)
     per_step = share * CONTEXT
     box = None if solo else mailbox(bucket, prefix)
-    if box is not None:
-        rate = upload_rate(box, place.rank)
-        print(
-            f"rank {place.rank}: uploads {VOCAB * DIM * 4 / 1e6:.0f} MB at {rate:.2f} MB/s",
-            flush=True,
-        )
-        if rate < min_upload:
-            raise RuntimeError(
-                f"rank {place.rank} uploads at {rate:.2f} MB/s, under --min-upload {min_upload}: "
-                "it would be in no round"
-            )
     lanes = (
         (place.rank,) if solo else tuple((place.rank + i) % place.nodes for i in range(place.nodes))
     )
@@ -281,12 +358,18 @@ def train(
                 sync_every=sync_every,
                 fragments=fragments,
                 quorum_size=quorum,
+                follow=follow,
+                grace_seconds=grace,
+                alignment=aligned_by(alignment),
                 merge=gm.WeightedMean(),
+                delta_dtype=payload_dtype(delta_dtype),
+                commit_dtype=payload_dtype(commit_dtype),
             ),
             mailbox=box,
             learner_id=f"node-{place.rank}",
             poll_interval=5.0,
             backend=TorchBackend(str(device)),
+            compression=compressed_by(compression),
         )
     )
 
@@ -295,7 +378,6 @@ def train(
         f"of {steps} steps, {per_step:,} tokens per step, on {device}",
         flush=True,
     )
-    started = time.monotonic()
     ema = math.nan
     seen = -1
     done = 0
@@ -310,6 +392,12 @@ def train(
                 load=nano.load_unit,
             )
         )
+        if box is not None:
+            Barrier(mailbox=box, learner_id=f"node-{place.rank}").wait(
+                "start", parties=place.nodes, timeout=1800
+            )
+            print(f"rank {place.rank}: training", flush=True)
+        started = time.monotonic()
         for step, batch in batches:
             batch = batch.to(device)
             lr = learning_rate(step)
@@ -349,7 +437,7 @@ def train(
 
 @gpu
 def evaluate(
-    bucket: str = "gradientmail",
+    bucket: str = BUCKET,
     prefix: str = "pythia-14m",
     micro_batch: int = 8,
 ) -> dict[str, float]:
@@ -368,7 +456,7 @@ def evaluate(
 
 @gpu
 def compare(
-    bucket: str = "gradientmail",
+    bucket: str = BUCKET,
     prefix: str = "pythia-14m",
     step: int = 4000,
     seeds: int = 9,
@@ -431,11 +519,56 @@ def learning_rate(step: int) -> float:
 
 
 def where(rank: int, nodes: int) -> Place:
-    """The position given on the command line, or the node's own."""
+    """The position given on the command line, or this node's rank among ``NODES``, the count
+    the run was launched with and the image carries; ``instance_info`` counts only the nodes
+    up when the task reached this one."""
     if rank >= 0 and nodes > 0:
         return Place(rank, nodes)
-    info = sky.instance_info()
-    return Place(info.rank, info.nodes)
+    return Place(sky.instance_info().rank, nodes if nodes > 0 else NODES)
+
+
+def aligned_by(name: str) -> Alignment:
+    """``overwrite``, ``carry``, ``blend:<mixing>``, ``adaptive``, ``adaptive:<threshold>`` or
+    ``adaptive:<overwrite_below>:<carry_above>``."""
+    import gradientmail as gm
+
+    match name.split(":"):
+        case ["overwrite"]:
+            return gm.Overwrite()
+        case ["carry"]:
+            return gm.Carry()
+        case ["blend", mixing]:
+            return gm.Blend(float(mixing))
+        case ["adaptive"]:
+            return gm.Adaptive()
+        case ["adaptive", threshold]:
+            return gm.Adaptive(float(threshold))
+        case ["adaptive", below, above]:
+            return gm.Adaptive(carry_above=float(above), overwrite_below=float(below))
+        case _:
+            raise ValueError(
+                "--alignment takes overwrite, carry, blend:<mixing>, adaptive, "
+                f"adaptive:<threshold> or adaptive:<overwrite_below>:<carry_above>, not {name!r}"
+            )
+
+
+def payload_dtype(name: str) -> DType | Quantized | None:
+    """``F32``, ``F16``, ``BF16``, ``F8_E4M3``, ``F4``, or the parameters' own dtype when empty."""
+    match name:
+        case "":
+            return None
+        case "F32" | "F16" | "BF16" | "F8_E4M3" | "F4" as dtype:
+            return dtype
+        case _:
+            raise ValueError(f"a payload dtype is F32, F16, BF16, F8_E4M3 or F4, not {name!r}")
+
+
+def compressed_by(name: str) -> Compression:
+    match name:
+        case "off" | "zstd" as compression:
+            return compression
+        case _:
+            raise ValueError(f"--compression takes off or zstd, not {name!r}")
 
 
 def mailbox(bucket: str, prefix: str) -> Mailbox:
