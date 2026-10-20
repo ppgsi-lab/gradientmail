@@ -39,8 +39,8 @@ protocol layer then retries with backoff for as long as the outage lasts. A 412
 and the outcome is unknown; the put is retried three times, then raised as
 ``MailboxUnavailable``. Every other ``ClientError`` (a missing bucket, access denied,
 throttling that outlasts botocore's retries) propagates unchanged: on a learner it is raised
-from the ``Session`` constructor while joining and from the next ``step()`` afterwards, on the
-syncer from ``run()``. A payload above 5 GiB raises
+from ``Session.join`` while joining and from ``Session.run`` afterwards, on the syncer from
+``run()``. A payload above 5 GiB raises
 ``ValueError`` instead of switching to multipart uploads; choose more fragments. A bulk delete
 reports per-key failures in a 200 response; the first one is raised as a ``ClientError``. On
 AWS and R2 a LIST costs 12.5 times a GET, and every learner and the syncer issue one LIST per

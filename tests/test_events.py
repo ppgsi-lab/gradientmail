@@ -12,9 +12,12 @@ def describe_combined():
         seen: list[tuple[str, Event]] = []
         notify = combined(lambda e: seen.append(("a", e)), lambda e: seen.append(("b", e)))
 
-        notify(LeaseReleased("node-0"))
+        notify(LeaseReleased(node="node-0", lease="learner"))
 
-        assert seen == [("a", LeaseReleased("node-0")), ("b", LeaseReleased("node-0"))]
+        assert seen == [
+            ("a", LeaseReleased("node-0", "learner")),
+            ("b", LeaseReleased("node-0", "learner")),
+        ]
 
     def when_a_callback_raises():
         def it_logs_the_failure_and_still_calls_the_rest(caplog: pytest.LogCaptureFixture):
@@ -24,9 +27,9 @@ def describe_combined():
             seen: list[Event] = []
             notify = combined(failing, seen.append)
 
-            notify(LeaseReleased("node-0"))
+            notify(LeaseReleased("node-0", "learner"))
 
-            assert seen == [LeaseReleased("node-0")]
+            assert seen == [LeaseReleased("node-0", "learner")]
             [failure] = [r for r in caplog.records if r.levelno == logging.ERROR]
             assert failure.getMessage() == "node-0: a callback failed on LeaseReleased"
 

@@ -24,6 +24,25 @@ class FakeClock(Clock):
         self._now += seconds
 
 
+class DrivenClock(Clock):
+    """A clock that moves only when the test calls ``advance``: ``sleep`` waits, in real time and
+    on any thread, until it has moved that far."""
+
+    def __init__(self, start: float = 0.0) -> None:
+        self._now = start
+
+    def now(self) -> float:
+        return self._now
+
+    async def sleep(self, seconds: float) -> None:
+        until = self._now + seconds
+        while self._now < until:
+            await asyncio.sleep(0.001)
+
+    def advance(self, seconds: float) -> None:
+        self._now += seconds
+
+
 class FaultyMailbox(Mailbox):
     """Loses the response of exactly one operation.
 
@@ -114,6 +133,31 @@ class SlowMailbox(Mailbox):
     async def put_if_absent(self, key: str, data: bytes) -> bool:
         if self._when(key):
             await asyncio.sleep(self._seconds)
+        return await self._inner.put_if_absent(key, data)
+
+    async def get(self, key: str) -> bytes | None:
+        return await self._inner.get(key)
+
+    async def list(self, prefix: str, *, after: str = "") -> Sequence[str]:
+        return await self._inner.list(prefix, after=after)
+
+    async def delete(self, keys: Iterable[str]) -> None:
+        await self._inner.delete(keys)
+
+    def clock(self) -> Clock:
+        return self._inner.clock()
+
+
+class RecordingMailbox(Mailbox):
+    """One node's view of a shared store: ``inner``'s objects, with every key it writes kept in
+    ``written``, in order."""
+
+    def __init__(self, inner: Mailbox) -> None:
+        self._inner = inner
+        self.written: list[str] = []
+
+    async def put_if_absent(self, key: str, data: bytes) -> bool:
+        self.written.append(key)
         return await self._inner.put_if_absent(key, data)
 
     async def get(self, key: str) -> bytes | None:

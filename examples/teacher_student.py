@@ -6,7 +6,7 @@ outputs plus Gaussian noise of variance ``NOISE²``, so a held-out mean squared 
 excess over that floor. Every learner starts from the same student (seeded by ``--seed``) and
 trains AdamW. The data is ``--steps`` global batches of four slices, each slice a function of
 the seed, the step and the slice, and the slices are claimed in units of ``--unit`` steps
-through the mailbox (the Shared Queue pattern, as ``pythia.py`` does), so a fast node takes
+through the mailbox (``gm.SharedQueue``, as ``pythia.py`` does), so a fast node takes
 more of them and every slice is trained once whatever the paces. The merged model is scored
 on one fixed held-out set. What varies between runs is the algorithm and the mailbox.
 
@@ -32,7 +32,7 @@ import copy
 import statistics
 import threading
 import time
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from dataclasses import dataclass
 
 import torch
@@ -43,7 +43,6 @@ from gradientmail.adapters.torch import TorchBackend
 from gradientmail.algorithms import Alignment
 from gradientmail.clock import Clock, MonotonicClock
 from gradientmail.mailbox import Mailbox
-from gradientmail.patterns.shared_queue import shared_queue
 from gradientmail.protocol import Exchange
 
 INPUTS = 16
@@ -164,27 +163,21 @@ def mse(model: nn.Module, inputs: Tensor, targets: Tensor) -> float:
         return nn.functional.mse_loss(model(inputs), targets).item()
 
 
-def train(
-    model: nn.Module,
-    stream: Iterable[tuple[Tensor, Tensor]],
-    lr: float,
-    pace: float,
-    session: gm.Session | None,
-) -> int:
-    """AdamW over ``stream``; returns the steps taken."""
+def trainer(model: nn.Module, lr: float, pace: float) -> Callable[[tuple[Tensor, Tensor]], int]:
+    """One AdamW step on a batch, then ``pace`` seconds of sleep; returns the batch's samples."""
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=0.0)
-    taken = 0
-    for inputs, targets in stream:
+
+    def step(pair: tuple[Tensor, Tensor]) -> int:
+        inputs, targets = pair
         loss = nn.functional.mse_loss(model(inputs), targets)
         loss.backward()
         optimizer.step()
         optimizer.zero_grad(set_to_none=True)
-        taken += 1
-        if session is not None:
-            session.step(samples=len(inputs))
         if pace > 0:
             time.sleep(pace)
-    return taken
+        return len(inputs)
+
+    return step
 
 
 def solo(setup: Setup, teacher: nn.Module) -> Result:
@@ -196,7 +189,9 @@ def solo(setup: Setup, teacher: nn.Module) -> Result:
             yield torch.cat([x for x, _ in slices]), torch.cat([y for _, y in slices])
 
     model = mlp(setup.seed)
-    train(model, merged(), setup.lr, 0.0, None)
+    step = trainer(model, setup.lr, 0.0)
+    for pair in merged():
+        step(pair)
     return Result(mse(model, *held_out(teacher)), None, 0, ())
 
 
@@ -210,27 +205,24 @@ def distributed(setup: Setup, algorithm: gm.DiLoCo, teacher: nn.Module) -> Resul
             yield batch(teacher, setup.seed, step, unit.lane)
 
     def node(rank: int) -> None:
+        def counted(pair: tuple[Tensor, Tensor]) -> int:
+            trained[rank] += 1
+            return step(pair)
+
         model = copy.deepcopy(student)
+        step = trainer(model, setup.lr, setup.step_seconds * setup.paces[rank])
         session = gm.Session(
             model,
             algorithm=algorithm,
             mailbox=mailbox,
-            learner_id=f"node-{rank}",
+            node_id=f"node-{rank}",
             poll_interval=POLL,
             backend=TorchBackend("cpu"),
             lease_every=1.0,
             lease_timeout=3.0,
             callbacks=(),
         )
-        with (
-            session,
-            shared_queue(
-                units(setup, rank), mailbox=mailbox, learner_id=f"node-{rank}", load=load
-            ) as stream,
-        ):
-            trained[rank] = train(
-                model, stream, setup.lr, setup.step_seconds * setup.paces[rank], session
-            )
+        session.run(counted, gm.SharedQueue(units(setup, rank), load=load))
 
     async def incorporated() -> tuple[float, int, tuple[float, ...]]:
         exchange = Exchange(mailbox, clock=MonotonicClock())

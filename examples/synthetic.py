@@ -6,8 +6,8 @@ fragment must hold is known from the round record alone: with quorum 2, lr 1, no
 the weighted mean, a commit is the weighted average of the fragments the learners published,
 each being the learner's anchor plus ``steps * constant``. Which session closes a round is
 settled through the mailbox; the outer step runs on the installed backend (torch or MLX). The
-script prints every commit next to that expectation, then rejoins each learner to show it
-aligns with the newest commit.
+script prints every commit next to that expectation, then aligns each learner with the newest
+commit and shows its parameters.
 
     uv run python examples/synthetic.py --rounds 6
 """
@@ -17,7 +17,7 @@ import asyncio
 import threading
 import time
 from array import array
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 
 from gradientmail.adapters import MemoryAdapter
@@ -26,7 +26,7 @@ from gradientmail.clock import MonotonicClock
 from gradientmail.mailbox.memory import MemoryMailbox
 from gradientmail.protocol import Exchange, RoundRecord
 from gradientmail.serialization import TensorBytes
-from gradientmail.session import Session
+from gradientmail.session import Session, align
 
 POLL = 0.01
 
@@ -35,7 +35,7 @@ POLL = 0.01
 class Profile:
     """How a synthetic learner trains: what a step adds, how many samples it reports, how often."""
 
-    learner_id: str
+    node_id: str
     delta: float
     samples: int
     pace: float
@@ -43,7 +43,7 @@ class Profile:
 
 FAST = Profile("fast", delta=0.25, samples=2, pace=0.001)
 SLOW = Profile("slow", delta=-0.5, samples=5, pace=0.004)
-DELTAS = {FAST.learner_id: FAST.delta, SLOW.learner_id: SLOW.delta}
+DELTAS = {FAST.node_id: FAST.delta, SLOW.node_id: SLOW.delta}
 ALGORITHM = DiLoCo(
     sync_every=8,
     fragments=2,
@@ -70,15 +70,21 @@ def initial_tensors() -> Mapping[str, TensorBytes]:
 def train(
     profile: Profile, adapter: MemoryAdapter, session: Session, stop: threading.Event
 ) -> None:
-    """The training loop of one learner: shift every parameter, then report the step."""
+    """The training loop of one learner: a step shifts every parameter, until ``stop`` is set."""
 
     def shifted(tensor: TensorBytes) -> TensorBytes:
         return f32(*(value + profile.delta for value in values(tensor)))
 
-    while not stop.is_set():
+    def step(_: None) -> int:
         adapter.apply({name: shifted(tensor) for name, tensor in adapter.tensors.items()})
-        session.step(samples=profile.samples)
         time.sleep(profile.pace)
+        return profile.samples
+
+    def steps() -> Iterator[None]:
+        while not stop.is_set():
+            yield None
+
+    session.run(step, steps())
 
 
 def expected(
@@ -167,7 +173,7 @@ def main() -> None:
     )
     for profile in (FAST, SLOW):
         print(
-            f"{profile.learner_id}: adds {profile.delta:+g} per step, {profile.samples} samples"
+            f"{profile.node_id}: adds {profile.delta:+g} per step, {profile.samples} samples"
             f" per step, one step every {profile.pace * 1000:g} ms"
         )
     sessions = {
@@ -175,11 +181,13 @@ def main() -> None:
             adapter,
             algorithm=ALGORITHM,
             mailbox=mailbox,
-            learner_id=profile.learner_id,
+            node_id=profile.node_id,
             poll_interval=POLL,
         )
         for profile, adapter in adapters.items()
     }
+    for session in sessions.values():
+        session.join()
     threads = [
         threading.Thread(
             target=train, args=(profile, adapters[profile], session, stop), daemon=True
@@ -194,19 +202,15 @@ def main() -> None:
         stop.set()
         for thread in threads:
             thread.join()
-        for session in sessions.values():
-            session.close()
 
-    # A learner's parameters drift by its own training between syncs; (re)joining aligns with the
-    # newest committed version of every fragment at that moment.
+    # A learner's parameters drift by its own training between syncs; aligning loads the newest
+    # committed version of every fragment at that moment, without joining the run again.
     for profile, adapter in adapters.items():
         committed = newest(exchange)
-        Session(
-            adapter, algorithm=ALGORITHM, mailbox=mailbox, learner_id=profile.learner_id
-        ).close()
+        align(adapter, mailbox=mailbox)
         held = "  ".join(f"{name}={values(t)}" for name, t in sorted(adapter.tensors.items()))
-        print(f"{profile.learner_id} after rejoining: {held}")
-        print(f"{profile.learner_id} holds the newest commit: {dict(adapter.tensors) == committed}")
+        print(f"{profile.node_id} after aligning: {held}")
+        print(f"{profile.node_id} holds the newest commit: {dict(adapter.tensors) == committed}")
 
 
 if __name__ == "__main__":

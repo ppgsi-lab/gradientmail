@@ -111,7 +111,7 @@ def learner(
     tensors: Mapping[str, TensorBytes] = TENSORS,
     *,
     algorithm: Algorithm = ALGORITHM,
-    learner_id: str = "learner-a",
+    node_id: str = "learner-a",
     on_event: Callback = log_events,
 ) -> tuple[Learner, MemoryAdapter]:
     adapter = MemoryAdapter(tensors)
@@ -120,7 +120,7 @@ def learner(
             adapter=adapter,
             algorithm=algorithm,
             mailbox=mailbox,
-            learner_id=learner_id,
+            node_id=node_id,
             clock=clock,
             poll_interval=0.01,
             lease_every=0.05,
@@ -819,7 +819,7 @@ def describe_learner():
             exchange = Exchange(mailbox, clock=clock)
             zeros = {"a": f32(0.0, 0.0), "b": f32(0.0, 0.0)}
             waiter, adapter = learner(mailbox, clock, zeros)
-            creator, _ = learner(mailbox, clock, learner_id="creator")
+            creator, _ = learner(mailbox, clock, node_id="creator")
 
             async def scenario():
                 assert await exchange.claim_creation(1, "creator")

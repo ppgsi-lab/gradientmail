@@ -16,11 +16,22 @@ from dataclasses import dataclass, replace
 from typing import Literal
 
 import pytest
-from fakes import FakeClock, TrippedMailbox
+from fakes import FakeClock, RecordingMailbox, TrippedMailbox
 
 from gradientmail.adapters import default_backend
 from gradientmail.algorithms import Estimates
 from gradientmail.algorithms.diloco import DiLoCo, WeightedMean, grace_window
+from gradientmail.events import (
+    Callback,
+    Event,
+    FollowingRound,
+    LeaseReleased,
+    RoundClaimed,
+    RoundCommitted,
+    RoundSuperseded,
+    TookOverRound,
+    log_events,
+)
 from gradientmail.mailbox.memory import MemoryMailbox
 from gradientmail.protocol import (
     Exchange,
@@ -28,6 +39,11 @@ from gradientmail.protocol import (
     RoundRecord,
     RunConfigMismatch,
     SnapshotDraft,
+    SyncerKind,
+    beat_key,
+    rank_id,
+    round_key,
+    syncer_lease_prefix,
 )
 from gradientmail.serialization import ParameterSpec, Schema, TensorBytes, pack
 from gradientmail.syncer import Following, Syncer, SyncerState
@@ -83,22 +99,37 @@ class Rig:
 
     def syncer(
         self,
-        learner_id: str = "node-1",
+        node_id: str = "node-1",
         poll_interval: float = POLL,
         lease_timeout: float = 120.0,
+        *,
+        exclusive: SyncerKind | None = None,
+        lease_every: float = 60.0,
+        units: Callable[[], frozenset[str]] = frozenset,
+        on_event: Callback = log_events,
     ) -> Syncer:
         return Syncer(
             algorithm=self.config,
             mailbox=self.store,
-            learner_id=learner_id,
+            node_id=node_id,
             clock=self.clock,
             poll_interval=poll_interval,
+            exclusive=exclusive,
+            lease_every=lease_every,
             lease_timeout=lease_timeout,
+            units=units,
+            on_event=on_event,
         )
 
     async def alive(self, *learners: str) -> None:
         for learner in learners:
             await self.exchange.beat(learner)
+
+    async def training(self, learner: str) -> None:
+        """Renew ``learner``'s lease every poll until cancelled, as a learner that trains on."""
+        while True:
+            await self.exchange.beat(learner)
+            await self.clock.sleep(POLL)
 
     async def claimants(self, round: int) -> Sequence[str]:
         return await self.exchange.claims(round)
@@ -119,6 +150,7 @@ class Rig:
         digest: str = SCHEMA.digest(),
         dtype: Literal["F32", "BF16"] = "F32",
         tensors: Mapping[str, TensorBytes] | None = None,
+        step_seconds: float = 0.5,
     ) -> None:
         draft = SnapshotDraft(
             learner=learner,
@@ -128,7 +160,7 @@ class Rig:
             tokens=tokens,
             base_version=base_version,
             rounds_seen=round - 1,
-            step_seconds=0.5,
+            step_seconds=step_seconds,
             schema_digest=digest,
             final=False,
         )
@@ -733,6 +765,39 @@ def describe_election():
             assert values(theta["bias"]) == pytest.approx([1.0, 0.0])
 
 
+def describe_commit_check():
+    def when_the_store_kept_another_closers_record():
+        def it_continues_from_the_surviving_record(clock: FakeClock):
+            rig = Rig(MemoryMailbox(), clock, algorithm(quorum=1))
+            seen: list[Event] = []
+
+            async def scenario():
+                await rig.create_run()
+                closer, other = rig.syncer("node-1", on_event=seen.append), rig.syncer("node-2")
+                state = await closer.recover()
+                stale = await other.recover()
+                await rig.publish("a", 0, (0.0, 1.0))
+                state = loaded(await completed(closer.run_round(state)))
+                # A store that accepts two writes of one key keeps the second: node-2 closes
+                # round 0 too, from a snapshot that landed since, and its record replaces
+                # node-1's although node-1's write returned success.
+                await rig.store.delete([round_key(0)])
+                await rig.publish("b", 0, (1.0, 0.0))
+                loaded(await completed(other.close(stale)))
+                [survivor] = await rig.committed()
+                await rig.publish("a", 1, (0.0, 0.0))
+                state = loaded(await completed(closer.run_round(state)))
+                return survivor, await rig.theta_of(survivor), state, await rig.committed()
+
+            survivor, theta, state, records = asyncio.run(scenario())
+
+            assert values(theta["bias"]) == pytest.approx([0.0, 1.0])
+            assert RoundSuperseded("node-1", survivor) in seen
+            assert [record.round for record in records] == [0, 1]
+            assert state.round == 2
+            assert state.fragments[0].theta == theta
+
+
 def describe_run():
     def it_waits_for_the_manifest_and_stops_after_until_round(clock: FakeClock):
         rig = Rig(MemoryMailbox(), clock, algorithm(quorum=1))
@@ -770,7 +835,7 @@ def describe_run():
             syncer = Syncer(
                 algorithm=rig.config,
                 mailbox=mailbox,
-                learner_id="node-1",
+                node_id="node-1",
                 clock=clock,
                 poll_interval=POLL,
             )
@@ -795,7 +860,7 @@ def describe_run():
             other = Syncer(
                 algorithm=algorithm(quorum=2),
                 mailbox=rig.store,
-                learner_id="node-2",
+                node_id="node-2",
                 clock=clock,
                 poll_interval=POLL,
             )
@@ -806,3 +871,521 @@ def describe_run():
                     await completed(other.run(until_round=0))
 
             asyncio.run(scenario())
+
+
+def describe_exclusive_syncer():
+    def when_it_is_live():
+        def it_closes_every_round_and_the_other_nodes_only_follow(clock: FakeClock):
+            rig = Rig(MemoryMailbox(), clock, algorithm(quorum=1))
+            seen: list[Event] = []
+
+            def following(node: str) -> bool:
+                return any(isinstance(e, FollowingRound) and e.node == node for e in seen)
+
+            async def scenario():
+                await rig.create_run()
+                await rig.alive("both")
+                dedicated = rig.syncer("dedicated", exclusive="0-dedicated", on_event=seen.append)
+                both = rig.syncer("both", on_event=seen.append)
+                closing = asyncio.create_task(dedicated.run(until_round=2))
+                # Slow steps make the takeover timeout the records predict far longer than a
+                # round takes here, every task's sleep advancing the one fake clock.
+                await rig.publish("both", 0, (0.0, 0.0), step_seconds=10.0)
+                await spin(lambda: any(isinstance(e, RoundCommitted) for e in seen))
+                follower = asyncio.create_task(both.run(until_round=2))
+                await spin(lambda: following("both"))
+                for round in (1, 2):
+                    await rig.publish(
+                        "both", round, (0.0, 0.0), base_version=round // 2, step_seconds=10.0
+                    )
+                await spin(lambda: closing.done() and follower.done())
+                closing.result()
+                follower.result()
+                return await rig.claimants(3), await rig.store.list("syncers/")
+
+            claimants, leases = asyncio.run(scenario())
+
+            committed = [(e.node, e.record.round) for e in seen if isinstance(e, RoundCommitted)]
+            assert committed == [("dedicated", 0), ("dedicated", 1), ("dedicated", 2)]
+            claimed = [e for e in seen if isinstance(e, RoundClaimed)]
+            assert claimed == [RoundClaimed("dedicated", 0)]
+            assert [e for e in seen if isinstance(e, TookOverRound)] == []
+            # It claimed the round after its last commit, and released its lease on returning.
+            assert list(claimants) == ["dedicated"]
+            assert list(leases) == []
+            assert LeaseReleased("dedicated", "syncer") in seen
+
+        def it_is_left_the_first_claim_on_a_round(clock: FakeClock):
+            rig = Rig(MemoryMailbox(), clock, algorithm(quorum=1))
+
+            async def scenario():
+                await rig.create_run()
+                await rig.alive("both")
+                await rig.exchange.beat_syncer(syncer_lease_prefix("0-dedicated", 0, "dedicated"))
+                await rig.publish("both", 0, (0.0, 1.0))
+                both = rig.syncer("both")
+                task = asyncio.create_task(both.run_round(await both.recover()))
+                await spin(lambda: clock.now() >= 1.0 or task.done())
+                running = not task.done()
+                task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
+                return running, await rig.claimants(0), await rig.committed()
+
+            running, claimants, records = asyncio.run(scenario())
+
+            # The snapshot is in, but the round waits for the dedicated syncer to claim it.
+            assert running
+            assert list(claimants) == []
+            assert list(records) == []
+
+    def when_its_lease_expires():
+        def it_lets_the_other_nodes_take_over_and_claim_the_next_round(clock: FakeClock):
+            rig = Rig(MemoryMailbox(), clock, algorithm(quorum=1))
+            seen: list[Event] = []
+
+            async def scenario():
+                await rig.create_run()
+                await rig.alive("both")
+                # A dedicated syncer crashed holding the claim on round 0; its lease stays behind.
+                await rig.exchange.beat_syncer(syncer_lease_prefix("0-dedicated", 0, "dedicated"))
+                await rig.exchange.claim(0, 1, "dedicated")
+                await rig.publish("both", 0, (0.0, 1.0))
+                both = rig.syncer("both", lease_timeout=1.0, on_event=seen.append)
+                state = loaded(await completed(both.run_round(await both.recover())))
+                return state, clock.now(), await rig.claimants(1), await rig.committed()
+
+            state, now, claimants, records = asyncio.run(scenario())
+
+            [takeover] = [e for e in seen if isinstance(e, TookOverRound)]
+            assert (takeover.node, takeover.round, takeover.claimants, takeover.cause) == (
+                "both",
+                0,
+                ("dedicated",),
+                "lease_gone",
+            )
+            # At the lease timeout, before the takeover timeout of thirty polls.
+            assert now == pytest.approx(1.0, abs=2 * POLL)
+            assert [record.round for record in records] == [0]
+            assert state.round == 1
+            assert list(claimants) == ["both"]
+
+    def when_it_comes_back():
+        def it_claims_the_first_round_the_other_nodes_left_unclaimed(clock: FakeClock):
+            rig = Rig(MemoryMailbox(), clock, algorithm(quorum=1))
+            seen: list[Event] = []
+
+            async def scenario():
+                await rig.create_run()
+                await rig.alive("both")
+                both = rig.syncer("both", on_event=seen.append)
+                # Slow steps make the takeover timeout the record predicts far longer than round 1
+                # takes here, every task's sleep advancing the one fake clock.
+                await rig.publish("both", 0, (0.0, 1.0), step_seconds=10.0)
+                state = loaded(await completed(both.run_round(await both.recover())))
+                # Round 0 is committed and round 1 claimed by "both" when the dedicated syncer
+                # comes back: it follows round 1, and "both", seeing it, leaves round 2 unclaimed.
+                dedicated = rig.syncer("dedicated", exclusive="0-dedicated", on_event=seen.append)
+                closing = asyncio.create_task(dedicated.run(until_round=2))
+                await spin(
+                    lambda: any(
+                        isinstance(e, FollowingRound) and e.node == "dedicated" for e in seen
+                    )
+                )
+                await rig.publish("both", 1, (0.0, 0.0))
+                loaded(await completed(both.run_round(state)))
+                await rig.publish("both", 2, (0.0, 0.0), base_version=1)
+                await spin(closing.done)
+                closing.result()
+
+            asyncio.run(scenario())
+
+            committed = [(e.node, e.record.round) for e in seen if isinstance(e, RoundCommitted)]
+            assert committed == [("both", 0), ("both", 1), ("dedicated", 2)]
+            claimed = [e for e in seen if isinstance(e, RoundClaimed)]
+            assert claimed == [RoundClaimed("both", 0), RoundClaimed("dedicated", 2)]
+
+    def when_it_closes_a_round():
+        def it_waits_for_no_snapshot_of_its_own(clock: FakeClock):
+            rig = Rig(MemoryMailbox(), clock, replace(algorithm(quorum=1), grace_seconds=2.0))
+
+            async def scenario():
+                await rig.create_run()
+                await rig.alive("a")
+                await rig.publish("a", 0, (0.0, 1.0))
+                dedicated = rig.syncer("dedicated", exclusive="0-dedicated")
+                await completed(dedicated.run(until_round=0))
+                [record] = await rig.committed()
+                return record
+
+            record = asyncio.run(scenario())
+
+            # Its lease is not a learner's: with "a" reported, the fixed window ended at once.
+            assert [p.learner for p in record.participants] == ["a"]
+            assert record.grace_seconds == 0.0
+
+    def when_every_learner_left_and_a_node_is_done():
+        def it_returns_and_releases_its_lease(clock: FakeClock):
+            rig = Rig(MemoryMailbox(), clock, algorithm(quorum=1))
+            seen: list[Event] = []
+
+            async def scenario():
+                await rig.create_run()
+                await rig.alive("a", "b")
+                dedicated = rig.syncer("dedicated", exclusive="0-dedicated", on_event=seen.append)
+                task = asyncio.create_task(dedicated.run())
+                await rig.exchange.mark_done("a")
+                await rig.exchange.release("a")
+                await spin(lambda: clock.now() >= 5.0 or task.done())
+                running = not task.done()
+                await rig.exchange.release("b")
+                await spin(task.done)
+                task.result()
+                return running, await rig.store.list("syncers/")
+
+            running, leases = asyncio.run(scenario())
+
+            # "b" held a live lease: the run was not finished until it released it.
+            assert running
+            assert list(leases) == []
+            assert LeaseReleased("dedicated", "syncer") in seen
+
+    def when_a_learner_crashed():
+        def it_returns_once_the_learners_lease_is_stale(clock: FakeClock):
+            rig = Rig(MemoryMailbox(), clock, algorithm(quorum=1))
+
+            async def scenario():
+                await rig.create_run()
+                await rig.alive("crashed")
+                await rig.exchange.mark_done("finished")
+                dedicated = rig.syncer(
+                    "dedicated", lease_timeout=3.0, exclusive="0-dedicated", lease_every=1.0
+                )
+                await completed(dedicated.run())
+                return clock.now()
+
+            assert asyncio.run(scenario()) >= 3.0
+
+    def when_no_node_is_done():
+        def it_runs_until_stopped(clock: FakeClock):
+            rig = Rig(MemoryMailbox(), clock, algorithm(quorum=1))
+
+            async def scenario():
+                await rig.create_run()
+                dedicated = rig.syncer("dedicated", exclusive="0-dedicated")
+                task = asyncio.create_task(dedicated.run())
+                await spin(lambda: clock.now() >= 5.0 or task.done())
+                running = not task.done()
+                dedicated.stop()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
+                return running, await rig.store.list("syncers/")
+
+            running, leases = asyncio.run(scenario())
+
+            assert running
+            assert list(leases) == []
+
+    def when_ranks_were_claimed():
+        def it_returns_once_every_rank_ever_claimed_is_done(clock: FakeClock):
+            rig = Rig(MemoryMailbox(), clock, algorithm(quorum=1))
+            seen: list[Event] = []
+
+            async def scenario():
+                await rig.create_run()
+                # Neither holds a lease: one finished its rank, the other crashed in its own.
+                await rig.exchange.claim_rank(0, "finished")
+                await rig.exchange.claim_rank(1, "crashed")
+                await rig.exchange.mark_done(rank_id(0))
+                dedicated = rig.syncer("dedicated", exclusive="0-dedicated", on_event=seen.append)
+                task = asyncio.create_task(dedicated.run())
+                await spin(lambda: clock.now() >= 5.0 or task.done())
+                running = not task.done()
+                # Another node takes the crashed node's rank over and finishes it.
+                await rig.exchange.claim_rank(1, "replacement")
+                await rig.exchange.mark_done(rank_id(1))
+                await spin(task.done)
+                task.result()
+                return running, await rig.store.list("syncers/")
+
+            running, leases = asyncio.run(scenario())
+
+            assert running
+            assert list(leases) == []
+            assert LeaseReleased("dedicated", "syncer") in seen
+
+        def it_waits_for_the_learner_that_marked_its_rank_to_leave(clock: FakeClock):
+            rig = Rig(MemoryMailbox(), clock, algorithm(quorum=1))
+
+            async def scenario():
+                await rig.create_run()
+                await rig.alive("a")
+                await rig.exchange.claim_rank(0, "a")
+                await rig.exchange.mark_done(rank_id(0))
+                dedicated = rig.syncer("dedicated", exclusive="0-dedicated")
+                task = asyncio.create_task(dedicated.run())
+                await spin(lambda: clock.now() >= 5.0 or task.done())
+                running = not task.done()
+                await rig.exchange.release("a")
+                await spin(task.done)
+                task.result()
+                return running
+
+            # "a" was still waiting for its last rounds to commit.
+            assert asyncio.run(scenario())
+
+
+def describe_elected_syncer():
+    """``exclusive="1-elected"``: the store's clock is the fake one too, so that a candidate's
+    one-second wait is one step of it."""
+
+    def when_no_node_owns_the_role():
+        def it_stands_wins_and_holds_its_lease(clock: FakeClock):
+            rig = Rig(MemoryMailbox(clock=clock), clock, algorithm())
+
+            async def scenario():
+                await rig.alive("learner")
+                candidate = rig.syncer("candidate", exclusive="1-elected")
+                won = await candidate.elect()
+                return won, candidate.holds_role, await rig.store.list("syncers/")
+
+            won, holds_role, leases = asyncio.run(scenario())
+
+            assert won
+            assert holds_role
+            assert list(leases) == [beat_key(syncer_lease_prefix("1-elected", 0, "candidate"), 0)]
+            # Its one wait: a second of the store's clock.
+            assert clock.now() == pytest.approx(1.0)
+
+        def it_loses_to_an_earlier_arrival_whose_lease_lands_while_it_waits(clock: FakeClock):
+            rig = Rig(MemoryMailbox(clock=clock), clock, algorithm())
+            clock.advance(100.0)
+            early = syncer_lease_prefix("1-elected", 99_999, "early")
+
+            async def scenario():
+                await rig.alive("learner")
+                late = rig.syncer("late", exclusive="1-elected")
+                standing = asyncio.create_task(late.elect())
+                await spin(lambda: clock.now() >= 101.0)
+                await rig.exchange.beat_syncer(early)
+                await spin(standing.done)
+                return standing.result(), late.holds_role, await rig.store.list("syncers/")
+
+            won, holds_role, leases = asyncio.run(scenario())
+
+            assert not won
+            assert not holds_role
+            # It released its own lease; the earlier one, first in byte order, owns the role.
+            assert list(leases) == [beat_key(early, 0)]
+
+    def when_a_node_owns_the_role():
+        def it_does_not_stand(clock: FakeClock):
+            rig = Rig(MemoryMailbox(clock=clock), clock, algorithm())
+            owner = syncer_lease_prefix("1-elected", 0, "owner")
+
+            async def scenario():
+                await rig.exchange.beat_syncer(owner)
+                late = rig.syncer("late", exclusive="1-elected")
+                return await late.elect(), await rig.store.list("syncers/")
+
+            won, leases = asyncio.run(scenario())
+
+            assert not won
+            assert list(leases) == [beat_key(owner, 0)]
+            assert clock.now() == 0.0
+
+    def when_no_other_node_trains():
+        def it_does_not_stand(clock: FakeClock):
+            rig = Rig(MemoryMailbox(clock=clock), clock, algorithm())
+
+            async def scenario():
+                # Its own learner's lease is the only one: elected, it would leave none training.
+                await rig.alive("alone")
+                alone = rig.syncer("alone", exclusive="1-elected")
+                return await alone.elect(), await rig.store.list("syncers/")
+
+            won, leases = asyncio.run(scenario())
+
+            assert not won
+            assert list(leases) == []
+            assert clock.now() == 0.0
+
+    def when_a_dedicated_syncer_arrives():
+        def it_gives_the_role_up_and_does_not_stand_while_it_lives(clock: FakeClock):
+            rig = Rig(MemoryMailbox(clock=clock), clock, algorithm(quorum=1))
+            recording = RecordingMailbox(rig.store)
+            seen: list[Event] = []
+            dedicated = syncer_lease_prefix("0-dedicated", 0, "dedicated")
+            elected = Syncer(
+                algorithm=rig.config,
+                mailbox=recording,
+                node_id="elected",
+                clock=clock,
+                poll_interval=POLL,
+                exclusive="1-elected",
+                on_event=seen.append,
+            )
+
+            async def scenario():
+                await rig.create_run()
+                await rig.alive("learner")
+                task = asyncio.create_task(elected.run())
+                await spin(lambda: elected.holds_role)
+                await rig.exchange.beat_syncer(dedicated)
+                await spin(lambda: not elected.holds_role)
+                given_up_at = clock.now()
+                await spin(lambda: clock.now() >= given_up_at + 10 * POLL or task.done())
+                running = not task.done()
+                leases = await rig.store.list("syncers/")
+                elected.stop()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
+                return running, leases
+
+            running, leases = asyncio.run(scenario())
+
+            assert running
+            assert list(leases) == [beat_key(dedicated, 0)]
+            assert LeaseReleased("elected", "syncer") in seen
+            # One election, won; none since, the dedicated syncer owning the role.
+            elections = [key for key in recording.written if key.startswith("syncers/1-elected/")]
+            assert len(elections) == 1
+
+    def when_the_elected_node_leaves():
+        def it_elects_a_remaining_candidate_on_its_next_poll(clock: FakeClock):
+            rig = Rig(MemoryMailbox(clock=clock), clock, algorithm(quorum=1))
+
+            async def scenario():
+                await rig.create_run()
+                await rig.alive("learner")
+                first = rig.syncer("first", exclusive="1-elected")
+                second = rig.syncer("second", exclusive="1-elected")
+                leaving = asyncio.create_task(first.run())
+                await spin(lambda: first.holds_role)
+                staying = asyncio.create_task(second.run())
+                await spin(lambda: clock.now() >= 20 * POLL)
+                standing_by = not second.holds_role
+                first.stop()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await leaving
+                await spin(lambda: second.holds_role)
+                leases = await rig.store.list("syncers/")
+                second.stop()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await staying
+                return standing_by, leases
+
+            standing_by, leases = asyncio.run(scenario())
+
+            assert standing_by
+            [lease] = leases
+            assert lease.startswith("syncers/1-elected/")
+            assert "-second/" in lease
+
+    def when_the_elected_node_crashed():
+        def it_takes_over_its_round_and_elects_itself_once_the_lease_expires(clock: FakeClock):
+            rig = Rig(MemoryMailbox(clock=clock), clock, algorithm(quorum=1))
+            seen: list[Event] = []
+            crashed = syncer_lease_prefix("1-elected", 0, "crashed")
+
+            async def scenario():
+                await rig.create_run()
+                # The elected syncer crashed holding the claim on round 0; its lease stays behind.
+                await rig.exchange.beat_syncer(crashed)
+                await rig.exchange.claim(0, 1, "crashed")
+                await rig.publish("both", 0, (0.0, 1.0))
+                training = asyncio.create_task(rig.training("both"))
+                survivor = rig.syncer(
+                    "survivor",
+                    lease_timeout=1.0,
+                    exclusive="1-elected",
+                    lease_every=0.5,
+                    on_event=seen.append,
+                )
+                task = asyncio.create_task(survivor.run())
+                await spin(
+                    lambda: survivor.holds_role and any(isinstance(e, RoundCommitted) for e in seen)
+                )
+                leases = await rig.store.list("syncers/")
+                survivor.stop()
+                training.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
+                with contextlib.suppress(asyncio.CancelledError):
+                    await training
+                return leases, await rig.committed()
+
+            leases, records = asyncio.run(scenario())
+
+            [takeover] = [e for e in seen if isinstance(e, TookOverRound)]
+            assert (takeover.node, takeover.round, takeover.claimants, takeover.cause) == (
+                "survivor",
+                0,
+                ("crashed",),
+                "lease_gone",
+            )
+            assert [record.round for record in records] == [0]
+            # The crashed node's lease stays, stale; the survivor's, after it, owns the role.
+            assert [key.split("/")[2].split("-", 1)[1] for key in leases] == [
+                "crashed",
+                "survivor",
+            ]
+
+    def when_no_learner_is_left_while_units_of_its_queue_are_unclaimed():
+        def it_gives_the_role_up_and_does_not_stand_again(clock: FakeClock):
+            rig = Rig(MemoryMailbox(clock=clock), clock, algorithm(quorum=1))
+            seen: list[Event] = []
+            elected = rig.syncer(
+                "elected",
+                exclusive="1-elected",
+                units=lambda: frozenset({"unit-0", "unit-1"}),
+                on_event=seen.append,
+            )
+
+            async def scenario():
+                await rig.create_run()
+                await rig.alive("learner")
+                await rig.exchange.claim_unit("unit-0", "learner")
+                await rig.exchange.mark_done("learner")
+                task = asyncio.create_task(elected.run())
+                await spin(lambda: elected.holds_role)
+                await rig.exchange.release("learner")
+                await spin(lambda: not elected.holds_role or task.done())
+                given_up_at = clock.now()
+                await spin(lambda: clock.now() >= given_up_at + 10 * POLL or task.done())
+                running = not task.done()
+                leases = await rig.store.list("syncers/")
+                elected.stop()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
+                return running, leases
+
+            running, leases = asyncio.run(scenario())
+
+            # A node done and none live would have finished the run; "unit-1" is left to train.
+            assert running
+            assert list(leases) == []
+            assert LeaseReleased("elected", "syncer") in seen
+
+        def when_every_unit_is_claimed():
+            def it_returns_once_the_run_is_finished(clock: FakeClock):
+                rig = Rig(MemoryMailbox(clock=clock), clock, algorithm(quorum=1))
+                elected = rig.syncer(
+                    "elected", exclusive="1-elected", units=lambda: frozenset({"unit-0", "unit-1"})
+                )
+
+                async def scenario():
+                    await rig.create_run()
+                    await rig.alive("learner")
+                    await rig.exchange.claim_unit("unit-0", "learner")
+                    await rig.exchange.claim_unit("unit-1", "learner")
+                    await rig.exchange.mark_done("learner")
+                    task = asyncio.create_task(elected.run())
+                    await spin(lambda: elected.holds_role)
+                    await rig.exchange.release("learner")
+                    await spin(task.done)
+                    task.result()
+                    return await rig.store.list("syncers/")
+
+                assert list(asyncio.run(scenario())) == []
+                assert elected.holds_role

@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="400" viewBox="0 0 960 400" role="img" aria-label="A grid of work units. Columns are groups of 20 dataset steps, 0–19 to 80–99 and onwards to step 4,000; rows are the four lanes, each a quarter of every step's 1,024 sequences. Each cell is one unit named by its group and lane, such as 000000-2.json. The highlighted unit, Unit(first=0, count=20, lane=2, lanes=4), is the third quarter of each batch at steps 0 to 19: 20 batches of 256 sequences. Any node can process any unit.">
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="400" viewBox="0 0 960 400" role="img" aria-label="A grid of work units. Columns are groups of 20 dataset steps, 0–19 to 80–99 and onwards to step 4,000; rows are the four lanes, each a quarter of every step's 1,024 sequences. Each cell is one unit named by its group and lane, such as 000000-2. The highlighted unit, Unit(first=0, count=20, lane=2, lanes=4), is the third quarter of each batch at steps 0 to 19: 20 batches of 256 sequences. Any node can process any unit.">
 <rect width="960" height="400" rx="6" class="ground"/>
 
 <text x="24" y="48" class="title">A dataset step holds 1,024 sequences, sliced into four lanes of 256</text>
@@ -21,49 +21,49 @@
 <text x="140" y="298" class="small end muted">768–1,023</text>
 
 <rect x="152" y="150" width="146" height="34" rx="6" class="card"/>
-<text x="225" y="171" class="code mid">000000-0.json</text>
+<text x="225" y="171" class="code mid">000000-0</text>
 <rect x="302" y="150" width="146" height="34" rx="6" class="card"/>
-<text x="375" y="171" class="code mid">000001-0.json</text>
+<text x="375" y="171" class="code mid">000001-0</text>
 <rect x="452" y="150" width="146" height="34" rx="6" class="card"/>
-<text x="525" y="171" class="code mid">000002-0.json</text>
+<text x="525" y="171" class="code mid">000002-0</text>
 <rect x="602" y="150" width="146" height="34" rx="6" class="card"/>
-<text x="675" y="171" class="code mid">000003-0.json</text>
+<text x="675" y="171" class="code mid">000003-0</text>
 <rect x="752" y="150" width="146" height="34" rx="6" class="card"/>
-<text x="825" y="171" class="code mid">000004-0.json</text>
+<text x="825" y="171" class="code mid">000004-0</text>
 
 <rect x="152" y="190" width="146" height="34" rx="6" class="card"/>
-<text x="225" y="211" class="code mid">000000-1.json</text>
+<text x="225" y="211" class="code mid">000000-1</text>
 <rect x="302" y="190" width="146" height="34" rx="6" class="card"/>
-<text x="375" y="211" class="code mid">000001-1.json</text>
+<text x="375" y="211" class="code mid">000001-1</text>
 <rect x="452" y="190" width="146" height="34" rx="6" class="card"/>
-<text x="525" y="211" class="code mid">000002-1.json</text>
+<text x="525" y="211" class="code mid">000002-1</text>
 <rect x="602" y="190" width="146" height="34" rx="6" class="card"/>
-<text x="675" y="211" class="code mid">000003-1.json</text>
+<text x="675" y="211" class="code mid">000003-1</text>
 <rect x="752" y="190" width="146" height="34" rx="6" class="card"/>
-<text x="825" y="211" class="code mid">000004-1.json</text>
+<text x="825" y="211" class="code mid">000004-1</text>
 
 <rect x="152" y="230" width="146" height="34" rx="6" class="picked"/>
 <path d="M 159.3 230 V 236 M 159.3 258 V 264 M 166.6 230 V 236 M 166.6 258 V 264 M 173.9 230 V 236 M 173.9 258 V 264 M 181.2 230 V 236 M 181.2 258 V 264 M 188.5 230 V 236 M 188.5 258 V 264 M 195.8 230 V 236 M 195.8 258 V 264 M 203.1 230 V 236 M 203.1 258 V 264 M 210.4 230 V 236 M 210.4 258 V 264 M 217.7 230 V 236 M 217.7 258 V 264 M 225.0 230 V 236 M 225.0 258 V 264 M 232.3 230 V 236 M 232.3 258 V 264 M 239.6 230 V 236 M 239.6 258 V 264 M 246.9 230 V 236 M 246.9 258 V 264 M 254.2 230 V 236 M 254.2 258 V 264 M 261.5 230 V 236 M 261.5 258 V 264 M 268.8 230 V 236 M 268.8 258 V 264 M 276.1 230 V 236 M 276.1 258 V 264 M 283.4 230 V 236 M 283.4 258 V 264 M 290.7 230 V 236 M 290.7 258 V 264" class="batches"/>
-<text x="225" y="251" class="code mid b acc">000000-2.json</text>
+<text x="225" y="251" class="code mid b acc">000000-2</text>
 <rect x="302" y="230" width="146" height="34" rx="6" class="card"/>
-<text x="375" y="251" class="code mid">000001-2.json</text>
+<text x="375" y="251" class="code mid">000001-2</text>
 <rect x="452" y="230" width="146" height="34" rx="6" class="card"/>
-<text x="525" y="251" class="code mid">000002-2.json</text>
+<text x="525" y="251" class="code mid">000002-2</text>
 <rect x="602" y="230" width="146" height="34" rx="6" class="card"/>
-<text x="675" y="251" class="code mid">000003-2.json</text>
+<text x="675" y="251" class="code mid">000003-2</text>
 <rect x="752" y="230" width="146" height="34" rx="6" class="card"/>
-<text x="825" y="251" class="code mid">000004-2.json</text>
+<text x="825" y="251" class="code mid">000004-2</text>
 
 <rect x="152" y="270" width="146" height="34" rx="6" class="card"/>
-<text x="225" y="291" class="code mid">000000-3.json</text>
+<text x="225" y="291" class="code mid">000000-3</text>
 <rect x="302" y="270" width="146" height="34" rx="6" class="card"/>
-<text x="375" y="291" class="code mid">000001-3.json</text>
+<text x="375" y="291" class="code mid">000001-3</text>
 <rect x="452" y="270" width="146" height="34" rx="6" class="card"/>
-<text x="525" y="291" class="code mid">000002-3.json</text>
+<text x="525" y="291" class="code mid">000002-3</text>
 <rect x="602" y="270" width="146" height="34" rx="6" class="card"/>
-<text x="675" y="291" class="code mid">000003-3.json</text>
+<text x="675" y="291" class="code mid">000003-3</text>
 <rect x="752" y="270" width="146" height="34" rx="6" class="card"/>
-<text x="825" y="291" class="code mid">000004-3.json</text>
+<text x="825" y="291" class="code mid">000004-3</text>
 
 <text x="918" y="231" class="title mid muted">…</text>
 <text x="918" y="250" class="small mid muted">4,000</text>

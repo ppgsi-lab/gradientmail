@@ -121,25 +121,33 @@ def describe_two_frameworks_one_syncer():
         stop = threading.Event()
         exchange = Exchange(connect(), clock=MonotonicClock())
 
-        def session(model: object, learner_id: str) -> Session:
-            return Session(
+        def session(model: object, node_id: str) -> Session:
+            joined = Session(
                 model,
                 algorithm=algorithm,
                 mailbox=connect(),
-                learner_id=learner_id,
+                node_id=node_id,
                 poll_interval=POLL,
             )
+            joined.join()
+            return joined
+
+        def until_stopped() -> Iterator[None]:
+            while not stop.is_set():
+                yield None
 
         def torch_learner(session: Session) -> None:
             optimizer = torch.optim.SGD(torch_model.parameters(), lr=0.01)
-            with session:
-                while not stop.is_set():
-                    x, y = torch.randn(32, 16), torch.randn(32, 4)
-                    loss = ((torch_model(x) - y) ** 2).mean()
-                    optimizer.zero_grad()
-                    loss.backward()
-                    optimizer.step()
-                    session.step(samples=len(x))
+
+            def step(batch: None) -> int:
+                x, y = torch.randn(32, 16), torch.randn(32, 4)
+                loss = ((torch_model(x) - y) ** 2).mean()
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                return len(x)
+
+            session.run(step, until_stopped())
 
         def mlx_learner(session: Session) -> None:
             def loss(model: MlxMLP, x: mx.array, y: mx.array) -> mx.array:
@@ -147,13 +155,15 @@ def describe_two_frameworks_one_syncer():
 
             optimizer = mlx.optimizers.SGD(learning_rate=0.01)
             loss_and_grad = mlx.nn.value_and_grad(mlx_model, loss)
-            with session:
-                while not stop.is_set():
-                    x, y = mx.random.normal((32, 16)), mx.random.normal((32, 4))
-                    _, grads = loss_and_grad(mlx_model, x, y)
-                    optimizer.update(mlx_model, grads)
-                    mx.eval(mlx_model.parameters(), optimizer.state)
-                    session.step(samples=x.shape[0])
+
+            def step(batch: None) -> int:
+                x, y = mx.random.normal((32, 16)), mx.random.normal((32, 4))
+                _, grads = loss_and_grad(mlx_model, x, y)
+                optimizer.update(mlx_model, grads)
+                mx.eval(mlx_model.parameters(), optimizer.state)
+                return x.shape[0]
+
+            session.run(step, until_stopped())
 
         async def three_rounds() -> None:
             # The sessions close the rounds themselves, one on torch and one on MLX; one group,
@@ -172,10 +182,10 @@ def describe_two_frameworks_one_syncer():
                 finally:
                     stop.set()
 
-        def rejoin(adapter: Adapter, learner_id: str) -> None:
+        def rejoin(adapter: Adapter, node_id: str) -> None:
             # A bare learner, so nothing closes rounds between the two rejoins.
             learner = Learner(
-                adapter=adapter, algorithm=algorithm, mailbox=connect(), learner_id=learner_id
+                adapter=adapter, algorithm=algorithm, mailbox=connect(), node_id=node_id
             )
             learner.start()
             learner.close()

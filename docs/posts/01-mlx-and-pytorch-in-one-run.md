@@ -73,7 +73,7 @@ A learner compares its model's schema with the manifest's when it joins, and `Se
 SchemaMismatch: model does not match the run's schema: 0.bias, 0.weight, 1.bias, 1.weight, layers.0.bias, layers.0.weight, layers.1.bias, layers.1.weight
 ```
 
-The exception comes from the `Session` constructor before the communication thread starts, so the learner writes no snapshot or lease. An MLX copy of the demo model in bf16 gets all six of its parameters listed. A different `gm.DiLoCo` configuration raises `RunConfigMismatch`.
+The exception comes from `session.join()`, or from `session.run` when it joins, before the communication thread starts, so the learner writes no snapshot or lease. An MLX copy of the demo model in bf16 gets all six of its parameters listed. A different `gm.DiLoCo` configuration raises `RunConfigMismatch`.
 
 Payloads are validated again before every `apply`. Without that check, PyTorch's `copy_` would cast a wrong dtype, or broadcast a `(1, 16)` payload into a `(32, 16)` parameter; the adapter tests confirm that both adapters raise on a wrong shape before changing the model. The node closing a round also rejects a snapshot whose schema digest, delta dtype or shapes do not match, recording it in the round with reason `schema` and weight 0.
 
@@ -92,8 +92,8 @@ This does not split the run. A round commits one payload, and every learner, in 
 The docstring of `torch_learner.py` sets up a local MinIO bucket. One learner per framework then runs against the same bucket and prefix:
 
 ```sh
-uv run python examples/torch_learner.py --rounds 6 --learner-id torch
-uv run python examples/mlx_learner.py --rounds 6 --learner-id mlx
+uv run python examples/torch_learner.py --rounds 6 --node-id torch
+uv run python examples/mlx_learner.py --rounds 6 --node-id mlx
 ```
 
 Both use `gm.DiLoCo(sync_every=20, fragments=2, quorum_size=2)`, so each round waits for both learners. The plan puts `fc1.weight` (2,048 bytes) in one fragment and the other five parameters (912 bytes) in the other. On one MacBook, with PyTorch on the CPU and MLX on the GPU, both scripts exited after six rounds. The MLX learner created the run, so Θ⁰ came from MLX's initialization, and the PyTorch learner loaded it before its first step. All six round records list both learners as participants and none as rejected.

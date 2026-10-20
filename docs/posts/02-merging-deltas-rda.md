@@ -8,7 +8,7 @@ Both merges use the same contribution weights. They return the same delta when t
 
 ## Weighting a contribution
 
-A learner keeps a step counter and a sample counter for each fragment. `session.step(samples=n)` adds one step and `n` samples to every fragment's counters, and aligning with a committed version of a fragment resets that fragment's counters to zero. A contribution therefore reports the steps $k_i$ and samples $s_i$ trained since the learner last aligned with that fragment. Its weight is:
+A learner keeps a step counter and a sample counter for each fragment. The training step that `session.run` calls returns the samples `n` it trained, and the session adds one step and `n` samples to every fragment's counters; aligning with a committed version of a fragment resets that fragment's counters to zero. A contribution therefore reports the steps $k_i$ and samples $s_i$ trained since the learner last aligned with that fragment. Its weight is:
 
 $$
 w_i = \frac{s_i^2}{k_i} = s_i \cdot \frac{s_i}{k_i}

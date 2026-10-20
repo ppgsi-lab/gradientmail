@@ -1,8 +1,9 @@
 """The learner: counters and publishing decisions as pure state, plus the two-thread runtime.
 
-The training thread owns the model and every counter: ``step()`` advances the state, applies
-the fragment versions the receive loop has queued, and hands one fragment snapshot, with the
-anchor it was trained from, to the publish loop when a round is due; the publish loop
+The training thread, the one running ``Session.run``, owns the model and every counter:
+``step()``, which the session calls after every step of the caller's, advances the state,
+applies the fragment versions the receive loop has queued, and hands one fragment snapshot,
+with the anchor it was trained from, to the publish loop when a round is due; the publish loop
 computes their difference in the backend and publishes that delta. A daemon thread runs the
 receive and publish loops on its own event loop; the two sides meet only through two
 ``queue.SimpleQueue``s, so ``step()`` never awaits and never does I/O. It blocks only when
@@ -20,7 +21,17 @@ snapshots at the syncer's current version.
 The receive loop also renews this learner's lease and lists everyone's (``lease`` module), so
 ``step()`` knows how many learners are live when it judges whether a round is about to close
 and ``batch_size`` can split a global batch among them; ``close()`` releases the lease once the
-last snapshot is out.
+last snapshot is out, and ``abort()``, when training failed, at once.
+
+With ``ranks``, ``start()`` also takes a rank before it starts the communication thread: the
+lowest of them that no node holds and none marked done, through a claim the ``protocol`` module
+describes, waiting while every rank is held or done. A rank's holder is its first claimant with
+a live lease, so the
+lease is written, and renewed, from the first listing on. The receive loop then lists the claims
+on that rank on every poll, one more LIST; once a claimant before this learner holds a live
+lease again, a node that was slow rather than gone, the rank is that node's: the communication
+thread stops at once, releasing the lease and publishing nothing more, and ``step()`` or
+``close()`` raises ``RankLost``.
 """
 
 import asyncio
@@ -62,6 +73,7 @@ from gradientmail.events import (
     PollFailed,
     PublishCancelled,
     PublishFailed,
+    RankClaimed,
     ReleaseFailed,
     RoundRecorded,
     SnapshotPublished,
@@ -80,6 +92,7 @@ from gradientmail.protocol import (
     RoundRecord,
     RunConfigMismatch,
     SnapshotDraft,
+    rank_id,
     theta_digest,
 )
 from gradientmail.serialization import DType, Schema, SchemaMismatch, TensorBytes, validate
@@ -89,9 +102,11 @@ __all__ = [
     "Learner",
     "LearnerState",
     "Publishers",
+    "RankLost",
     "advanced",
     "align",
     "applied",
+    "check_schema",
     "due_round",
     "overdue",
     "publishable",
@@ -228,18 +243,35 @@ def overdue(state: LearnerState, overlap_steps: int) -> bool:
     )
 
 
+class RankLost(Exception):
+    """``owner``, whose claim on ``rank`` comes before ``node``'s, holds a live lease again: the
+    rank is ``owner``'s, and ``node`` stopped training it."""
+
+    node: str
+    rank: int
+    owner: str
+
+    def __init__(self, node: str, rank: int, owner: str) -> None:
+        self.node = node
+        self.rank = rank
+        self.owner = owner
+        super().__init__(f"{node} lost rank {rank} to {owner}, whose claim comes first")
+
+
 class Learner:
     """Wraps a training loop: ``start()`` once, ``step()`` after every optimizer step, ``close()``.
 
-    ``start`` blocks until the model holds the newest committed version of every fragment,
-    then starts the communication thread. An operation that fails on that thread is reported
-    (``PollFailed``, ``PublishFailed``) and its loop goes on (``communicate``); only the thread's
-    own death is raised from the next ``step()``. When the schedule bounds ``overlap_steps``,
-    ``step()`` waits for the model to align with a round published that many steps ago before
-    training on, as standard DiLoCo does at zero; otherwise training goes on and the
-    algorithm's ``alignment`` says what the commit does to the steps taken meanwhile. The
-    lease is renewed every ``lease_every`` seconds and the other learners' leases are presumed
-    lost after ``lease_timeout`` seconds without a change.
+    ``Session.run`` drives it, and calls ``abort()`` instead of ``close()`` when training fails.
+    ``start`` blocks until the model holds the newest committed version of every fragment, and,
+    with ``ranks``, until this learner holds one of them, then starts the communication thread.
+    An operation that fails on that thread is reported (``PollFailed``, ``PublishFailed``) and
+    its loop goes on (``communicate``); only the thread's own death, the loss of the rank
+    included, is raised, from the next ``step()`` or ``close()``. When the schedule bounds
+    ``overlap_steps``, ``step()`` waits for the model to align with a round published that many
+    steps ago before training on, as standard DiLoCo does at zero; otherwise training goes on
+    and the algorithm's ``alignment`` says what the commit does to the steps taken meanwhile.
+    The lease is renewed every ``lease_every`` seconds and the other learners' leases are
+    presumed lost after ``lease_timeout`` seconds without a change.
 
     What goes out is ``anchor - θ``, computed in ``backend`` (the installed one by default)
     against the version of the fragment this learner aligned with last, of which it keeps one host
@@ -254,7 +286,7 @@ class Learner:
         adapter: Adapter,
         algorithm: Algorithm,
         mailbox: Mailbox,
-        learner_id: str,
+        node_id: str,
         backend: Backend | None = None,
         clock: Clock | None = None,
         poll_interval: float = 1.0,
@@ -262,6 +294,7 @@ class Learner:
         lease_timeout: float = 120.0,
         compression: Compression = "off",
         local: LocalCommits | None = None,
+        ranks: int | None = None,
         on_event: Callback = log_events,
     ) -> None:
         if lease_timeout <= lease_every:
@@ -270,9 +303,12 @@ class Learner:
             )
         self._adapter = adapter
         self._algorithm = algorithm
-        self._learner_id = learner_id
+        self._node_id = node_id
         self._backend = backend if backend is not None else default_backend()
         self._clock = clock if clock is not None else MonotonicClock()
+        self._store_clock = mailbox.clock()
+        self._ranks = ranks
+        self._rank: int | None = None
         self._poll_interval = poll_interval
         self._lease_every = lease_every
         self._lease_timeout = lease_timeout
@@ -304,17 +340,24 @@ class Learner:
         return self._state.rounds_seen
 
     @property
+    def rank(self) -> int | None:
+        """The rank this learner holds, from ``start`` on; None without ``ranks``."""
+        return self._rank
+
+    @property
     def batch_size(self) -> int | None:
         """This learner's share of the global batch, split among the learners live as of the
         last poll and rounded up; ``None`` when the algorithm sets no global batch."""
         global_batch = self._algorithm.global_batch()
         if global_batch is None:
             return None
-        live = len(self._live | {self._learner_id})
+        live = len(self._live | {self._node_id})
         return (global_batch + live - 1) // live
 
     def start(self) -> None:
-        """Join the run on the calling thread, then start the communication thread."""
+        """Join the run on the calling thread, take a rank when there are ``ranks``, then start
+        the communication thread. Taking the rank writes the lease; a failure, an interrupt
+        while waiting for a rank included, releases it before it propagates."""
 
         def communicate() -> None:
             def failure(exc: BaseException) -> BaseException:
@@ -332,9 +375,15 @@ class Learner:
                 self._failure = failure(exc)
 
         asyncio.run(self.join())
+        if self._ranks is not None:
+            try:
+                self._rank = asyncio.run(self.claim_rank(self._ranks))
+            except BaseException:
+                asyncio.run(self._exchange.release(self._node_id))
+                raise
         self._last_step_at = self._clock.now()
         self._thread = threading.Thread(
-            target=communicate, name=f"gradientmail-{self._learner_id}", daemon=True
+            target=communicate, name=f"gradientmail-{self._node_id}", daemon=True
         )
         self._thread.start()
 
@@ -381,12 +430,15 @@ class Learner:
         be presumed lost, then for a round without them to be presumed not to commit, as when
         nobody is left to close one. Then the lease is released, the outbox is drained, bounded
         by ``_CLOSE_TIMEOUT`` seconds, and the communication thread is joined. Closing again
-        does nothing.
+        does nothing. What the communication thread died of, the loss of the rank included, is
+        raised once the thread is joined, without waiting for anything.
         """
         if self._thread is None:
             return
         try:
-            if self._run is not None and self._failure is None:
+            if self._failure is not None:
+                raise self._failure
+            if self._run is not None:
                 self._state = self._concluded(self._run, self._state)
                 if not self._algorithm.flush_on_close:
                     for anchor in self._anchors:
@@ -395,10 +447,27 @@ class Learner:
             self._outbox.put(None)
             self._thread.join(_CLOSE_TIMEOUT)
             if self._thread.is_alive() and self._main is not None:
-                self._on_event(PublishCancelled(self._learner_id, _CLOSE_TIMEOUT))
+                self._on_event(PublishCancelled(self._node_id, _CLOSE_TIMEOUT))
                 self._main.get_loop().call_soon_threadsafe(self._main.cancel)
                 self._thread.join()
             self._thread = None
+
+    def abort(self) -> None:
+        """Stop at once, for a training loop that failed: nothing more is published or awaited.
+
+        The communication thread is cancelled, which releases the lease; snapshots still queued
+        for publishing are dropped and the model keeps what it holds. Does nothing once closed.
+        """
+        if self._thread is None:
+            return
+        main = self._main
+        if main is None:
+            # The thread has not reached its loop yet; the sentinel ends it there.
+            self._outbox.put(None)
+        elif not main.done() and not main.get_loop().is_closed():
+            main.get_loop().call_soon_threadsafe(main.cancel)
+        self._thread.join()
+        self._thread = None
 
     async def join(self) -> None:
         """Create the run or adopt it, then load the newest committed version of every fragment.
@@ -450,9 +519,7 @@ class Learner:
         if records:
             self._estimates = records[-1].estimates
         self._on_event(
-            Joined(
-                self._learner_id, manifest.created_by, len(manifest.plan), self._state.rounds_seen
-            )
+            Joined(self._node_id, manifest.created_by, len(manifest.plan), self._state.rounds_seen)
         )
 
     async def create(self, schema: Schema[DType]) -> Manifest:
@@ -474,7 +541,7 @@ class Learner:
                 schema=schema,
                 plan=plan,
                 algorithm=self._algorithm.to_json(),
-                created_by=self._learner_id,
+                created_by=self._node_id,
             )
             return await self._exchange.create_run(
                 draft, [self._adapter.snapshot(names) for names in plan]
@@ -483,14 +550,14 @@ class Learner:
         largest = max(sum(schema.nbytes(name) for name in names) for names in plan)
         stall = max(_CREATION_FLOOR_POLLS * self._poll_interval, largest / _MIN_UPLOAD_RATE)
         claimants = await self._exchange.creation_claims()
-        if self._learner_id in claimants or (
-            not claimants and await self._exchange.claim_creation(1, self._learner_id)
+        if self._node_id in claimants or (
+            not claimants and await self._exchange.claim_creation(1, self._node_id)
         ):
-            self._on_event(CreatingRun(self._learner_id, len(plan)))
+            self._on_event(CreatingRun(self._node_id, len(plan)))
             return await upload()
         claimants = await self._exchange.creation_claims()
         attempts = len(claimants)
-        self._on_event(AwaitingCreator(self._learner_id, tuple(claimants)))
+        self._on_event(AwaitingCreator(self._node_id, tuple(claimants)))
         uploaded = await self._exchange.init_uploaded()
         seen_at = self._clock.now()
         while True:
@@ -502,11 +569,54 @@ class Learner:
             if count != uploaded:
                 uploaded, seen_at = count, self._clock.now()
             elif self._clock.now() - seen_at >= stall:
-                if await self._exchange.claim_creation(attempts + 1, self._learner_id):
-                    self._on_event(TookOverCreation(self._learner_id, stall))
+                if await self._exchange.claim_creation(attempts + 1, self._node_id):
+                    self._on_event(TookOverCreation(self._node_id, stall))
                     return await upload()
                 attempts = len(await self._exchange.creation_claims())
                 seen_at = self._clock.now()
+
+    async def claim_rank(self, ranks: int) -> int:
+        """Take the lowest of ``ranks`` ranks that no other node holds and whose data is not
+        marked exhausted, waiting while each one is held or done; the lease is held, and
+        renewed, from the first listing on.
+
+        The claim is written and, a second of the store's clock later, the claims are listed
+        again (``protocol`` module): the rank is this learner's when its claim is now the first
+        whose node holds a live lease, and otherwise the claim is deleted and the next free rank
+        tried. A rank this learner already holds, from before a restart, counts as free. Keeping
+        a rank deletes the claims before this learner's whose node holds no lease at all.
+        """
+        renew_at = self._clock.now()
+        while True:
+            if self._clock.now() >= renew_at:
+                await self._exchange.beat(self._node_id)
+                renew_at = self._clock.now() + self._lease_every
+            await self._observed()
+            claims = await self._exchange.rank_claims()
+            done = await self._exchange.done()
+            free = next(
+                (
+                    rank
+                    for rank in range(ranks)
+                    if rank_id(rank) not in done
+                    and self._holder(claims.get(rank, ())) in (None, self._node_id)
+                ),
+                None,
+            )
+            if free is None:
+                await self._clock.sleep(self._poll_interval)
+                continue
+            await self._exchange.claim_rank(free, self._node_id)
+            await self._store_clock.sleep(_RANK_WAIT)
+            leases = await self._observed()
+            claimants = (await self._exchange.rank_claims()).get(free, ())
+            if self._holder(claimants) == self._node_id:
+                before = claimants[: claimants.index(self._node_id)]
+                for gone in set(before) - leases.keys():
+                    await self._exchange.release_rank(free, gone)
+                self._on_event(RankClaimed(self._node_id, free))
+                return free
+            await self._exchange.release_rank(free, self._node_id)
 
     async def communicate(self) -> None:
         """Receive, publish and renew the lease until ``close()``, then release the lease; what
@@ -515,8 +625,8 @@ class Learner:
         Neither loop dies of a failed operation: the failure is reported and the loop goes on,
         the receive loop with its next poll (so the lease keeps being renewed), the publish loop
         with the next snapshot (the failed round's steps stay counted and go out with the
-        fragment's next round). Only cancellation ends them, and the lease is released either
-        way.
+        fragment's next round). Only cancellation ends them, or the loss of this learner's rank,
+        which ends both at once (``RankLost``); the lease is released either way.
         """
 
         async def receive() -> None:
@@ -524,12 +634,14 @@ class Learner:
             while True:
                 try:
                     if self._clock.now() >= renew_at:
-                        await self._exchange.beat(self._learner_id)
+                        await self._exchange.beat(self._node_id)
                         renew_at = self._clock.now() + self._lease_every
-                        log.debug("%s: lease renewed", self._learner_id)
+                        log.debug("%s: lease renewed", self._node_id)
                     await self.poll()
+                except RankLost:
+                    raise
                 except Exception as exc:
-                    self._on_event(PollFailed(self._learner_id, exc))
+                    self._on_event(PollFailed(self._node_id, exc))
                 await self._clock.sleep(self._poll_interval)
 
         async def publish() -> None:
@@ -541,7 +653,7 @@ class Learner:
                     published = await self._exchange.publish_snapshot(draft, delta)
                     self._on_event(
                         SnapshotPublished(
-                            self._learner_id,
+                            self._node_id,
                             draft.round,
                             run.schedule.fragment_of(draft.round),
                             draft.steps,
@@ -551,7 +663,7 @@ class Learner:
                         )
                     )
                 except Exception as exc:
-                    self._on_event(PublishFailed(self._learner_id, draft.round, exc))
+                    self._on_event(PublishFailed(self._node_id, draft.round, exc))
 
         if self._run is None:
             raise RuntimeError("Learner.communicate() before join()")
@@ -567,14 +679,16 @@ class Learner:
             # waits for the executor's threads on shutdown; the sentinel releases it.
             self._outbox.put(None)
             try:
-                await self._exchange.release(self._learner_id)
-                self._on_event(LeaseReleased(self._learner_id))
+                await self._exchange.release(self._node_id)
+                self._on_event(LeaseReleased(self._node_id, "learner"))
             except Exception as exc:
-                self._on_event(ReleaseFailed(self._learner_id, exc))
+                self._on_event(ReleaseFailed(self._node_id, "learner", exc))
 
     async def poll(self) -> None:
         """One receive iteration: queue the newest version of each fragment committed meanwhile,
-        then list the leases and who has published the round this learner publishes next.
+        then list the leases, the claims on this learner's rank when it holds one, and who has
+        published the round this learner publishes next. Raises ``RankLost`` once another node
+        holds the rank.
 
         The batch is queued only once every payload in it has been fetched. A payload already
         swept is skipped; the next poll finds that fragment's newer version, and this learner's
@@ -591,7 +705,7 @@ class Learner:
                 (record.fragment, participant)
                 for record in records
                 for participant in record.participants
-                if participant.learner == self._learner_id
+                if participant.learner == self._node_id
             )
             async with asyncio.TaskGroup() as group:
                 fetches = [group.create_task(self._fetched(run, record)) for record in newest]
@@ -616,14 +730,31 @@ class Learner:
             self._cursor = records[-1].round
             self._estimates = records[-1].estimates
             for record in records:
-                self._on_event(RoundRecorded(self._learner_id, record))
-        now = self._clock.now()
-        self._liveness = self._liveness.observed(await self._exchange.leases(), now)
-        self._live = self._liveness.live(now)
+                self._on_event(RoundRecorded(self._node_id, record))
+        await self._observed()
+        if (rank := self._rank) is not None:
+            holder = self._holder((await self._exchange.rank_claims()).get(rank, ()))
+            if holder is not None and holder != self._node_id:
+                raise RankLost(self._node_id, rank, holder)
         state = self._state
         round = max(state.last_published + 1, state.rounds_seen + 1)
         others = await self._exchange.publishers(round)
-        self._publishers = Publishers(round, others - {self._learner_id})
+        self._publishers = Publishers(round, others - {self._node_id})
+
+    async def _observed(self) -> Mapping[str, int]:
+        """Fold one listing of the leases into the live learners, and return it."""
+        leases = await self._exchange.leases()
+        now = self._clock.now()
+        self._liveness = self._liveness.observed(leases, now)
+        self._live = self._liveness.live(now)
+        return leases
+
+    def _holder(self, claimants: Sequence[str]) -> str | None:
+        """The holder of a rank claimed by ``claimants``: the first of them that holds a live
+        lease as last listed, this learner always counted live."""
+        return next(
+            (node for node in claimants if node == self._node_id or node in self._live), None
+        )
 
     def _publish(
         self, run: "_Run", state: LearnerState, round: int, *, final: bool
@@ -632,7 +763,7 @@ class Learner:
         copied here. ``final`` when closing."""
         fragment = run.schedule.fragment_of(round)
         draft = SnapshotDraft(
-            learner=self._learner_id,
+            learner=self._node_id,
             round=round,
             local_step=state.local_step,
             steps=state.steps[fragment],
@@ -650,7 +781,7 @@ class Learner:
         self._outbox.put(_Outgoing(draft, self._anchors[fragment], snapshot))
         log.debug(
             "%s: round %d queued: fragment %d, %d steps at local step %d",
-            self._learner_id,
+            self._node_id,
             round,
             fragment,
             draft.steps,
@@ -679,7 +810,7 @@ class Learner:
                     return rebuilt
                 log.debug(
                     "%s: round %d: the update does not rebuild theta; fetching it",
-                    self._learner_id,
+                    self._node_id,
                     record.round,
                 )
         tensors = await self._exchange.fetch(record.theta)
@@ -751,7 +882,7 @@ class Learner:
         self._anchors[fragment] = update.tensors
         self._on_event(
             FragmentAligned(
-                self._learner_id,
+                self._node_id,
                 update.round,
                 update.fragment,
                 update.version,
@@ -784,7 +915,7 @@ class Learner:
                     if (fragment in self._overwriting) != was:
                         log.info(
                             "%s: fragment %d %s from round %d on: cosine %.2f",
-                            self._learner_id,
+                            self._node_id,
                             fragment,
                             "overwriting" if fragment in self._overwriting else "carrying",
                             round,
@@ -888,19 +1019,19 @@ class Learner:
         def settled(state: LearnerState) -> bool:
             return flushable(state) is not None or state.rounds_seen >= state.last_published
 
-        self._on_event(Closing(self._learner_id, self._algorithm.flush_on_close))
+        self._on_event(Closing(self._node_id, self._algorithm.flush_on_close))
         patience = self._lease_timeout + self._estimates.timeout(self._poll_interval)
         state = self._drained(run, state)
         while True:
             while (round := flushable(state)) is not None:
                 state = self._publish(run, state, round, final=True)
             if state.rounds_seen >= state.last_published:
-                self._on_event(Closed(self._learner_id, state.last_published))
+                self._on_event(Closed(self._node_id, state.last_published))
                 return state
             state = self._settled(run, state, settled, patience=patience)
             if not settled(state):
                 self._on_event(
-                    GaveUp(self._learner_id, state.last_published, patience, state.rounds_seen)
+                    GaveUp(self._node_id, state.last_published, patience, state.rounds_seen)
                 )
                 return state
 
@@ -921,11 +1052,7 @@ async def align(adapter: Adapter, exchange: Exchange, manifest: Manifest) -> Ali
     ``SchemaMismatch`` names the parameters on which the model and the run differ.
     """
     schema = adapter.schema()
-    if manifest.schema != schema:
-        differing = set(manifest.schema.parameters) ^ set(schema.parameters)
-        raise SchemaMismatch(
-            sorted({spec.name for spec in differing}), "model does not match the run's schema"
-        )
+    check_schema(schema, manifest)
     fragments = range(len(manifest.plan))
     records = await exchange.rounds_after(-1)
     newest = _newest_per_fragment(records)
@@ -938,6 +1065,15 @@ async def align(adapter: Adapter, exchange: Exchange, manifest: Manifest) -> Ali
         adapter.apply(tensors)
         loaded.append(tensors)
     return Aligned(records, tuple(loaded))
+
+
+def check_schema(schema: Schema[DType], manifest: Manifest) -> None:
+    """Raise ``SchemaMismatch`` naming the parameters on which ``schema`` and the run differ."""
+    if manifest.schema != schema:
+        differing = set(manifest.schema.parameters) ^ set(schema.parameters)
+        raise SchemaMismatch(
+            sorted({spec.name for spec in differing}), "model does not match the run's schema"
+        )
 
 
 @dataclass(frozen=True)
@@ -995,6 +1131,8 @@ async def _fetch(
 
 _EMA_DECAY = 0.1
 _CLOSE_TIMEOUT = 60.0
+# Seconds of the store's clock a claimant waits for earlier claims on its rank to land.
+_RANK_WAIT = 1.0
 _CREATION_FLOOR_POLLS = 30
 # A live creator is assumed to upload at least this fast; slower, and a waiter takes over.
 _MIN_UPLOAD_RATE = 2**20

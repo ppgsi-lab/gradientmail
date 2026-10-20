@@ -10,10 +10,11 @@ They need access to that store, but do not need direct connections to each other
 The store holds tensor payloads and coordination records; computations run on
 the training machines.
 
-Every node also runs the syncer runtime. One node is elected through the mailbox
-to close rounds. If it fails, another can recover the committed state and take
-over. This hosts the syncer role on a learner instead of requiring the dedicated
-central synchronizer described in the paper.
+By default, every node also runs the syncer runtime. One node is elected through
+the mailbox to close rounds. If it fails, another can recover the committed
+state and take over. This hosts the syncer role on a learner instead of
+requiring the dedicated central synchronizer described in the paper; a node can
+also run only one of the two parts ([Roles](#roles)).
 
 ## What happens in one round
 
@@ -65,20 +66,23 @@ Install the package with the extras for the mailbox and the framework:
 uv add "gradientmail[s3,torch]"
 ```
 
-The integration has this shape; `train_step` is the application's existing
-forward pass, backward pass, and optimizer update:
+The integration has this shape; `train` is the application's existing forward
+pass, backward pass, and optimizer update, and the session runs the loop:
 
 ```python
 import gradientmail as gm
 
-with gm.Session(
+session = gm.Session(
     model,
     algorithm=gm.DiLoCo(sync_every=100, fragments=8),
     mailbox=gm.S3Mailbox(bucket="my-training", prefix="runs/example"),
-) as session:
-    for batch in dataloader:
-        loss = train_step(model, optimizer, batch)
-        session.step(samples=len(batch))
+)
+
+def train_step(batch) -> int:
+    loss = train(model, optimizer, batch)
+    return len(batch)
+
+session.run(train_step, dataloader)
 ```
 
 Run a learner on each machine with the same mailbox location, algorithm
@@ -86,6 +90,9 @@ configuration, and compatible model definitions. Compatibility includes
 parameter names, shapes, dtypes, and their meaning in the model. Sharing a file
 format alone does not make different model implementations interchangeable.
 The first learner initializes the run; later learners load its committed weights.
+Constructing the session does no I/O: `run` joins the run before its first
+batch, and `session.join()` joins it earlier when the caller needs the
+committed weights before training.
 
 Here, `sync_every=100` sets the nominal interval for each fragment, with up to
 eight fragments staggered across that interval. It does not mean that all eight
@@ -99,10 +106,60 @@ column. Streaming DiLoCo exchanges one fragment at a time, at steps 12, 25,
 fragment is still exchanged once every 100 steps, but each exchange carries an
 eighth of the model.](../assets/fragments.svg)
 
-Call `session.step` after each local optimizer update. Report the number of
-examples for example-based training, or tokens for token-based training;
-`len(batch)` is appropriate only when it measures that count. Learners in the
-same run must use the same unit.
+`train_step` runs one local optimizer update and returns what it trained on:
+the number of examples for example-based training, or tokens for token-based
+training; `len(batch)` is appropriate only when it measures that count.
+Learners in the same run must use the same unit.
+
+## Roles
+
+`role` picks which parts of the runtime a node runs:
+
+| `role`    | trains        | closes rounds                                      |
+|-----------|---------------|----------------------------------------------------|
+| `both`    | yes           | when elected, as above; not while a `syncer` lives |
+| `learner` | yes           | never                                              |
+| `syncer`  | no            | always, as the run's exclusive syncer              |
+| `either`  | until elected | as `syncer` once elected, as `both` before         |
+
+A `syncer` node runs the same script with `role="syncer"`; `run` ignores
+`train_step` and the data. It can be a machine that does not train, such as a
+laptop, as long as it reaches the mailbox. It holds a lease in the mailbox, and
+while that lease lives the other nodes leave every round to it. When it goes
+away, `both` nodes take over as from any failed closer, and it takes the role
+back when it returns. Its `run` returns once no learner is live and the data is
+exhausted, which every learner records when its own data runs out. Learners
+over a plain iterable record this too, but one whose data has no end never
+does, and the syncer then stops on Ctrl-C.
+
+`either` keeps one node closing rounds without training, chosen among the
+nodes rather than fixed in advance. Each `either` node stands for election when
+it joins, and again whenever no syncer is live and another node trains, so a
+node alone never stops training. The elected node finishes the unit it is
+training, gives the units it reserved but has not started back to the shared
+queue, closes its learner and serves as the exclusive syncer. It trains again
+when a `syncer` node arrives, which outranks it, or when it is the last node
+left while units are unclaimed. `either` requires a `SharedQueue`
+([Shared Queue](../patterns/00-shared-queue.md)), whose units a node can give
+back.
+
+With `ranks=N`, the nodes split the data into `N` fixed slices instead of
+sharing a queue. `join` takes the lowest rank no live node holds, and
+`session.rank` says which slice to build the data from before `run`:
+
+```python
+session = gm.Session(model, algorithm=algorithm, mailbox=box, ranks=4)
+session.join()
+session.run(train_step, batches(files[session.rank :: 4]))
+```
+
+A rank is held through the node's lease. When a node crashes, the next node to
+join takes its rank and starts that slice over, and the run's data is exhausted
+once every rank ever held has finished, so a crashed rank has to be replaced
+for a `syncer` to stop. A node that took the rank of one whose lease had only
+lapsed loses it when that node renews its lease, since the earlier claim wins:
+`run` raises `RankLost`, and the slice goes on with the node that held it
+first. `ranks` does not combine with `either`.
 
 ## Choosing the tradeoff
 
@@ -117,12 +174,12 @@ overwrites once they do not, fragment by fragment.
 `gm.DiLoCo(..., overlap_steps=0)` makes every learner wait for the commit
 instead; a larger bound lets it train that many steps past a publish first.
 
-Closing the session waits for the learner's rounds in flight to commit and sets
-the model to the newest committed parameters. Steps trained since a fragment's
-last contribution are dropped, as in the DiLoCo papers. With
-`gm.DiLoCo(..., flush_on_close=True)`, the learner publishes them instead, and
-a round made only of these final contributions commits them without the outer
-momentum.
+`run` returns once the data is exhausted and the learner's rounds in flight
+have committed, and sets the model to the newest committed parameters. Steps
+trained since a fragment's last contribution are dropped, as in the DiLoCo
+papers. With `gm.DiLoCo(..., flush_on_close=True)`, the learner publishes them
+instead, and a round made only of these final contributions commits them
+without the outer momentum.
 
 ![One learner's fragment over time. While training with the default, the learner
 publishes its delta for a round and keeps training; when the commit arrives it

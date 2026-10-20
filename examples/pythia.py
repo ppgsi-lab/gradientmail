@@ -50,7 +50,7 @@ create-once PUTs made in the same instant), the object is read back and the node
 name moves on. A unit claimed by a node that died is not redone. ``--solo`` keeps the fixed
 split: node ``r`` trains slice ``r`` of every step, alone.
 
-Rounds commit behind the steps, and a node that finishes first waits in ``close`` until the
+Rounds commit behind the steps, and a node that finishes first waits in ``run`` until the
 rounds of its last steps are committed. With the defaults the two embeddings, 26 MB each in
 fp32, are a fragment each and the blocks share the other two, and a node publishes a fragment
 every 12 or 13 steps, about 1 MB/s to the bucket to be in every round. ``--quorum`` is three
@@ -119,19 +119,26 @@ a node needs twice the upload rate to be in every round:
         --with ../../skyward python -c "import pythia; print(pythia.compare())"
 
 ``--rank`` and ``--nodes`` together stand in for the node's own position when running off
-Skyward.
+Skyward. ``--role syncer`` closes the run's rounds without training and takes no rank, so a
+machine off Skyward, a laptop, can be the run's syncer: the nodes leave every round to it
+while it is up and close rounds among themselves, as without it, while it sleeps:
+
+    cd examples && AWS_PROFILE=hf uv run --frozen --with huggingface_hub \\
+        --with ../../skyward python -c "import pythia; pythia.train(role='syncer')"
 """
 
 from __future__ import annotations
 
 import configparser
 import contextlib
+import itertools
 import logging
 import math
 import os
 import statistics
 import time
 from collections.abc import Callable, Iterator
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -146,6 +153,7 @@ if TYPE_CHECKING:
     from gradientmail.compression import Compression
     from gradientmail.mailbox import Mailbox
     from gradientmail.serialization import DType, Quantized
+    from gradientmail.session import Role
 
 NAMESPACE = os.environ.get("GRADIENTMAIL_HF_NAMESPACE", "")
 ENDPOINT = f"https://s3.hf.co/{NAMESPACE}"
@@ -305,27 +313,28 @@ def train(
     compression: str = "off",
     micro_batch: int = 8,
     unit: int = 20,
+    role: str = "both",
     solo: bool = False,
     rank: int = -1,
     nodes: int = 0,
 ) -> dict[str, float]:
     """Re-train Pythia-14M from step 0 to STEPS across the run's nodes, in units of UNIT steps
-    claimed from the bucket; --solo trains one node's fixed slice alone. --alignment is
-    overwrite, carry, blend:<mixing> or adaptive; --delta-dtype and --commit-dtype send deltas
-    and commits in F32, F16, BF16, F8_E4M3 or F4 (the parameters' own dtype by default);
-    --compression zstd compresses this node's payloads."""
+    claimed from the bucket; --solo trains one node's fixed slice alone. --role is both,
+    learner, syncer or either: a syncer closes rounds and does not train, an either node trains
+    until the run elects it its syncer. --alignment is overwrite, carry, blend:<mixing> or
+    adaptive; --delta-dtype and --commit-dtype send deltas and commits in F32, F16, BF16,
+    F8_E4M3 or F4 (the parameters' own dtype by default); --compression zstd compresses this
+    node's payloads."""
     import torch
 
     import gradientmail as gm
     from gradientmail.adapters.torch import TorchBackend
-    from gradientmail.patterns.barrier import Barrier
-    from gradientmail.patterns.shared_queue import shared_queue
 
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s", datefmt="%H:%M:%S"
     )
     nano = pythia()
-    place = where(rank, nodes)
+    place = where(rank, nodes, syncer=role == "syncer")
     share, rest = divmod(BATCH, place.nodes)
     if rest or share % micro_batch:
         raise ValueError(
@@ -340,19 +349,62 @@ def train(
     model.to(device)
     optimizer = nano.adamw(model, device)
     per_step = share * CONTEXT
-    box = None if solo else mailbox(bucket, prefix)
     lanes = (
         (place.rank,) if solo else tuple((place.rank + i) % place.nodes for i in range(place.nodes))
     )
     units = {
-        f"{first // unit:06d}-{lane}.json": Unit(first, min(unit, steps - first), lane, place.nodes)
+        f"{first // unit:06d}-{lane}": Unit(first, min(unit, steps - first), lane, place.nodes)
         for first in range(0, steps, unit)
         for lane in lanes
     }
-    session = (
-        None
-        if box is None
-        else gm.Session(
+    ema = math.nan
+    seen = -1
+    done = 0
+    session: gm.Session | None = None
+
+    def train_step(item: tuple[int, Tensor]) -> int:
+        nonlocal ema, seen, done
+        step, batch = item
+        batch = batch.to(device)
+        lr = learning_rate(step)
+        for group in optimizer.param_groups:
+            group["lr"] = lr
+        loss = 0.0
+        for chunk in batch.split(micro_batch):
+            with nano.autocast(device):
+                micro = model(chunk[:, :-1], chunk[:, 1:]) / accumulation
+            micro.backward()
+            loss += micro.item()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        optimizer.step()
+        optimizer.zero_grad(set_to_none=True)
+        done += 1
+        ema = loss if math.isnan(ema) else 0.95 * ema + 0.05 * loss
+        rounds_seen = -1 if session is None else session.rounds_seen
+        if done == 1 or done % 20 == 0 or rounds_seen != seen:
+            seen = rounds_seen
+            rate = done * per_step / (time.monotonic() - started)
+            print(
+                f"step {step}  {(step + 1) / steps:.0%}  done {done}  loss {ema:.3f}  "
+                f"lr {lr:.2e}  {rate:,.0f} tok/s  round {rounds_seen}",
+                flush=True,
+            )
+        return per_step
+
+    who = "syncer" if role == "syncer" else f"rank {place.rank}"
+    print(
+        f"{who} of {place.nodes}: {'slice ' + str(place.rank) if solo else 'units'} "
+        f"of {steps} steps, {per_step:,} tokens per step, on {device}",
+        flush=True,
+    )
+    if solo:
+        started = time.monotonic()
+        for item in ahead(itertools.chain.from_iterable(map(nano.load_unit, units.values()))):
+            train_step(item)
+    else:
+        box = mailbox(bucket, prefix)
+        node = "syncer" if role == "syncer" else f"node-{place.rank}"
+        session = gm.Session(
             model,
             algorithm=gm.DiLoCo(
                 sync_every=sync_every,
@@ -366,65 +418,20 @@ def train(
                 commit_dtype=payload_dtype(commit_dtype),
             ),
             mailbox=box,
-            learner_id=f"node-{place.rank}",
+            role=role_of(role),
+            node_id=node,
             poll_interval=5.0,
             backend=TorchBackend(str(device)),
             compression=compressed_by(compression),
         )
-    )
-
-    print(
-        f"rank {place.rank} of {place.nodes}: {'slice ' + str(place.rank) if solo else 'units'} "
-        f"of {steps} steps, {per_step:,} tokens per step, on {device}",
-        flush=True,
-    )
-    ema = math.nan
-    seen = -1
-    done = 0
-    with contextlib.ExitStack() as stack:
-        if session is not None:
-            stack.enter_context(session)
-        batches = stack.enter_context(
-            shared_queue(
-                units,
-                mailbox=box if box is not None else gm.MemoryMailbox(),
-                learner_id=f"node-{place.rank}",
-                load=nano.load_unit,
-            )
-        )
-        if box is not None:
-            Barrier(mailbox=box, learner_id=f"node-{place.rank}").wait(
-                "start", parties=place.nodes, timeout=1800
-            )
-            print(f"rank {place.rank}: training", flush=True)
+        session.join()
+        if role != "syncer":
+            gm.Barrier(mailbox=box, node_id=node).wait("start", parties=place.nodes, timeout=1800)
+        print(f"{who}: {'closing rounds' if role == 'syncer' else 'training'}", flush=True)
         started = time.monotonic()
-        for step, batch in batches:
-            batch = batch.to(device)
-            lr = learning_rate(step)
-            for group in optimizer.param_groups:
-                group["lr"] = lr
-            loss = 0.0
-            for chunk in batch.split(micro_batch):
-                with nano.autocast(device):
-                    micro = model(chunk[:, :-1], chunk[:, 1:]) / accumulation
-                micro.backward()
-                loss += micro.item()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            optimizer.step()
-            optimizer.zero_grad(set_to_none=True)
-            if session is not None:
-                session.step(samples=per_step)
-            done += 1
-            ema = loss if math.isnan(ema) else 0.95 * ema + 0.05 * loss
-            rounds_seen = -1 if session is None else session.rounds_seen
-            if done == 1 or done % 20 == 0 or rounds_seen != seen:
-                seen = rounds_seen
-                rate = done * per_step / (time.monotonic() - started)
-                print(
-                    f"step {step}  {(step + 1) / steps:.0%}  done {done}  loss {ema:.3f}  "
-                    f"lr {lr:.2e}  {rate:,.0f} tok/s  round {rounds_seen}",
-                    flush=True,
-                )
+        session.run(train_step, gm.SharedQueue(units, load=nano.load_unit))
+        if role in ("syncer", "either"):
+            gm.align(model, mailbox=box)
     return {
         "steps": done,
         "tokens": done * per_step,
@@ -509,6 +516,15 @@ def compare(
     }
 
 
+def ahead[T](items: Iterator[T]) -> Iterator[T]:
+    """``items``, each one produced on a background thread while the one before is used."""
+    with ThreadPoolExecutor(1) as pool:
+        pending = pool.submit(lambda: next(items, None))
+        while (item := pending.result()) is not None:
+            pending = pool.submit(lambda: next(items, None))
+            yield item
+
+
 def learning_rate(step: int) -> float:
     """The official rate for update ``step``, counted from 0: GPT-NeoX's linear warmup from 0
     over the first 1% of the run, then a cosine from ``LR`` towards ``MIN_LR``."""
@@ -518,10 +534,12 @@ def learning_rate(step: int) -> float:
     return MIN_LR + (LR - MIN_LR) * 0.5 * (1 + math.cos(math.pi * progress))
 
 
-def where(rank: int, nodes: int) -> Place:
+def where(rank: int, nodes: int, *, syncer: bool = False) -> Place:
     """The position given on the command line, or this node's rank among ``NODES``, the count
     the run was launched with and the image carries; ``instance_info`` counts only the nodes
-    up when the task reached this one."""
+    up when the task reached this one. A syncer has no rank."""
+    if syncer:
+        return Place(-1, nodes if nodes > 0 else NODES)
     if rank >= 0 and nodes > 0:
         return Place(rank, nodes)
     return Place(sky.instance_info().rank, nodes if nodes > 0 else NODES)
@@ -569,6 +587,14 @@ def compressed_by(name: str) -> Compression:
             return compression
         case _:
             raise ValueError(f"--compression takes off or zstd, not {name!r}")
+
+
+def role_of(name: str) -> Role:
+    match name:
+        case "both" | "learner" | "syncer" | "either" as role:
+            return role
+        case _:
+            raise ValueError(f"--role takes both, learner, syncer or either, not {name!r}")
 
 
 def mailbox(bucket: str, prefix: str) -> Mailbox:

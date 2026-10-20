@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="420" viewBox="0 0 960 420" role="img" aria-label="Two nodes claim units through the mailbox. Both list units/ to skip the claimed ones, then both try put_if_absent on units/000003-1 at the same moment, each with its own learner ID. The store creates it for node 1 and answers node 2 that it exists. Node 1 reads the object back, finds its own ID and loads the unit. Node 2 moves on to the next unit in its order, 000003-2, creates it, reads back its own ID and loads it.">
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="420" viewBox="0 0 960 420" role="img" aria-label="Two nodes claim units through the mailbox. Both list units/ to skip the claimed ones, then both try put_if_absent on units/000003-1.json at the same moment, each with its own node ID. The store creates it for node 1 and answers node 2 that it exists. Node 1 reads the object back, finds its own ID and loads the unit. Node 2 moves on to the next unit in its order, 000003-2, creates it, reads back its own ID and loads it.">
 <rect width="960" height="420" rx="6" class="ground"/>
 
 <rect x="472" y="68" width="16" height="276" class="store"/>
@@ -9,7 +9,7 @@
 <text x="160" y="51" class="title mid">Node 1</text>
 <rect x="400" y="24" width="160" height="44" rx="6" class="store-card"/>
 <text x="480" y="43" class="title mid">Mailbox</text>
-<text x="480" y="59" class="code small mid muted">units/{identifier}</text>
+<text x="480" y="59" class="code small mid muted">units/{id}.json</text>
 <rect x="740" y="24" width="120" height="44" rx="6" class="card"/>
 <text x="800" y="51" class="title mid">Node 2</text>
 

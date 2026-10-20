@@ -6,41 +6,38 @@ Consider four rented machines that boot at different times. The first node is up
 
 A Barrier holds each node at a named point until a number of nodes have reached it, then releases all of them at one instant. The number is the caller's: the machines rented for the run, the algorithm's quorum or any other count. A node that reaches the point after the release passes at once.
 
-![Three nodes, A, B and C, reach the barrier named start at different times, with parties = 3. Each records its arrival, holding the time it arrived, as barriers/start/ followed by its learner ID, and lists that prefix at poll instants every node shares. A arrives first and waits; B arrives next and waits; their polls see one key, then two. C arrives and lists three keys: the barrier opens. Each node reads the arrival times and computes the same release instant; all three wait for it and start training together.](../assets/barrier.svg)
+![Three nodes, A, B and C, reach the barrier named start at different times, with parties = 3. Each records its arrival, holding the time it arrived, as barriers/start/ followed by its node ID, and lists that prefix at poll instants every node shares. A arrives first and waits; B arrives next and waits; their polls see one key, then two. C arrives and lists three keys: the barrier opens. Each node reads the arrival times and computes the same release instant; all three wait for it and start training together.](../assets/barrier.svg)
 
 ## Lining up
 
-Each node constructs a [`Barrier`](../../src/gradientmail/patterns/barrier.py) with the run's mailbox and its learner ID, then calls `wait` with a name and the number of nodes expected wherever the loop must line up. `rank` identifies the node; `box` connects to the same S3 bucket and run prefix on every node, and `nodes` is how many of them the run was started with. `train_step` is the application's forward pass, backward pass and optimizer update.
+Each node constructs a [`gm.Barrier`](../../src/gradientmail/barrier.py) with the run's mailbox and its node ID, then calls `wait` with a name and the number of nodes expected wherever the run must line up. `rank` identifies the node; `box` connects to the same S3 bucket and run prefix on every node, and `nodes` is how many of them the run was started with. `train_step` is the application's forward pass, backward pass and optimizer update, returning the samples it trained.
 
 ```python
-from gradientmail import Session, align
-from gradientmail.patterns.barrier import Barrier
+import gradientmail as gm
 
 
-barrier = Barrier(mailbox=box, learner_id=f"node-{rank}")
+barrier = gm.Barrier(mailbox=box, node_id=f"node-{rank}")
 
-session = Session(model, algorithm=algorithm, mailbox=box, learner_id=f"node-{rank}")
+session = gm.Session(model, algorithm=algorithm, mailbox=box, node_id=f"node-{rank}")
+session.join()
 barrier.wait("start", parties=nodes)
 
-with session:
-    for batch in dataloader:
-        loss = train_step(model, optimizer, batch)
-        session.step(samples=len(batch))
+session.run(train_step, dataloader)
 
 barrier.wait("done", parties=nodes, timeout=600)
-align(model, mailbox=box)
+gm.align(model, mailbox=box)
 evaluate(model)
 ```
 
-Constructing the `Session` joins the run and loads the newest committed parameters, so the `start` barrier opens once every node holds them. Training then begins on every node at the same instant, between 2 and 7.6 s after the last arrival with the defaults, a `poll_interval` of 5 s and a `margin` of 1 s.
+`session.join()` joins the run and loads the newest committed parameters, so the `start` barrier opens once every node holds them. Training then begins on every node at the same instant, between 2 and 7.6 s after the last arrival with the defaults, a `poll_interval` of 5 s and a `margin` of 1 s.
 
-The `done` barrier comes after the session closes. `close` waits for the node's rounds in flight to commit, so once every node has arrived the run holds the last contribution of each of them, and `align` loads those parameters into the model before evaluation.
+The `done` barrier comes after `run` returns. `run` returns once the node's data is exhausted and its rounds in flight have committed, so once every node has arrived the run holds the last contribution of each of them, and `align` loads those parameters into the model before evaluation.
 
-`wait` returns the learner IDs this node found arrived when it saw the barrier open, at least `parties` of them.
+`wait` returns the node IDs this node found arrived when it saw the barrier open, at least `parties` of them.
 
 ## Recording arrivals
 
-An arrival is the object `barriers/{name}/{learner_id}` in the mailbox, created with `put_if_absent` and never removed. It holds the time the node arrived, on the mailbox's clock. `wait` creates this node's arrival, then lists the prefix once per `poll_interval` until it holds `parties` keys or more. The arrivals are the whole state: there is no leader, no object two nodes write and nothing to recover. A node that restarts finds its own arrival already there, with its first time, and passes at once if the release has passed; calling `wait` twice with the same name counts the node once. Transient mailbox failures are retried with backoff, as the protocol's own operations are.
+An arrival is the object `barriers/{name}/{node_id}` in the mailbox, created with `put_if_absent` and never removed. It holds the time the node arrived, on the mailbox's clock. `wait` creates this node's arrival, then lists the prefix once per `poll_interval` until it holds `parties` keys or more. The arrivals are the whole state: there is no leader, no object two nodes write and nothing to recover. A node that restarts finds its own arrival already there, with its first time, and passes at once if the release has passed; calling `wait` twice with the same name counts the node once. Transient mailbox failures are retried with backoff, as the protocol's own operations are.
 
 Because arrivals persist, a name serves once per run. A loop names each barrier after its iteration, `f"epoch-{epoch}"`, and a new run uses a new mailbox prefix, as the Shared Queue does.
 
@@ -58,4 +55,4 @@ Against Hugging Face's gateway, three `S3Mailbox` instances on one machine, star
 
 `parties` is a count, so a node that crashed before reaching the barrier would hold the others indefinitely. `timeout` bounds the wait: after that many seconds `wait` raises `TimeoutError`, and the caller decides whether to go on with the nodes that arrived or to stop. The arrival stays recorded, so calling `wait` again resumes waiting instead of counting the node twice, and a node that arrives late finds the others' arrivals and passes even after they gave up.
 
-A node waiting at a barrier keeps renewing its lease, so the run counts it as live, but it publishes nothing while it waits. With `quorum_size` 1, the default, rounds close without it. A round whose quorum needs its snapshot stays open until the barrier does; place such a barrier where every node has taken the same number of steps, as at the start, or after the session closes, as at the end.
+A barrier called from `train_step` holds the node between two steps. Its lease stays live, so the run counts it, but it publishes nothing while it waits. With `quorum_size` 1, the default, rounds close without it. A round whose quorum needs its snapshot stays open until the barrier does; place such a barrier where every node has taken the same number of steps, or outside `run`, as the `start` and `done` barriers are.

@@ -17,8 +17,8 @@ class Barrier:
     """A rendezvous through the mailbox: ``wait(name, parties=n)`` returns once ``n`` nodes
     arrived, on every node at the same instant of the mailbox's clock.
 
-    Nodes share a run-scoped mailbox, with a distinct learner ID per node. An arrival is the
-    create-once object ``barriers/{name}/{learner_id}`` holding its time on ``mailbox.clock()``.
+    Nodes share a run-scoped mailbox, with a distinct node id per node. An arrival is the
+    create-once object ``barriers/{name}/{node_id}`` holding its time on ``mailbox.clock()``.
     ``wait`` creates this node's and lists the prefix once per ``poll_interval``, at instants
     of that clock every node computes alike, until it holds ``parties`` keys or more. The
     barrier opens at the ``parties``-th earliest arrival time, and every node that finds it open
@@ -37,12 +37,12 @@ class Barrier:
         self,
         *,
         mailbox: Mailbox,
-        learner_id: str,
+        node_id: str,
         poll_interval: float = 5.0,
         margin: float = 1.0,
     ) -> None:
         self._mailbox = mailbox
-        self._learner_id = learner_id
+        self._node_id = node_id
         self._poll_interval = poll_interval
         self._margin = margin
 
@@ -50,7 +50,7 @@ class Barrier:
         """Record this node's arrival at ``name`` and block until the barrier releases.
 
         ``parties`` is a count the caller fixes; it need not match the algorithm's quorum.
-        Returns the learner IDs this node found arrived when it saw the barrier open. Raises
+        Returns the node ids this node found arrived when it saw the barrier open. Raises
         ``TimeoutError`` after ``timeout`` seconds without opening; the arrival stays recorded,
         so calling again resumes the wait. Once the barrier is open, a call returns at the
         release, or at once when the release has passed.
@@ -65,7 +65,7 @@ class Barrier:
         deadline = None if timeout is None else clock.now() + timeout
         arrival = repr(clock.now()).encode()
         await retrying(
-            partial(self._mailbox.put_if_absent, f"{prefix}{self._learner_id}", arrival),
+            partial(self._mailbox.put_if_absent, f"{prefix}{self._node_id}", arrival),
             clock=clock,
         )
         while True:

@@ -368,6 +368,40 @@ def describe_leases():
         assert dict(released) == {"b": 0}
 
 
+def describe_ranks():
+    def it_lists_each_ranks_claimants_in_order_of_arrival_on_the_stores_clock(clock: FakeClock):
+        store = MemoryMailbox(clock=clock)
+        exchange = Exchange(store, clock=clock)
+
+        async def scenario():
+            await exchange.claim_rank(1, "node-b")
+            clock.advance(0.5)
+            await exchange.claim_rank(1, "node-a")
+            await exchange.claim_rank(0, "node-c")
+            return await store.list("ranks/"), await exchange.rank_claims()
+
+        keys, claims = asyncio.run(scenario())
+
+        assert list(keys) == [
+            "ranks/000/0000000000500-node-c.json",
+            "ranks/001/0000000000000-node-b.json",
+            "ranks/001/0000000000500-node-a.json",
+        ]
+        assert dict(claims) == {0: ("node-c",), 1: ("node-b", "node-a")}
+
+    def it_releases_only_the_nodes_claims_on_that_rank(clock: FakeClock):
+        exchange = Exchange(MemoryMailbox(clock=clock), clock=clock)
+
+        async def scenario():
+            await exchange.claim_rank(0, "node-a")
+            await exchange.claim_rank(0, "node-b")
+            await exchange.claim_rank(1, "node-a")
+            await exchange.release_rank(0, "node-a")
+            return await exchange.rank_claims()
+
+        assert dict(asyncio.run(scenario())) == {0: ("node-b",), 1: ("node-a",)}
+
+
 def describe_fetch():
     def when_payload_bytes_are_tampered():
         def it_raises_payload_corrupt(clock: FakeClock):

@@ -17,7 +17,7 @@ import os
 import threading
 import time
 from array import array
-from collections.abc import Generator, Mapping, Sequence
+from collections.abc import Generator, Iterator, Mapping, Sequence
 from dataclasses import dataclass, replace
 
 from gradientmail.adapters import MemoryAdapter
@@ -49,7 +49,7 @@ ZEROS = {"a": f32(0.0, 0.0), "b": f32(0.0, 0.0)}
 class Profile:
     """How a synthetic learner trains: what a step adds, how many samples it reports, how often."""
 
-    learner_id: str
+    node_id: str
     delta: float
     samples: int
     pace: float
@@ -57,7 +57,7 @@ class Profile:
 
 FAST = Profile("fast", delta=0.25, samples=2, pace=0.001)
 SLOW = Profile("slow", delta=-0.5, samples=5, pace=0.004)
-DELTAS = {FAST.learner_id: FAST.delta, SLOW.learner_id: SLOW.delta}
+DELTAS = {FAST.node_id: FAST.delta, SLOW.node_id: SLOW.delta}
 
 
 def algorithm(*, quorum: int) -> DiLoCo:
@@ -74,7 +74,7 @@ def algorithm(*, quorum: int) -> DiLoCo:
 
 
 class Trainer:
-    """A session on its own thread; every step adds ``profile.delta`` to every parameter."""
+    """A session running on its own thread; every step adds ``profile.delta`` to every parameter."""
 
     def __init__(
         self,
@@ -86,59 +86,59 @@ class Trainer:
     ) -> None:
         self.profile = profile
         self.adapter = adapter if adapter is not None else MemoryAdapter(tensors)
-        self._mailbox = mailbox
-        self._config = config
-        self._session: Session | None = None
+        self._session = Session(
+            self.adapter,
+            algorithm=config,
+            mailbox=mailbox,
+            node_id=profile.node_id,
+            poll_interval=POLL,
+        )
         self._stop = threading.Event()
         self._thread = threading.Thread(
-            target=self._train, name=f"trainer-{profile.learner_id}", daemon=True
+            target=self._train, name=f"trainer-{profile.node_id}", daemon=True
         )
         self._failure: Exception | None = None
 
     @property
     def rounds_seen(self) -> int:
-        assert self._session is not None
         return self._session.rounds_seen
 
     def join(self) -> None:
         """Join the run; returns once the adapter holds the newest committed fragments."""
-        self._session = Session(
-            self.adapter,
-            algorithm=self._config,
-            mailbox=self._mailbox,
-            learner_id=self.profile.learner_id,
-            poll_interval=POLL,
-        )
+        self._session.join()
 
     def train(self) -> None:
         self._thread.start()
 
-    def pause(self) -> None:
-        """Stop training; the session keeps receiving and closing rounds, publishing nothing."""
+    def stop(self) -> None:
+        """Stop training and wait for the run to end; raises what the training thread died of.
+
+        A trainer that never trained runs with no data, which ends its session all the same.
+        """
         self._stop.set()
-        if self._thread.ident is not None:
-            self._thread.join()
+        if self._thread.ident is None:
+            self._thread.start()
+        self._thread.join()
         if self._failure is not None:
             raise self._failure
-
-    def stop(self) -> None:
-        """Stop training and close the session; raises what the training thread died of."""
-        self.pause()
-        if self._session is not None:
-            self._session.close()
 
     def _train(self) -> None:
         def shifted(tensor: TensorBytes) -> TensorBytes:
             return f32(*(value + self.profile.delta for value in values(tensor)))
 
-        assert self._session is not None
-        try:
+        def step(_: None) -> int:
+            self.adapter.apply(
+                {name: shifted(tensor) for name, tensor in self.adapter.tensors.items()}
+            )
+            return self.profile.samples
+
+        def batches() -> Iterator[None]:
             while not self._stop.is_set():
-                self.adapter.apply(
-                    {name: shifted(tensor) for name, tensor in self.adapter.tensors.items()}
-                )
-                self._session.step(samples=self.profile.samples)
+                yield None
                 time.sleep(self.profile.pace)
+
+        try:
+            self._session.run(step, batches())
         except Exception as exc:
             self._failure = exc
 
@@ -207,7 +207,7 @@ def training(mailbox: Mailbox, config: DiLoCo) -> Generator[tuple[Trainer, Train
         slow = Trainer(SLOW, mailbox, config)
         slow.join()
         try:
-            Tape(mailbox).live_at_least(FAST.learner_id, SLOW.learner_id)
+            Tape(mailbox).live_at_least(FAST.node_id, SLOW.node_id)
             fast.train()
             slow.train()
             yield fast, slow
@@ -217,13 +217,13 @@ def training(mailbox: Mailbox, config: DiLoCo) -> Generator[tuple[Trainer, Train
         fast.stop()
 
 
-def rejoin(adapter: MemoryAdapter, learner_id: str, mailbox: Mailbox, config: DiLoCo) -> None:
+def rejoin(adapter: MemoryAdapter, node_id: str, mailbox: Mailbox, config: DiLoCo) -> None:
     """Start and close a bare learner on ``adapter``: it then holds the newest commits."""
     learner = Learner(
         adapter=adapter,
         algorithm=config,
         mailbox=mailbox,
-        learner_id=learner_id,
+        node_id=node_id,
         poll_interval=POLL,
     )
     learner.start()
@@ -339,8 +339,8 @@ def describe_training_run():
                 tape.records_at_least(6)
                 fast.stop()
                 slow.stop()
-                rejoin(fast.adapter, FAST.learner_id, mailbox, config)
-                rejoin(slow.adapter, SLOW.learner_id, mailbox, config)
+                rejoin(fast.adapter, FAST.node_id, mailbox, config)
+                rejoin(slow.adapter, SLOW.node_id, mailbox, config)
 
             assert dict(fast.adapter.tensors) == dict(slow.adapter.tensors) == tape.newest()
 
@@ -422,15 +422,15 @@ def describe_training_run():
                 slow.stop()
                 restarted = Trainer(SLOW, mailbox, config, adapter=slow.adapter)
                 restarted.join()
-                tape.live_at_least(FAST.learner_id, SLOW.learner_id)
+                tape.live_at_least(FAST.node_id, SLOW.node_id)
                 restarted.train()
                 try:
                     tape.records_at_least(len(before) + 4)
                     fast.stop()
                 finally:
                     restarted.stop()
-                rejoin(fast.adapter, FAST.learner_id, mailbox, config)
-                rejoin(slow.adapter, SLOW.learner_id, mailbox, config)
+                rejoin(fast.adapter, FAST.node_id, mailbox, config)
+                rejoin(slow.adapter, SLOW.node_id, mailbox, config)
 
             records = tape.records()
             assert list(records[: len(before)]) == list(before)

@@ -1,12 +1,12 @@
-"""Phase 3 torch learner: the demo MLP trained natively with SGD, one ``Session`` around the loop.
+"""Phase 3 torch learner: the demo MLP trained natively with SGD, one ``Session`` running the loop.
 
-Training is a synthetic regression (predict the first four inputs) on random batches. The loop is
-plain PyTorch; ``session.step`` after every optimizer step is the only addition. Joining creates
-the run from this model's parameters when it is first, or aligns with the run's global parameters
-when it is not, so the two learners always start from one set of weights. There is no syncer to
-run: each session closes rounds as elected through the mailbox. Both scripts share one algorithm
-configuration (``ALGORITHM``) and must address the same bucket and prefix; with quorum 2 every
-round waits for both learners. Bucket, prefix and endpoint come from the arguments or from
+Training is a synthetic regression (predict the first four inputs) on random batches. The step is
+plain PyTorch that returns its batch size, and ``session.run`` calls it for every batch. Joining
+creates the run from this model's parameters when it is first, or aligns with the run's global
+parameters when it is not, so the two learners always start from one set of weights. There is no
+syncer to run: each session closes rounds as elected through the mailbox. Both scripts share one
+algorithm configuration (``ALGORITHM``) and must address the same bucket and prefix; with quorum
+2 every round waits for both learners. Bucket, prefix and endpoint come from the arguments or from
 ``GRADIENTMAIL_BUCKET``, ``GRADIENTMAIL_PREFIX`` and ``GRADIENTMAIL_S3_ENDPOINT``; credentials
 come from boto3's default chain. MinIO locally:
 
@@ -23,12 +23,14 @@ Then, in two terminals, in any order:
     uv run python examples/torch_learner.py --rounds 6 [--device cuda]
     uv run python examples/mlx_learner.py --rounds 6
 
-Each learner prints every round it aligns with and stops once it holds round ``rounds - 1``. A
-prefix holds one run; start a new run under a new prefix. Against AWS, omit the endpoint.
+Each learner prints the rounds it aligns with, stops drawing batches once it holds round
+``rounds - 1`` and returns once its rounds in flight have committed. A prefix holds one run;
+start a new run under a new prefix. Against AWS, omit the endpoint.
 """
 
 import argparse
 import os
+from collections.abc import Iterator
 
 import torch
 
@@ -69,7 +71,7 @@ def main() -> None:
         help="S3-compatible endpoint URL (MinIO, R2); omit for AWS",
     )
     parser.add_argument("--rounds", type=int, default=6, help="stop after this many rounds")
-    parser.add_argument("--learner-id", default=None, help="defaults to hostname-pid")
+    parser.add_argument("--node-id", default=None, help="defaults to hostname-pid")
     parser.add_argument("--device", default="cpu", help="cpu, cuda or mps (default: cpu)")
     args = parser.parse_args()
     rounds: int = args.rounds
@@ -78,21 +80,29 @@ def main() -> None:
     model = MLP().to(device)
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
     mailbox = gm.S3Mailbox(args.bucket, args.prefix, endpoint_url=args.endpoint)
-    session = gm.Session(model, algorithm=ALGORITHM, mailbox=mailbox, learner_id=args.learner_id)
-    with session:
-        print(f"joined: {session.rounds_seen + 1} round(s) already committed")
-        step, seen = 0, session.rounds_seen
+    session = gm.Session(model, algorithm=ALGORITHM, mailbox=mailbox, node_id=args.node_id)
+    session.join()
+    print(f"joined: {session.rounds_seen + 1} round(s) already committed")
+    step, seen = 0, session.rounds_seen
+
+    def batches() -> Iterator[torch.Tensor]:
         while session.rounds_seen < rounds - 1:
-            x = torch.randn(BATCH, 16, device=device)
-            loss = ((model(x) - x[:, :4]) ** 2).mean()
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            session.step(samples=BATCH)
-            step += 1
-            if session.rounds_seen != seen:
-                seen = session.rounds_seen
-                print(f"step {step}  round {seen} aligned  loss {loss.item():.4f}")
+            yield torch.randn(BATCH, 16, device=device)
+
+    def train_step(x: torch.Tensor) -> int:
+        nonlocal step, seen
+        loss = ((model(x) - x[:, :4]) ** 2).mean()
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        step += 1
+        if session.rounds_seen != seen:
+            seen = session.rounds_seen
+            print(f"step {step}  round {seen} aligned  loss {loss.item():.4f}")
+        return BATCH
+
+    session.run(train_step, batches())
+    print(f"done: holds round {session.rounds_seen}")
 
 
 if __name__ == "__main__":

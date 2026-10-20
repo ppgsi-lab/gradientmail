@@ -4,11 +4,11 @@ the commands, the model and the data.
 
 Every node runs ``train``: a nanoGPT-style decoder (12 layers, 768 wide, 124M parameters;
 pre-norm blocks, GELU MLPs, tied embeddings, GPT-2's initialisation) with AdamW, bf16
-autocast and a cosine schedule, one ``gm.Session`` around the loop. The nodes never talk to
+autocast and a cosine schedule, one ``gm.Session`` running the loop. The nodes never talk to
 each other. The run lives in a Storage Bucket reached through the Hub's S3 gateway, and the
 sessions settle among themselves who closes each round. ``evaluate`` loads the newest
 committed parameters with ``gm.align`` and measures validation loss, so the merged model is
-judged, not a node's local copy. ``train --solo`` is the baseline: the same loop without a
+judged, not a node's local copy. ``train --solo`` is the baseline: the same step without a
 session, for one node's share of the tokens.
 
 ``compare`` scores the run and OpenAI's 124M checkpoint through one scorer, on the two
@@ -231,55 +231,67 @@ def train(
                 merge=gm.WeightedMean(),
             ),
             mailbox=mailbox(bucket, prefix),
-            learner_id=f"node-{place.rank}",
+            node_id=f"node-{place.rank}",
             poll_interval=5.0,
             backend=TorchBackend(str(device)),
         )
     )
+    ema = math.nan
+    seen = -1
+    step = 0
 
     def progress(step: int) -> float:
         """How far the run is, in [0, 1]: by rounds aligned with, or by this node's steps alone."""
         return step / steps if session is None else (session.rounds_seen + 1) / rounds
+
+    def work() -> Iterator[tuple[tuple[Tensor, Tensor], ...]]:
+        """Each step's micro-batches, until the run is through."""
+        for micro_batches in itertools.batched(batches, accumulation):
+            if progress(step) >= 1:
+                return
+            yield micro_batches
+
+    def train_step(micro_batches: tuple[tuple[Tensor, Tensor], ...]) -> int:
+        nonlocal ema, seen, step
+        at = progress(step)
+        lr = learning_rate(step, at)
+        for group in optimizer.param_groups:
+            group["lr"] = lr
+        loss = 0.0
+        for inputs, targets in micro_batches:
+            with nano.autocast(device):
+                micro = model(inputs, targets) / accumulation
+            micro.backward()
+            loss += micro.item()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        optimizer.step()
+        optimizer.zero_grad(set_to_none=True)
+        step += 1
+        ema = loss if math.isnan(ema) else 0.95 * ema + 0.05 * loss
+        rounds_seen = -1 if session is None else session.rounds_seen
+        if step == 1 or step % 20 == 0 or rounds_seen != seen:
+            seen = rounds_seen
+            rate = step * per_step / (time.monotonic() - started)
+            print(
+                f"step {step}  {at:.0%}  loss {ema:.3f}  lr {lr:.2e}  "
+                f"{rate:,.0f} tok/s  round {rounds_seen}",
+                flush=True,
+            )
+        return per_step
 
     target = f"{steps} steps" if session is None else f"{rounds} rounds"
     print(
         f"rank {place.rank} of {place.nodes}: {target} of {per_step:,}-token steps on {device}",
         flush=True,
     )
-    started = time.monotonic()
-    ema = math.nan
-    seen = -1
-    step = 0
-    with contextlib.ExitStack() as stack:
-        if session is not None:
-            stack.enter_context(session)
-        while (at := progress(step)) < 1:
-            lr = learning_rate(step, at)
-            for group in optimizer.param_groups:
-                group["lr"] = lr
-            loss = 0.0
-            for _ in range(accumulation):
-                inputs, targets = next(batches)
-                with nano.autocast(device):
-                    micro = model(inputs, targets) / accumulation
-                micro.backward()
-                loss += micro.item()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            optimizer.step()
-            optimizer.zero_grad(set_to_none=True)
-            if session is not None:
-                session.step(samples=per_step)
-            step += 1
-            ema = loss if math.isnan(ema) else 0.95 * ema + 0.05 * loss
-            rounds_seen = -1 if session is None else session.rounds_seen
-            if step == 1 or step % 20 == 0 or rounds_seen != seen:
-                seen = rounds_seen
-                rate = step * per_step / (time.monotonic() - started)
-                print(
-                    f"step {step}  {at:.0%}  loss {ema:.3f}  lr {lr:.2e}  "
-                    f"{rate:,.0f} tok/s  round {rounds_seen}",
-                    flush=True,
-                )
+    if session is None:
+        started = time.monotonic()
+        for micro_batches in work():
+            train_step(micro_batches)
+    else:
+        session.join()
+        started = time.monotonic()
+        session.run(train_step, work())
     return {
         "steps": step,
         "tokens": step * per_step,

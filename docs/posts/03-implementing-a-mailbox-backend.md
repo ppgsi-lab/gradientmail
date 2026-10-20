@@ -21,7 +21,7 @@ class Mailbox(Protocol):
 
 `put_if_absent` creates an object and returns whether this call created it; an existing object is left untouched. `get` returns `None` for a missing key. `list` returns every key under `prefix` greater than `after`, in UTF-8 byte order, across all pages. `delete` removes any number of keys, and a missing key is not an error. `clock` returns the store's time as this node estimates it, and the [Barrier](../patterns/01-barrier.md) releases nodes at one instant of it. `S3Mailbox` estimates it from the `Date` header of its responses; a store whose nodes all run on one machine can return `MonotonicClock()`, which every process there reads alike.
 
-Keys are relative to the run: `S3Mailbox` prepends its `prefix`, and each run uses a new one. [`protocol.py`](../../src/gradientmail/protocol.py) documents the layout (`manifest.json`, `rounds/`, `snapshots/`, `claims/`, `leases/`, `blobs/`), and the [Shared Queue](../patterns/00-shared-queue.md) adds `units/`. Numbers in keys have a fixed width, so byte order is numeric order.
+Keys are relative to the run: `S3Mailbox` prepends its `prefix`, and each run uses a new one. [`protocol.py`](../../src/gradientmail/protocol.py) documents the layout: `manifest.json`, `rounds/`, `snapshots/`, `claims/`, `leases/` and `blobs/`, plus `units/` for [Shared Queue](../patterns/00-shared-queue.md) claims, `done/` for nodes whose data is exhausted and `barriers/` for Barrier arrivals. Numbers in keys have a fixed width, so byte order is numeric order.
 
 The methods are coroutines, and one instance serves several event loops on different threads: a `Session` joins on the calling thread and then runs the learner's communication loop and the syncer on threads of their own. A backend therefore holds no asyncio primitive tied to one loop and runs blocking I/O in `asyncio.to_thread`; a learner publishes and polls on one loop, so a blocking upload would delay its lease renewals. No `asyncio.timeout` wraps a store call, because a cancelled `to_thread` call leaves its thread running, so a backend bounds its own requests, as `S3Mailbox` does with botocore's timeouts.
 
@@ -43,11 +43,11 @@ The protocol does not assume FIFO delivery, exactly-once delivery or atomicity a
 
 `MailboxUnavailable` marks a transient failure. Every protocol operation retries it with backoff, from 0.5 s doubling to 30 s, for as long as the failure lasts. A backend should also raise it when the outcome of a write is unknown, as after a timeout: the retried `put_if_absent` finds the key taken and returns `False`, and the protocol accepts that as its own earlier write, because a key names either an identity or the bytes it holds. `FaultyMailbox` in [`tests/fakes.py`](../../tests/fakes.py) tests this by applying an operation and then losing its response. `S3Mailbox` handles a 409 `ConditionalRequestConflict` the same way, retrying three times before raising `MailboxUnavailable`.
 
-The protocol does not retry other exceptions. While a node joins, they are raised from the `Session` constructor; in the background loops they are reported as events (`PollFailed`, `PublishFailed`, `RoundFailed`), and the loop goes on. `shared_queue` calls the mailbox directly, so any error, `MailboxUnavailable` included, ends the queue and reaches the training loop after the buffered batches.
+The protocol does not retry other exceptions. While a node joins, they are raised from `session.join()`, or from `session.run` when it joins; in the background loops they are reported as events (`PollFailed`, `PublishFailed`, `RoundFailed`), and the loop goes on. In a `SharedQueue`, such an error ends the queue and is raised from `run` after the buffered batches.
 
 ## Why conditional creation must be atomic
 
-Checking for a key and then writing it does not replace a conditional write. Two nodes claiming the same Shared Queue unit can interleave as follows: node B checks and finds no object; node A checks, writes its learner ID, reads it back and starts loading; node B writes its own ID, reads it back and starts loading as well. Reading back shows only the newest write and cannot detect a write that arrives later. A `MemoryMailbox` subclass that pauses between its check and its write reproduces this with the claim expression `shared_queue` uses: both claims return `True`.
+Checking for a key and then writing it does not replace a conditional write. Two nodes claiming the same Shared Queue unit can interleave as follows: node B checks and finds no object; node A checks, writes its node ID, reads it back and starts loading; node B writes its own ID, reads it back and starts loading as well. Reading back shows only the newest write and cannot detect a write that arrives later. A `MemoryMailbox` subclass that pauses between its check and its write reproduces this with the claim expression `SharedQueue` uses: both claims return `True`.
 
 Round records fail in a similar way. `commit` returns `Committed` as soon as its write reports creation, without reading the record back. On such a store, two closers can each commit round `r` with different records, and learners that read the round before and after the second write hold different parameters for the same version.
 
@@ -130,19 +130,13 @@ Opening the target with `O_CREAT | O_EXCL` and then writing would also create on
 
 ## Using it in a run
 
-A backend is passed wherever a mailbox is expected:
+A backend is passed wherever a mailbox is expected; `train_step` trains on one batch and returns the samples it trained:
 
 ```python
 box = FileMailbox("/var/tmp/gradientmail/run-1")
 
-with gm.Session(
-    model,
-    algorithm=gm.DiLoCo(sync_every=100, fragments=8),
-    mailbox=box,
-) as session:
-    for batch in dataloader:
-        train_step(model, optimizer, batch)
-        session.step(samples=len(batch))
+session = gm.Session(model, algorithm=gm.DiLoCo(sync_every=100, fragments=8), mailbox=box)
+session.run(train_step, dataloader)
 ```
 
 Every process of the run opens a `FileMailbox` on the same directory, and a new run uses a new directory. `gm.align(model, mailbox=box)` loads the newest committed parameters into a model without joining the run, for evaluation.
@@ -151,7 +145,7 @@ As an end-to-end check, two processes trained on one directory with the setup of
 
 ## Running the test suite
 
-[`tests/conftest.py`](../../tests/conftest.py) parametrizes the `mailbox` fixture over `MAILBOXES`, a tuple of named generators that each yield a fresh store, so every test that requests the fixture runs once per store. Those are the six contract tests in [`test_mailbox.py`](../../tests/test_mailbox.py), four Shared Queue tests and five two-learner training runs. To include the filesystem backend, place `file_mailbox.py` in `tests/`, add this generator to `conftest.py` with its imports and append `("filesystem", filesystem)` to `MAILBOXES`:
+[`tests/conftest.py`](../../tests/conftest.py) parametrizes the `mailbox` fixture over `MAILBOXES`, a tuple of named generators that each yield a fresh store, so every test that requests the fixture runs once per store. Those are the contract tests in [`test_mailbox.py`](../../tests/test_mailbox.py), the Shared Queue and Barrier tests that use a store, and the two-learner training runs. To include the filesystem backend, place `file_mailbox.py` in `tests/`, add this generator to `conftest.py` with its imports and append `("filesystem", filesystem)` to `MAILBOXES`:
 
 ```python
 def filesystem() -> Iterator[Mailbox]:
@@ -159,7 +153,7 @@ def filesystem() -> Iterator[Mailbox]:
         yield FileMailbox(root)
 ```
 
-`uv run pytest -k filesystem` then selects those 15 tests, and all of them pass with the backend above. The contract tests write 1,001 keys, one more than an S3 listing page or bulk delete holds, and check byte order with keys whose case-folded order differs. The training tests fail when the expected rounds have not committed within 30 seconds; `GRADIENTMAIL_TEST_TIMEOUT` raises that limit for a slower store. A store that outlives the test should give each test its own prefix and remove it afterwards, as `s3_endpoint` does.
+`uv run pytest -k filesystem` then selects those tests, and all of them pass with the backend above. The contract tests write 1,001 keys, one more than an S3 listing page or bulk delete holds, and check byte order with keys whose case-folded order differs. The training tests fail when the expected rounds have not committed within 30 seconds; `GRADIENTMAIL_TEST_TIMEOUT` raises that limit for a slower store. A store that outlives the test should give each test its own prefix and remove it afterwards, as `s3_endpoint` does.
 
 ## Limits of the example
 
@@ -169,4 +163,4 @@ It does not call `fsync`. A process that crashes leaves each object whole or abs
 
 `delete` removes files but not the directories that held them; two-node runs of 37 rounds left about 180 empty directories each. A listing walks only the directory its prefix names, but `list("")` walks all of them.
 
-A key cannot also be a directory of another key: once `a` exists, writing `a/b` raises `FileExistsError`. GradientMail's own keys never overlap this way; Shared Queue identifiers, which become keys under `units/`, should not either.
+A key cannot also be a directory of another key: once `a` exists, writing `a/b` raises `FileExistsError`. GradientMail's own keys never overlap this way, Shared Queue claims included: a unit's identifier cannot contain `/`.
