@@ -271,19 +271,32 @@ class Session:
         """
         if self._stage != "new":
             return
-        learner, syncer = self._learner, self._syncer
+        learner, syncer, thread = self._learner, self._syncer, self._thread
+        elected = False
         if learner is None:
-            asyncio.run(self._adopt())
+            # The syncer thread starts first: a dedicated syncer holds its lease while it waits
+            # for the run, so that the learner that creates the run leaves it round 0.
+            if thread is not None:
+                thread.start()
+            try:
+                asyncio.run(self._adopt())
+            except BaseException:
+                if syncer is not None:
+                    syncer.stop()
+                if thread is not None:
+                    thread.join()
+                raise
         else:
             learner.start()
-        try:
-            elected = self._role == "either" and syncer is not None and asyncio.run(syncer.elect())
-        except BaseException:
-            if learner is not None:
+            try:
+                elected = (
+                    self._role == "either" and syncer is not None and asyncio.run(syncer.elect())
+                )
+            except BaseException:
                 learner.abort()
-            raise
-        if self._thread is not None:
-            self._thread.start()
+                raise
+            if thread is not None:
+                thread.start()
         self._stage = "joined"
         if elected and learner is not None:
             self._pause(learner)

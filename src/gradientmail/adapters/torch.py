@@ -124,7 +124,11 @@ class TorchValue(Value):
         flat = self.data.reshape(-1)
         match dtype:
             case "F8_E4M3":
-                largest = flat.abs().max().reshape(1) if flat.numel() else torch.zeros(1)
+                largest = (
+                    flat.abs().max().reshape(1)
+                    if flat.numel()
+                    else torch.zeros(1, device=flat.device)
+                )
                 _, scale = _scales(largest, _E4M3_HEADROOM)
                 codes = (self.data / scale.reshape(())).to(torch.float8_e4m3fn)
                 return (
@@ -133,7 +137,9 @@ class TorchValue(Value):
                 )
             case "F4":
                 blocks = -(-flat.numel() // F4_BLOCK)
-                padding = torch.zeros(blocks * F4_BLOCK - flat.numel(), dtype=flat.dtype)
+                padding = torch.zeros(
+                    blocks * F4_BLOCK - flat.numel(), dtype=flat.dtype, device=flat.device
+                )
                 blocked = torch.cat((flat, padding)).reshape(blocks, F4_BLOCK)
                 exponents, scales = _scales(blocked.abs().amax(dim=1), _E2M1_HEADROOM)
                 q = (blocked.abs() / scales[:, None]).clamp(max=6.0)

@@ -146,3 +146,17 @@ def describe_torch_backend():
         assert (value * 2.0).to_bytes("BF16") == TensorBytes(
             "BF16", (2,), struct.pack("<2H", 0x4000, 0xC0A0)
         )
+
+    @pytest.mark.parametrize("device", DEVICES)
+    def it_quantizes_to_f4_on_the_value_device(device: str):
+        from gradientmail.adapters.torch import TorchBackend, TorchValue
+
+        # 33 values: the second block is padding, which has to join the values on their device.
+        values = torch.tensor([0.0, 0.5, -1.0, 1.5, 2.0, -3.0, 4.0, 6.0] * 4 + [1.0], device=device)
+
+        data, scale = TorchValue(values).quantize("F4")
+        restored = TorchBackend(device).dequantize(data, scale, (33,))
+
+        assert (data.shape, scale.shape) == ((64,), (2,))
+        assert restored.data.device.type == device
+        assert torch.equal(restored.data, values)

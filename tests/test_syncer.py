@@ -1134,6 +1134,59 @@ def describe_exclusive_syncer():
             # "a" was still waiting for its last rounds to commit.
             assert asyncio.run(scenario())
 
+    def when_it_arrives_before_the_run():
+        def it_holds_its_lease_while_it_waits_and_is_left_round_0(clock: FakeClock):
+            rig = Rig(MemoryMailbox(), clock, algorithm(quorum=1))
+            seen: list[Event] = []
+
+            async def scenario():
+                dedicated = rig.syncer("dedicated", exclusive="0-dedicated", on_event=seen.append)
+                closing = asyncio.create_task(dedicated.run(until_round=0))
+                await spin(lambda: clock.now() >= 1.0)
+                leases = await rig.store.list("syncers/")
+                await rig.create_run()
+                await rig.alive("both")
+                both = rig.syncer("both", on_event=seen.append)
+                follower = asyncio.create_task(both.run(until_round=0))
+                await spin(lambda: any(isinstance(e, FollowingRound) for e in seen))
+                await rig.publish("both", 0, (0.0, 0.0), step_seconds=10.0)
+                await spin(lambda: closing.done() and follower.done())
+                closing.result()
+                follower.result()
+                return leases
+
+            leases = asyncio.run(scenario())
+
+            assert len(leases) == 1 and leases[0].startswith("syncers/0-dedicated/")
+            assert [e for e in seen if isinstance(e, RoundClaimed)] == [
+                RoundClaimed("dedicated", 0)
+            ]
+            committed = [(e.node, e.record.round) for e in seen if isinstance(e, RoundCommitted)]
+            assert committed == [("dedicated", 0)]
+
+    def when_it_arrives_while_a_round_is_collecting():
+        def it_is_left_the_next_round_by_the_node_closing_this_one(clock: FakeClock):
+            rig = Rig(MemoryMailbox(), clock, algorithm(quorum=1))
+            seen: list[Event] = []
+
+            async def scenario():
+                await rig.create_run()
+                await rig.alive("both")
+                both = rig.syncer("both", on_event=seen.append)
+                task = asyncio.create_task(both.run(until_round=0))
+                await spin(lambda: RoundClaimed("both", 0) in seen)
+                await rig.exchange.beat_syncer(syncer_lease_prefix("0-dedicated", 0, "dedicated"))
+                await rig.publish("both", 0, (0.0, 0.0))
+                await spin(task.done)
+                task.result()
+                return await rig.claimants(1)
+
+            claimants = asyncio.run(scenario())
+
+            committed = [(e.node, e.record.round) for e in seen if isinstance(e, RoundCommitted)]
+            assert committed == [("both", 0)]
+            assert list(claimants) == []
+
 
 def describe_elected_syncer():
     """``exclusive="1-elected"``: the store's clock is the fake one too, so that a candidate's

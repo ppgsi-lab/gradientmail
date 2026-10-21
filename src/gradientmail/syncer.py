@@ -302,29 +302,26 @@ class Syncer:
         the claim this node holds, if any, is found again and the round recomputed.
 
         An exclusive syncer holds a lease, renewed on a task of its own: a dedicated one writes
-        it once the configuration checks out, an elected one wins it (``elect``) on that task or
-        before ``run``, and gives it up to another owner, or when units of its node's queue are
-        left for nobody to train. A lease held when ``run`` ends is released, however it ends.
-        While it holds one, ``run`` also returns once the run is finished: no learner holds a
-        live lease and the data is exhausted (module docstring).
+        it before it waits for the run, so that the learner that creates the run leaves it
+        round 0; an elected one wins it (``elect``) on that task or before ``run``, and gives it
+        up to another owner, or when units of its node's queue are left for nobody to train. A
+        lease held when ``run`` ends is released, however it ends. While it holds one, ``run``
+        also returns once the run is finished: no learner holds a live lease and the data is
+        exhausted (module docstring).
         """
         self._main = asyncio.current_task()
         try:
             if self._stopped:
-                return
-            while (manifest := await self._exchange.manifest()) is None:
-                await self._clock.sleep(self._poll_interval)
-            expected = self._algorithm.to_json()
-            if dict(manifest.algorithm) != dict(expected):
-                raise RunConfigMismatch(expected, manifest.algorithm)
-            if self._exclusive is None:
-                await self._rounds(until_round)
                 return
             if self._exclusive == "0-dedicated":
                 arrival = int(self._store_clock.now() * 1000)
                 lease = syncer_lease_prefix(self._exclusive, arrival, self._node_id)
                 self._lease = lease
                 await self._exchange.beat_syncer(lease)
+            await self._checked()
+            if self._exclusive is None:
+                await self._rounds(until_round)
+                return
             async with asyncio.TaskGroup() as group:
                 tasks = (
                     group.create_task(self._hold()),
@@ -369,6 +366,19 @@ class Syncer:
             if self._lease != lease:
                 await self._exchange.release_syncer(lease)
         return self._lease == lease
+
+    async def _checked(self) -> None:
+        """Wait for the manifest, renewing the lease this node holds meanwhile, and check the
+        run's configuration against this node's."""
+        renew_at = self._clock.now() + self._lease_every
+        while (manifest := await self._exchange.manifest()) is None:
+            if (lease := self._lease) is not None and self._clock.now() >= renew_at:
+                await self._exchange.beat_syncer(lease)
+                renew_at = self._clock.now() + self._lease_every
+            await self._clock.sleep(self._poll_interval)
+        expected = self._algorithm.to_json()
+        if dict(manifest.algorithm) != dict(expected):
+            raise RunConfigMismatch(expected, manifest.algorithm)
 
     def stop(self) -> None:
         """Cancel ``run`` from any thread; a ``run`` that has not started yet returns at once."""
@@ -612,6 +622,8 @@ class Syncer:
             RoundCommitted(self._node_id, outcome.record, time.perf_counter() - committing)
         )
 
+        # An exclusive syncer may have arrived while the round was collecting.
+        self._observed(await self._exchange.syncer_leases(), self._clock.now())
         if not self._ceding():
             await self._exchange.claim(round + 1, 1, self._node_id)
         count = len(state.fragments)

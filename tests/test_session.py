@@ -692,8 +692,9 @@ def describe_session():
             trainer.run(partial(train_step, model), until(trainer, 2))
             closing.result(timeout=20.0)
 
-            # The syncer waited for the learner to create the run.
-            assert before_the_learner == []
+            # The syncer held its lease while it waited for the learner to create the run.
+            assert before_the_learner != []
+            assert all(key.startswith("syncers/0-dedicated/") for key in before_the_learner)
             exchange = Exchange(mailbox, clock=MonotonicClock())
             manifest = asyncio.run(exchange.manifest())
             records = asyncio.run(exchange.rounds_after(-1))
